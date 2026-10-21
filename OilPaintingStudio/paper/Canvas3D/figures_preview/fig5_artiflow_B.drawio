@@ -1,0 +1,59 @@
+<mxfile host="app.diagrams.net" modified="2026-10-13T00:00:00.000Z" agent="ZCode" version="24.0.0" type="device">
+  <diagram id="fig5_artiflow_B" name="ArtiFlow_B_Mono">
+    <mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sc" value="Scene S*, Depth D*" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;strokeWidth=1.5;fontSize=10;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="20" y="80" width="120" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="rend" value="Multi-View Render&#10;orbit + dolly traj." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#333333;strokeWidth=1.5;fontSize=10;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="180" y="30" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="fr" value="RGB I_t&#10;Depth D_t&#10;Edge E_t" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;strokeWidth=1;fontSize=9;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="370" y="30" width="100" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="df" value="Depth ctrl&#10;s_d = 0.85" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;strokeWidth=1;fontSize=9;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="510" y="15" width="90" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="ef" value="HED edge ctrl&#10;s_e = 0.6" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;strokeWidth=1;fontSize=9;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="510" y="65" width="90" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="cn" value="Dual ControlNet&#10;depth + edge&#10;feature fusion" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#333333;strokeWidth=1.5;fontSize=10;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="650" y="30" width="130" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="vd" value="Video DiT&#10;Wan2.2 / LTX2.3&#10;temporal attention" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#333333;strokeWidth=1.5;fontSize=10;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="650" y="110" width="130" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="out" value="Video V" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;strokeWidth=1.5;fontSize=10;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="830" y="120" width="80" height="30" as="geometry" />
+        </mxCell>
+        <!-- Edges -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=open;endFill=0;" edge="1" parent="1" source="sc" target="rend">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=open;endFill=0;" edge="1" parent="1" source="rend" target="fr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=open;endFill=0;" edge="1" parent="1" source="fr" target="df">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=open;endFill=0;" edge="1" parent="1" source="fr" target="ef">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=open;endFill=0;" edge="1" parent="1" source="df" target="cn">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=open;endFill=0;" edge="1" parent="1" source="ef" target="cn">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=open;endFill=0;" edge="1" parent="1" source="cn" target="vd">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=open;endFill=0;" edge="1" parent="1" source="vd" target="out">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

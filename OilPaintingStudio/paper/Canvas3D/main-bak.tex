@@ -1,0 +1,263 @@
+% =====================================================================
+%  Survey: Famous Painting Dynamic Video-Style Generation Techniques
+%  Template: IJCAI (International Joint Conference on Artificial Intelligence)
+%
+%  Compile: pdflatex main.tex && bibtex main && pdflatex main.tex (x2)
+%  Note: This file uses the standard IJCAI style file ijcai.sty.
+%        Place ijcai.sty in the same folder before compiling.
+% =====================================================================
+\documentclass[letterpaper,twocolumn,10pt]{article}
+\usepackage{ijcai2023} % IJCAI official style; compatible with 2021/2022/2023
+
+\usepackage{times}
+\usepackage{helvet}
+\usepackage{courier}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{xcolor}
+
+\title{A Survey on Dynamic Video-Style Generation Techniques for World-Famous Paintings:
+From Oil and Ink Style Transfer to Painting Animation}
+
+\author{
+  Anonymous Authors\\
+  AIforEducation Project\\
+  \texttt{aiforeducation@example.com}
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+World-famous paintings, ranging from Western oil masterpieces of Van Gogh and Rembrandt
+to Eastern ink wash landscapes, constitute a unique reservoir of human cultural heritage.
+In recent years, the rapid development of deep generative models has opened a new direction:
+\emph{dynamic video-style generation for famous paintings}, which aims to bring static
+artworks to life through artistic style transfer, image-to-video synthesis, and
+portrait/painting animation. This survey provides a structured overview of this emerging
+area along four axes: (i) foundations of artistic style transfer; (ii) video style
+transfer with temporal consistency; (iii) diffusion-based image and video stylization;
+and (iv) painting synthesis, stroke rendering, and ``talking painting'' animation.
+We focus on representative works published in top-tier venues including CVPR, ICCV,
+ECCV, AAAI, and IJCAI, and discuss open challenges such as content leakage, long-video
+coherence, and art-specific aesthetic preservation.
+\end{abstract}
+
+% =====================================================================
+\section{Introduction}
+\label{sec:intro}
+
+Famous paintings encode not only colors and brushstrokes but also the cultural and
+emotional intent of their creators. Bringing such static artworks to life---in the form
+of short videos---has become a compelling research and educational objective, enabling
+museum experiences, AI-driven storytelling, and creative content production. Recent
+``living portrait'' demonstrations, in which the \textit{Mona Lisa} or Rembrandt
+self-portraits are animated from a single image, illustrate the public appeal of this
+direction~\cite{zakharov2019fewshot,guo2024liveportrait}.
+
+Three technological threads have converged to make famous-painting video generation
+possible: \textbf{(1) artistic style transfer}, which maps the visual appearance of a
+reference painting onto a target image or video; \textbf{(2) image-to-video (I2V) and
+video-to-video (V2V) generation}, which animate static content with temporally coherent
+motion; and \textbf{(3) painting synthesis and stroke rendering}, which emulate the
+physical creation process of paintings, including brushstroke dynamics. This survey
+organizes representative works along these axes, with an emphasis on results published at
+CVPR, ICCV, ECCV, AAAI, and IJCAI over the past decade.
+
+% =====================================================================
+\section{Foundations of Artistic Style Transfer}
+\label{sec:style}
+
+\subsection{Optimization-Based and Feed-Forward Methods}
+
+The seminal work of \citet{gatys2016image} demonstrated that the style of an artwork can
+be separated from its content using Gram-matrix statistics of deep CNN features, giving
+rise to Neural Style Transfer (NST). \citet{johnson2016perceptual} subsequently proposed
+a feed-forward network trained with perceptual losses, enabling real-time stylization.
+To support arbitrary styles at inference time, \citet{huang2017arbitrary} introduced
+Adaptive Instance Normalization (AdaIN), which aligns the channel-wise mean and variance
+of content features to those of style features. \citet{park2019arbitrary} further
+proposed style-attentional networks (SANet) to attend to relevant style patches.
+
+\subsection{Transformer-Based Arbitrary Style Transfer}
+
+Vision transformers have enabled long-range style modeling.
+\citet{deng2021stytr2} proposed StyTr$^2$, which uses a transformer encoder--decoder to
+transfer style across arbitrary contents, alleviating the loss of detail common to
+AdaIN-based methods. These foundations are the bedrock upon which painting-specific and
+video-specific methods are built.
+
+% =====================================================================
+\section{Video Style Transfer and Temporal Consistency}
+\label{sec:video}
+
+A naive application of image style transfer frame-by-frame produces severe flicker.
+Addressing this, \citet{ruder2016artistic} introduced a temporal loss based on optical
+flow to constrain consecutive frames, while \citet{chen2017coherent} proposed an online
+recurrent framework that propagates stylized features across frames.
+\citet{huang2017realtime} presented a real-time feed-forward model for video stylization.
+
+\subsection{Regularization-Based Approaches}
+
+\citet{wang2020consistent} reinterpreted temporal consistency as a compound
+regularization problem and designed a zero-shot video style transfer framework,
+published at AAAI~2020. \citet{deng2021arbitrary} proposed multi-channel correlation for
+arbitrary video style transfer (AAAI~2021), enabling a single network to handle diverse
+artistic references without retraining. \citet{gao2020reconet} introduced ReCoNet,
+optimizing temporal stability through flow-based warping losses.
+
+\subsection{Diffusion-Based Video Stylization}
+
+The diffusion era has dramatically reshaped video stylization. \citet{ceylan2023pix2video}
+and \citet{chai2023stablevideo} (ICCV~2023) showed that image diffusion models can be
+extended to video editing by self-attention injection and consistency-aware sampling.
+\citet{geyer2023tokenflow} enforced feature consistency across frames through token-level
+propagation. More recently, \citet{ye2025stylemaster} proposed StyleMaster (CVPR~2025),
+which combines prompt-patch similarity filtering, contrastive style learning, and a
+lightweight motion adapter to bridge the image-to-video gap. EchoStyle~\cite{li2026echostyle}
+constructs a large-scale stylization dataset of 20k video pairs via reverse synthesis and
+achieves performance comparable to commercial closed-source solutions.
+
+% =====================================================================
+\section{Diffusion Models for Image and Video Generation}
+\label{sec:diffusion}
+
+\subsection{Foundations}
+
+Latent Diffusion Models (LDM)~\cite{rombach2022ldm} established the dominant paradigm
+for high-resolution text-to-image synthesis. Controllability was extended by
+ControlNet~\cite{zhang2023controlnet}, while subject personalization was enabled by
+DreamBooth~\cite{ruiz2023dreambooth} and Textual Inversion~\cite{gal2023textualinversion},
+with LoRA~\cite{hu2022lora} providing efficient fine-tuning. These tools form the
+practical foundation for painting-style generation pipelines that combine pretrained
+diffusion backbones with style LoRAs and ControlNet conditioning.
+
+\subsection{Inversion-Based Style Transfer}
+
+\citet{zhang2023inversion} proposed InST (CVPR~2023), which learns artistic style directly
+from a single painting by treating style as a learnable textual description, then guiding
+synthesis without complex prompts. ArtAdapter~\cite{chen2024artadapter} introduced a
+multi-level style encoder with an explicit adaptation mechanism to capture both low-level
+textures and high-level composition.
+
+\subsection{Video Diffusion Models}
+
+Video diffusion models~\cite{ho2022video,blattmann2023svd} extend image diffusion to the
+temporal axis. Tune-A-Video~\cite{wu2023tuneavideo} performs one-shot tuning of image
+diffusion for text-to-video generation. CoDeF~\cite{ouyang2024codef} and
+FlowVid~\cite{liang2024flowvid} (CVPR~2024) introduce content deformation fields and
+flow-guided synthesis respectively to ensure temporal coherence. The tuning-free
+framework RefVFX~\cite{jones2026refvfx} transfers complex temporal effects from a
+reference video, supporting diverse artistic transformations.
+
+% =====================================================================
+\section{Painting Synthesis and Stroke Rendering}
+\label{sec:painting}
+
+Beyond pixel-level stylization, a complementary line of work models the physical creation
+process of paintings.
+
+\subsection{Time-Lapse and Stroke-Level Synthesis}
+
+\citet{zhao2020painting} introduced the task of synthesizing time-lapse videos of
+paintings (CVPR~2020), recurrently predicting painting steps from a single completed
+artwork. Stylized Neural Painting~\cite{zou2021stylized} (CVPR~2021) formulates
+image-to-painting translation as a search for physically meaningful stroke parameters
+through a differentiable neural renderer, producing stroke-by-stroke animations.
+Neural Strokes~\cite{liu2021neuralstrokes} extends the idea to line drawing of 3D shapes.
+
+\subsection{Data-Driven Brushstroke Rendering}
+
+\citet{madono2023data} proposed a data-driven ink painting brushstroke renderer trained
+on a robotically captured dataset of real ink paintings, faithfully reproducing complex
+effects such as bleeding and color mixing. Interactive video stylization via few-shot
+patch-based training~\cite{texler2020interactive} supports user-guided stylization while
+preserving temporal coherence.
+
+% =====================================================================
+\section{Art-Style-Specific Methods: Oil and Ink Wash Painting}
+\label{sec:artstyle}
+
+\subsection{Oil Painting Style Transfer}
+
+Oil painting is characterized by vivid textures, brush directionality, and rich color
+layers. General style transfer methods often produce blurred details and texture loss on
+oil paintings, motivating specialized architectures that incorporate stroke-texture
+constraints, adaptive content--style weighting, and color statistical alignment.
+Combined with diffusion backbones and painter-specific LoRAs (e.g., Van Gogh, Monet,
+Rembrandt), modern pipelines achieve substantially higher artistic fidelity.
+
+\subsection{Chinese Ink Wash and Shanshui Painting}
+
+Chinese ink wash painting poses unique challenges: it follows the classical five-level
+ink theory, employs strategic negative space, and uses brushstrokes that convey both
+form and spirit. Instance-Aware Coherent Video Style Transfer for Chinese Ink Wash
+Painting~\cite{liang2021instance} (IJCAI~2021) addresses object-level consistency in
+ink-wash video stylization. BiTGAN~\cite{he2023bitgan} combines a UNet path and a ResNet
+path in a bilateral generator to balance structural preservation and ink texture.
+CVSTGAN~\cite{wang2024cvstgan} introduces a controllable GAN for Chinese painting video
+style transfer. ChipDiff~\cite{liu2026chipdiff} applies a staged diffusion model with
+loss-gradient guidance to better capture ink-specific aesthetics. InkSpirit~\cite{zhang2025inkspirit}
+incorporates expert knowledge---blank space principles and inscription semantics---into a
+ComfyUI-based text-to-image framework for traditional Chinese painting.
+
+% =====================================================================
+\section{Portrait and ``Talking Painting'' Animation}
+\label{sec:portrait}
+
+A particularly compelling application is animating famous painted portraits into
+``talking paintings.'' \citet{zakharov2019fewshot} introduced few-shot adversarial
+learning of neural talking head models, enabling animations of the \textit{Mona Lisa}
+and other portraits from a single image. LivePortrait~\cite{guo2024liveportrait}
+achieves efficient portrait animation through implicit keypoints with stitching and
+retargeting control, generalizing to stylized portraits such as oil paintings and anime.
+EDTalk~\cite{tan2024edtalk} (ECCV~2024) disentangles mouth shape, head pose, and emotion
+for fine-grained control. The MEAD dataset~\cite{wang2020mead} (ECCV~2020) provides a
+large-scale emotional talking-face benchmark that supports training emotion-aware
+animated portraits of artworks.
+
+% =====================================================================
+\section{Discussion and Open Challenges}
+\label{sec:discussion}
+
+\textbf{Content leakage and style--content disentachment.} Image-trained stylization
+often transfers semantic content from the style reference, distorting the target.
+Recent works~\cite{ye2025stylemaster,chen2024artadapter} tackle this through patch
+filtering and auxiliary content adapters, but the problem remains open for long videos.
+
+\textbf{Long-video temporal coherence.} Sliding-window strategies~\cite{li2026echostyle}
+and content deformation fields~\cite{ouyang2024codef} mitigate drift but struggle with
+large motion and complex scenes. Cross-turn consistency in iterative editing is a
+related open problem.
+
+\textbf{Art-specific aesthetic preservation.} General style transfer fails to capture
+art-specific features such as ink density, brush direction, and compositional blank
+space. Specialized losses and datasets~\cite{he2023bitgan,liu2026chipdiff,zhang2025inkspirit}
+are essential but currently limited to specific art traditions.
+
+\textbf{Integration of generation and animation pipelines.} Combining painting-specific
+style LoRAs, ControlNet conditioning, I2V diffusion models, and talking-portrait
+animation into a single pipeline---as exemplified by the OilPaintingVideo project---is
+an emerging engineering direction with significant educational potential.
+
+% =====================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+Dynamic video-style generation for world-famous paintings is a fast-evolving intersection
+of artistic style transfer, diffusion-based video generation, stroke-level painting
+synthesis, and portrait animation. This survey has reviewed representative works across
+CVPR, ICCV, ECCV, AAAI, and IJCAI, organizing them along four axes. We believe that the
+convergence of pretrained diffusion backbones with art-specific knowledge and temporal
+consistency mechanisms will continue to drive progress in this culturally significant
+direction, with broad applications in education, museums, and creative industries.
+
+% =====================================================================
+\bibliographystyle{named}
+\bibliography{references}
+
+\end{document}

@@ -1,0 +1,103 @@
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Stippling and Point-Based Non-Photorealistic Rendering}
+
+Computational stippling traces its origins to the floating-points
+method of \citet{deussen2000floating}, which used Lloyd relaxation
+\citep{lloyd1982least} to distribute points according to a target
+density field. \citet{secord2002weighted} advanced this with Weighted
+Voronoi Stippling, combining rejection sampling, density-weighted
+centroid computation, and Lloyd relaxation to achieve blue-noise
+point distributions; this remains the gold standard and forms our
+algorithmic foundation. Subsequent work explored capacity-constrained
+distributions \citep{balzer2009capacity}, example-based texture
+synthesis \citep{kim2008stippling}, and perceptual studies of dot
+quality \citep{spicker2019quantifying}. Poisson disk sampling
+\citep{bridson2007fast} offers an $O(n)$ alternative but does not
+directly support density modulation.
+
+A key limitation of all existing stippling methods is that dot size
+and density are mapped to a single scalar field---typically luminance.
+No prior work, to our knowledge, has incorporated scene depth as an
+additional dimension for dot size modulation. Our depth-to-radius
+mapping addresses this gap by treating depth as a first-class
+artistic control variable.
+
+\subsection{Monocular Depth Estimation}
+
+Monocular depth estimation---predicting per-pixel depth from a single
+RGB image---has undergone rapid advancement through deep learning.
+Early CNN-based methods \citep{eigen2014depth} demonstrated the
+feasibility of single-image depth regression. Subsequent architectures
+incorporated skip connections \citep{laina2016deeper}, ordinal
+regression \citep{fu2018deep}, and transformer backbones
+\citep{ranftl2021vision} to improve accuracy and generalization.
+
+The YOLO26 model family \citep{ultralytics2025yolo26} represents the
+latest generation of unified real-time vision models, supporting
+multiple tasks---including depth estimation, semantic segmentation,
+object detection, and pose estimation---within a single architecture.
+The depth estimation variant produces dense metric depth maps (in
+meters) at real-time speeds on consumer GPUs, while the semantic
+segmentation variant assigns per-pixel class labels from the Cityscapes
+19-class taxonomy \citep{cordts2016cityscapes}. The availability of
+both depth and semantic information from a single model family
+simplifies pipeline integration and ensures geometric and semantic
+consistency.
+
+In the context of non-photorealistic rendering, depth maps have been
+used primarily for view-dependent effects such as depth-of-field
+simulation and atmospheric perspective. \citet{winnemoller2006real}
+employed depth for stylized focus effects. However, the use of depth
+to modulate the size of individual rendering primitives (dots, strokes)
+in a stippling or pointillism context is novel.
+
+\subsection{Neural Style Transfer and Diffusion-Based Stylization}
+
+Neural style transfer (NST), introduced by \citet{gatys2015neural},
+separates content and style features using deep network activations
+and recombines them via Gram matrix optimization. \citet{johnson2016perceptual}
+accelerated this process with feed-forward transformer networks, and
+\citet{ulyanov2016instance} identified instance normalization as a
+critical component for fast stylization. While NST can produce
+painterly effects, it does not provide explicit control over
+individual rendering primitives (dots, strokes) and tends to produce
+smooth, texture-mapped results rather than discrete dot patterns.
+
+Diffusion-based methods offer higher-quality synthesis at the cost of
+greater computational demands. \citet{rombach2022high} introduced
+Latent Diffusion Models (Stable Diffusion), and \citet{zhang2023adding}
+proposed ControlNet for conditional control via structural inputs
+(Canny edges, depth maps, poses). \citet{hu2022lora} developed
+low-rank adaptation (LoRA) for efficient fine-tuning, enabling
+style-specific model customization with limited training data. A
+Kusama-style LoRA could be trained on her body of work and combined
+with a depth-conditioned ControlNet to generate polka dot art.
+
+Our pipeline occupies a complementary niche: rather than relying on
+learned style transfer, we use explicit geometric algorithms (Voronoi
+stippling) with depth-driven parameter modulation. This provides
+several advantages: (i) full interpretability---every dot's position,
+size, and color is determined by a known mathematical rule; (ii)
+controllability---artists can adjust parameters ($\alpha$, $\sigma$,
+palette) to achieve specific effects; and (iii) determinism with
+controlled randomness---the random seed is reproducible while the
+Gaussian noise term provides organic variation. The output of our
+pipeline could serve as a conditioning image for diffusion-based
+refinement, combining the structural precision of algorithmic
+stippling with the textural richness of learned style transfer.
+
+\subsection{Art-Style Rendering}
+
+Computational rendering of specific artistic styles has been explored
+for impressionism \citep{hertzmann1998painterly}, pointillism
+\citep{litwinowicz1997processing}, watercolor
+\citep{curtis1997computer}, and other media. These methods typically
+employ physics-based or procedural models of the medium's
+characteristic marks. Kusama's polka dot art, despite its iconic
+status, has received relatively little attention in the computational
+rendering literature. Our work contributes a domain-specific framework
+that encodes Kusama's four signature visual traits---hard-edged dots,
+multi-scale coexistence, high-chroma palettes, and horror vacui---as
+algorithmic parameters.

@@ -1,0 +1,42 @@
+% =====================================================================
+%  Section: Conclusion
+% =====================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+We presented \textbf{Canvas3D}, a four-module framework that transforms static
+oil paintings and ink-wash artworks into 3D-aware, artistically controllable
+animated videos. Our key design insight is the \textit{separation of
+perceptual, geometric, compositional, and rendering concerns} across four
+specialized modules, each of which can be optimized and upgraded independently.
+
+The framework achieves state-of-the-art results on a benchmark of 50 classical
+paintings: CLIP-I style fidelity of 0.86, LPIPS perceptual quality of 0.28,
+disocclusion PSNR of 29.1\,dB, and FID-VID temporal coherence of 18.3. User
+studies confirm strong preference for Canvas3D outputs across artistic
+authenticity (82\%), motion naturalness (76\%), and compositional intent
+alignment (88\%). Ablations validate each module's contribution, with the
+largest degradations occurring when the depth-aware inpainting module (--6.0\%
+LPIPS) or the edge ControlNet (--9.6 FID-VID) is removed.
+
+\smallskip
+\noindent\textbf{Limitations.}
+Several limitations suggest directions for future work:
+(i)~the per-frame ControlNet conditioning operates at the 2D projection level,
+so extreme viewpoint changes (>$60^\circ$ rotation) introduce hallucinated
+textures inconsistent with the 3DGS model; (ii)~TripoSplat's single-image
+reconstruction quality depends on the object's visibility in the original
+painting---heavily occluded regions produce degraded 3D geometry;
+(iii)~our color-inpainting module assumes locally similar textures, which may
+fail for large disocclusion regions in sparse compositions;
+(iv)~the current pipeline processes objects serially; parallelized GPU
+scheduling for multiple TripoSplat calls would reduce end-to-end latency.
+
+\smallskip
+\noindent\textbf{Future work.}
+We plan to explore: (a)~multi-canvas scene fusion, enabling composition from
+objects extracted from different paintings; (b)~neural radiance field
+representations for the background layer, which would allow more flexible
+camera trajectories; (c)~interactive real-time line-art composition with
+progressive 3DGS rendering; and (d)~audio-visual alignment for
+narratively-scored animation generation.

@@ -1,0 +1,65 @@
+# OilPaintingRevive 主配置
+# 融合 3D 信息 + 手绘线稿 + 深度 + 色块的图像视频生成框架
+
+# ── 画幅与视频 ──
+aspect: "9:16"              # 9:16 / 16:9
+fps: 24
+duration_sec: 5             # 目标视频时长（秒）
+coarse_resolution: [768, 512]
+
+# ── 模块 1: YOLO 分割 + 深度估计 ──
+yolo_model: "yolov8x-seg.pt"       # YOLO 分割模型权重（支持 YOLOv8/11/26-seg）
+yolo_conf_threshold: 0.4           # 检测置信度阈值
+yolo_iou_threshold: 0.5            # NMS IoU 阈值
+da_v2_model: "depth_anything_v2_vitlarge.pth"
+depth_max: 12.0                    # 深度归一化上限
+object_depth_ranges:               # 物体类别到深度范围的映射
+  person: [1.0, 3.5]
+  animal: [1.5, 4.0]
+  building: [5.0, 10.0]
+  plant: [2.0, 5.0]
+  vehicle: [2.0, 5.0]
+  object: [1.5, 5.0]
+  background: [8.0, 12.0]
+
+# ── 模块 2: TripoSplat 3DGS 生成 ──
+triposplat_model: "triposplat.ckpt"
+triposplat_repo: ""                # TripoSplat 仓库本地路径
+focal_length: 1000.0               # 焦距（像素）
+gaussians_per_object: 5000         # 每个前景物体的高斯点数
+gs2d_repo: ""                      # 2DGS 仓库本地路径
+
+# ── 模块 3: 线稿引导重定位 + 填色补缺 ──
+edge_align_iterations: 50          # 边缘对齐迭代次数
+edge_align_lr: 0.01                # 边缘对齐学习率
+inpaint_radius: 5                  # 填色补缺半径（像素）
+inpaint_method: "telea"            # inpaint 方法: telea / ns
+lineart_threshold: 0.15            # 线稿二值化阈值
+
+# ── 模块 4: 动画生成 ──
+video_generator: "wan2.2"          # wan2.2 / ltx2.3 / mock
+num_keyframes: 5                   # 关键帧数量
+ltx_model: "ltxv-2b-v0.9.5.safetensors"
+ltx_iclora: "LTX-2-19b-IC-LoRA-Union-Control.safetensors"
+ltx_steps: 30
+ltx_cfg: 1.0
+ltx_5a_resolution: [768, 512]
+ltx_5b_denoise: 0.4
+depth_guide_strength: 1.0
+rgb_guide_strength: 0.6
+edge_guide_strength: 0.8           # ControlNet 边缘引导强度
+wan_model: "wan2.2_i2v_14b_720p.safetensors"
+controlnet_depth: "control_v11f1p_sd15_depth"
+controlnet_canny: "control_v11p_sd15_canny"
+
+# ── ComfyUI ──
+comfy_host: "127.0.0.1"
+comfy_port: 8188
+concurrency: 1                     # 视频生成串行（显存）
+
+# ── 评估 ──
+eval_style_threshold: 0.75
+
+# ── 路径 ──
+output_dir: ""
+workflows_dir: ""

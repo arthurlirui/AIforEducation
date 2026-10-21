@@ -1,0 +1,415 @@
+% =====================================================================
+%  Section: Method
+% =====================================================================
+\section{Method}
+\label{sec:method}
+
+Canvas3D transforms a single painting scan $P \in \mathbb{R}^{H\times W \times 3}$
+and a set of hand-drawn line-art sketches $L = \{\ell_1, \dots, \ell_K\}$ into a
+3D-composited, artistically controllable animated video. The framework comprises
+four specialized components (Figure~\ref{fig:overview}): \textbf{PaintParse} for
+art-domain instance segmentation and layer decomposition, \textbf{MonoSplat} for
+per-object monocular 3DGS lifting, \textbf{SketchComp} for line-art-guided 3D
+scene composition with depth-aware inpainting, and \textbf{ArtiFlow} for
+controlled video synthesis via dual ControlNet conditioning.
+
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        node distance=0.5cm and 0.5cm,
+        mb/.style={draw=black!60, rounded corners=2pt, minimum width=2cm,
+                   minimum height=0.7cm, align=center, font=\scriptsize, thick},
+        ob/.style={draw=black!40, rounded corners=1pt, fill=white,
+                   font=\tiny, minimum width=1.9cm, minimum height=0.4cm,
+                   align=center},
+        ar/.style={->, >=Stealth, thick, draw=black!50}
+    ]
+        \node[mb, fill=yellow!8] (pin) {Painting $P$};
+        \node[mb, fill=yellow!8, right=of pin] (lin) {Line-art $L$};
+        \node[mb, fill=blue!5, below=0.8cm of pin] (pp)
+            {\textbf{PaintParse}};
+        \node[ob, below=0.15cm of pp] (ppo) {Masks $\{M_i\}$};
+        \node[mb, fill=green!5, below=0.8cm of ppo] (ms)
+            {\textbf{MonoSplat}};
+        \node[ob, below=0.15cm of ms] (mso) {3DGS lib.\ $\{\mathcal{G}_i\}$};
+        \node[mb, fill=orange!5, below=0.8cm of mso, xshift=1cm] (sc)
+            {\textbf{SketchComp}};
+        \node[ob, below=0.15cm of sc] (sco) {Scene $\mathcal{S}^*$};
+        \node[mb, fill=red!5, below=0.8cm of sco] (af)
+            {\textbf{ArtiFlow}};
+        \node[ob, below=0.15cm of af] (afo) {Video $V$};
+        \draw[ar] (pin) -- (pp);
+        \draw[ar] (pp) -- (ppo);
+        \draw[ar] (ppo) -- (ms);
+        \draw[ar] (ms) -- (mso);
+        \draw[ar] (mso) -- (sc);
+        \draw[ar] (lin) |- ++(0,-2.8) -| (sc);
+        \draw[ar] (sc) -- (sco);
+        \draw[ar] (sco) -- (af);
+        \draw[ar] (af) -- (afo);
+        \draw[ar, dashed, draw=red!60] (af.west) -- ++(-0.9,0) |-
+            node[pos=0.2, left, font=\tiny, text=red!70] {re-comp.} (sc.west);
+    \end{tikzpicture}}
+    \caption{\textbf{Canvas3D overview.} PaintParse segments foreground
+    objects; MonoSplat lifts each into a 3DGS model; SketchComp composes per
+    line-art and inpaints gaps; ArtiFlow synthesizes video via dual
+    ControlNet.}
+    \label{fig:overview}
+\end{figure}
+
+% =====================================================================
+\subsection{PaintParse: Art-Domain Segmentation and Layer Decomposition}
+\label{sec:method:paintparse}
+
+PaintParse decomposes the input painting $P$ into $K$ semantically distinct
+foreground objects and one background layer, providing the per-object masks and
+depth cues that downstream stages depend on.
+
+\paragraph{Instance segmentation backbone.}
+We employ a YOLO-family architecture as the segmentation backbone, selecting
+YOLOv8-seg~\cite{jocher2023yolov8}, YOLOv10~\cite{wang2024yolov10}, or
+YOLOv12~\cite{tian2025yolov12} depending on the accuracy-efficiency trade-off
+required. The model is pre-trained on COCO and subsequently
+\emph{domain-adapted} through fine-tuning on a curated dataset of 2{,}000
+annotated classical paintings spanning oil, ink-wash, and fresco styles. The
+annotation schema labels foreground objects---figures, animals, vessels,
+architectural elements---at the instance level and assigns the remainder to a
+background class. Given input $P$, the model outputs $K$ binary masks
+$\{M_i \in \{0,1\}^{H\times W}\}_{i=1}^{K}$. The residual background mask is
+computed as $M_\text{bg}(p) = 1 - \max_{i=1}^{K} M_i(p)$ for every pixel
+$p \in [1,H]\times[1,W]$.
+
+\paragraph{Monocular depth and layer assignment.}
+In parallel, we estimate a per-pixel relative depth map $D_\text{mono}$ using
+Depth Anything V2~\cite{yang2024depthanything} with the ViT-L encoder. For each
+detected object $i$, its layer index (foreground through background) is
+determined by the depth percentile of its centroid within $\Omega_i = \{p \mid
+M_i(p)=1\}$, and the object is assigned a depth range via layer-wise
+normalization: $d_i^\text{near}$ and $d_i^\text{far}$ are set to the 10th and
+90th percentiles of $\{D_\text{mono}(p) \mid p \in \Omega_i\}$, respectively.
+
+\paragraph{Art-domain adaptation.}
+Direct transfer of COCO-trained detectors to paintings yields poor mask quality
+due to the domain gap: brushstroke textures produce spurious edge responses, and
+depth-ambiguous compositions confound object-background separation. We mitigate
+this through a two-stage protocol: LoRA-based adaptation~\cite{hu2022lora}
+($r=16$, $\alpha=32$) on the detection backbone, followed by full fine-tuning of
+the mask prediction head for 30 epochs on the painting dataset. This yields a
+$+8.3\%$ mAP improvement over the COCO baseline.
+
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        node distance=0.3cm and 0.5cm,
+        bx/.style={draw=black!50, rounded corners=2pt, minimum width=1.8cm,
+                   minimum height=0.55cm, align=center, font=\tiny, thick},
+        ar/.style={->, >=Stealth, thick, draw=black!50}
+    ]
+        \node[bx, fill=black!3] (pin) {Painting $P$};
+        \node[bx, fill=blue!5, right=of pin, minimum width=2cm] (yolo)
+            {\textbf{YOLO-Seg}};
+        \node[bx, fill=blue!3, below=of yolo, minimum width=2cm] (feat)
+            {Feature Pyramid};
+        \node[bx, fill=blue!3, below=of feat, minimum width=2cm] (head)
+            {Det.\ Heads};
+        \node[bx, fill=black!3, right=of head] (out) {Masks $\{M_i\}$};
+        \node[bx, fill=green!3, right=of yolo] (dav2) {\textbf{DA-V2}};
+        \node[bx, fill=black!3, right=of dav2] (dm) {$D_\text{mono}$};
+        \node[bx, fill=orange!5, below=0.3cm of out, xshift=0.5cm,
+              minimum width=2cm] (adapt) {Art Adapter};
+        \node[bx, fill=purple!5, below=0.3cm of head, xshift=-0.5cm,
+              minimum width=2cm] (layer) {Layer Assign};
+        \draw[ar] (pin) -- (yolo);
+        \draw[ar] (yolo) -- (feat);
+        \draw[ar] (feat) -- (head);
+        \draw[ar] (head) -- (out);
+        \draw[ar] (pin) -- (dav2);
+        \draw[ar] (dav2) -- (dm);
+        \draw[ar, dashed, draw=orange!70!black] (yolo) |- (adapt);
+        \draw[ar, dashed, draw=orange!70!black] (adapt) -| (feat);
+        \draw[ar] (head) -- (layer);
+    \end{tikzpicture}}
+    \caption{\textbf{PaintParse:} YOLO-based instance segmentation with
+    parallel depth estimation and art-domain adaptation.}
+    \label{fig:paintparse}
+\end{figure}
+
+% =====================================================================
+\subsection{MonoSplat: Monocular 3DGS Object Lifting}
+\label{sec:method:monosplat}
+
+MonoSplat lifts each segmented foreground region from 2D pixel space into a
+high-fidelity 3DGS representation, constructing a reusable object-level model
+library (Figure~\ref{fig:monosplat}). For each foreground object $i$, the
+painting is cropped to the object's bounding box via $P_i = P \odot M_i$, and
+the crop is fed into TripoSplat~\cite{wang2024triposplat}, a feed-forward
+transformer that predicts a set of $N_i$ 3D Gaussians directly from a single
+image. Each Gaussian is parameterized by center
+$\boldsymbol{\mu}_j \in \mathbb{R}^3$, axis-aligned scales
+$\mathbf{s}_j \in \mathbb{R}^3_+$, rotation quaternion
+$\mathbf{q}_j \in \mathbb{R}^4$, opacity $\alpha_j \in [0,1]$, and
+spherical-harmonic view-dependent color coefficients up to degree one.
+
+TripoSplat operates in a normalized canonical space without metric scale. We
+recover metric dimensions using the depth cue from PaintParse: for object $i$
+with pixel height $h_i^\text{px}$ and median depth $d_i$, the scale factor is
+$\lambda_i = d_i \cdot h_i^\text{px} / f$, where $f$ is the focal length in
+pixels. Each Gaussian center is rescaled as
+$\boldsymbol{\mu}_j \leftarrow \lambda_i \cdot \boldsymbol{\mu}_j$, with scale
+parameters adjusted analogously. The resulting 3DGS objects are stored in a
+structured library keyed by semantic label and original painting coordinates,
+enabling selective retrieval during composition.
+
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        node distance=0.3cm and 0.5cm,
+        bx/.style={draw=black!50, rounded corners=2pt, minimum width=1.8cm,
+                   minimum height=0.55cm, align=center, font=\tiny, thick},
+        ar/.style={->, >=Stealth, thick, draw=black!50}
+    ]
+        \node[bx, fill=black!3] (crop) {Crop $P \odot M_i$};
+        \node[bx, fill=green!8, right=of crop, minimum width=2.2cm,
+              minimum height=1.2cm] (tripo) {\textbf{TripoSplat}\\Feed-forward\\
+              single-img $\to$ 3DGS};
+        \node[bx, fill=black!3, right=of tripo] (out) {3DGS $\mathcal{G}_i$};
+        \node[bx, fill=green!3, below=of tripo, minimum width=2.2cm] (sc)
+            {Metric Rescale\\$\lambda_i = d_i h_i^\text{px}/f$};
+        \node[bx, fill=green!3, below=0.3cm of out, xshift=-0.3cm,
+              minimum width=1.8cm] (lib) {Library\\$\{\mathcal{G}_1 \ldots \mathcal{G}_K\}$};
+        \draw[ar] (crop) -- (tripo);
+        \draw[ar] (tripo) -- (out);
+        \draw[ar] (out) -- (sc);
+        \draw[ar] (sc) -- (lib);
+        \draw[ar] (out) |- (lib);
+    \end{tikzpicture}}
+    \caption{\textbf{MonoSplat:} Per-object 3DGS lifting via TripoSplat with
+    depth-derived metric rescaling. Objects are stored in a structured library.}
+    \label{fig:monosplat}
+\end{figure}
+
+% =====================================================================
+\subsection{SketchComp: Line-Art-Guided 3D Scene Composition}
+\label{sec:method:sketchcomp}
+
+SketchComp accepts hand-drawn line-art sketches specifying the desired spatial
+layout and composes the 3DGS objects into a unified scene, filling disocclusion
+gaps introduced by object displacement (Figure~\ref{fig:sketchcomp}).
+
+\paragraph{Contour-based rigid registration.}
+The user provides $K$ line-art sketches $\{\ell_i\}_{i=1}^{K}$, each drawn
+approximately at the intended object position. Each sketch is converted to a
+binary edge map via Canny detection (thresholds $[50,150]$) and its external
+contour $\Gamma_i$ is extracted. For each 3DGS object $\mathcal{G}_i$, we search
+for the rigid transformation $(\theta_i, \mathbf{t}_i, s_i)$---rotation, 2D
+translation, and uniform scale---that best aligns the rendered silhouette with
+$\Gamma_i$:
+\begin{align}
+    (\theta_i^*, \mathbf{t}_i^*, s_i^*) = \arg\min_{\theta,\mathbf{t},s}\;
+    & \mathcal{L}_\text{cont}(\theta,\mathbf{t},s), \label{eq:contour_reg} \\
+    \mathcal{L}_\text{cont} =\; & 1 - \text{IoU}\bigl(\mathcal{R}_i,
+    \Gamma_i\bigr) \nonumber\\
+    & +\; \lambda_c \,
+    \text{Chamfer}(\partial\mathcal{R}_i, \Gamma_i), \nonumber
+\end{align}
+where $\mathcal{R}_i = \mathcal{R}(\mathcal{G}_i;\theta,\mathbf{t},s)$ renders a
+binary silhouette from the canonical camera and $\lambda_c = 0.3$. Optimization
+proceeds via Adam (50 steps, learning rate $10^{-2}$) with iterative
+re-rendering.
+
+\paragraph{Scene assembly and disocclusion inpainting.}
+Each registered object $\mathcal{G}'_i$ is placed at its PaintParse-derived
+depth $d_i$. Objects are rendered in depth-sorted order against a background
+layer reconstructed via 2DGS back-projection from the RGB-D map. Object
+displacement creates disocclusion gaps---background pixels that become visible
+after objects move---which we detect as
+$\Omega_\text{gap} = \{p \in M_\text{bg}^\text{orig} \mid \text{no 3DGS surface
+projects to } p\}$.
+
+Filling $\Omega_\text{gap}$ while preserving artistic texture coherence is
+critical. We employ a depth-conditioned Stable Diffusion inpainting pipeline:
+a masked composite (with $\Omega_\text{gap}$ zeroed) is fed into
+SD-Inpainting~\cite{rombach2022ldm} with a depth ControlNet conditioned on the
+composited depth map, providing geometric guidance so that inpainted content
+respects the background's spatial structure. The inpainting strength is set to
+$0.75$, and a dilation radius of 8 pixels expands the surrounding context to
+supply texture reference. The resulting scene $\mathcal{S}^*$ and its depth map
+$\mathcal{D}^*$ are forwarded to ArtiFlow.
+
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        node distance=0.3cm and 0.5cm,
+        bx/.style={draw=black!50, rounded corners=2pt, minimum width=1.8cm,
+                   minimum height=0.55cm, align=center, font=\tiny, thick},
+        ar/.style={->, >=Stealth, thick, draw=black!50}
+    ]
+        \node[bx, fill=black!3] (la) {Line-art $L$};
+        \node[bx, fill=green!3, below=of la] (lib) {3DGS Library};
+        \node[bx, fill=orange!8, right=0.6cm of la, minimum width=2.2cm,
+              minimum height=1.1cm] (match) {\textbf{Contour}\\
+              \textbf{Register}\\IoU+Chamfer};
+        \node[bx, fill=orange!3, right=of match] (plc) {Placed
+              $\{\mathcal{G}'_i\}$};
+        \node[bx, fill=orange!8, below=0.5cm of match, minimum width=2.2cm,
+              minimum height=1.1cm] (comp) {\textbf{Scene}\\
+              \textbf{Assembly}\\Depth-sort};
+        \node[bx, fill=purple!3, below=of plc] (gap) {Gaps
+              $\Omega_\text{gap}$};
+        \node[bx, fill=purple!8, below=0.5cm of comp, minimum width=2.2cm,
+              minimum height=1.1cm] (inp) {\textbf{Depth}\\
+              \textbf{Inpaint}\\SD+Depth CN};
+        \node[bx, fill=purple!3, below=0.5cm of inp, xshift=1cm] (fin)
+              {$\mathcal{S}^*,\;\mathcal{D}^*$};
+        \draw[ar] (la) -- (match);
+        \draw[ar] (lib) -| (match);
+        \draw[ar] (match) -- (plc);
+        \draw[ar] (plc) -- (comp);
+        \draw[ar] (comp) -- (gap);
+        \draw[ar] (gap) -- (inp);
+        \draw[ar] (inp) -- (fin);
+        \draw[ar] (comp) |- (fin);
+    \end{tikzpicture}}
+    \caption{\textbf{SketchComp:} Contour registration aligns 3DGS objects to
+    hand-drawn line-art. Disocclusion gaps are filled via depth-conditioned SD
+    inpainting.}
+    \label{fig:sketchcomp}
+\end{figure}
+
+% =====================================================================
+\subsection{ArtiFlow: Controlled Video Synthesis}
+\label{sec:method:artiflow}
+
+ArtiFlow renders the composited 3D scene into multi-view keyframes and drives a
+conditioned video diffusion pipeline to produce the final animated output
+(Figure~\ref{fig:artiflow}).
+
+\paragraph{Multi-view keyframe rendering.}
+Given $\mathcal{S}^*$, we define a smooth camera trajectory through $T$ poses
+$\{\mathbf{T}_t\}_{t=1}^{T}$, generated by cubic B-spline interpolation between
+a canonical front-facing start pose and a user-specified or auto-generated end
+pose. At each step $t$, 3DGS rasterization produces an RGB frame
+$I_t = \mathcal{R}_\text{rgb}(\mathcal{S}^*,\mathbf{T}_t)$, a depth map
+$D_t = \mathcal{R}_\text{depth}(\mathcal{S}^*,\mathbf{T}_t)$, and an HED edge
+map $E_t = \text{HED}(I_t)$~\cite{xie2015hed}. The keyframe count is set to
+$T = 8N+1$ (e.g., 25 or 49) to satisfy the temporal chunk constraints of both
+LTX-Video and Wan2.2.
+
+\paragraph{Dual ControlNet conditioning.}
+Two parallel ControlNet modules adapted for video~\cite{wang2024easycontrol}
+inject geometric and boundary constraints into the diffusion backbone. The depth
+ControlNet, conditioned on $\{D_t\}$ at strength $s_d = 0.85$, anchors each
+frame to the 3D structure of $\mathcal{S}^*$, preventing the geometric drift
+that plagues pure I2V models. The HED edge ControlNet, conditioned on
+$\{E_t\}$ at strength $s_e = 0.6$, preserves brushstroke-level boundary detail,
+suppressing the boundary melting artifact common when diffusion models are
+applied to paintings. The combined conditioning signal per frame is
+$\mathbf{c}_t = s_d \, \mathbf{c}_t^\text{depth} + s_e \,
+\mathbf{c}_t^\text{edge}$, injected at the corresponding residual connections.
+
+\paragraph{Video diffusion backbone.}
+We support two backbones selected per scene by motion complexity. For scenes
+requiring large object displacement or multi-object choreography, Wan2.2's
+MoE-DiT architecture (I2V-A14B variant, $\text{cfg}=6.0$, 30 Euler steps,
+$1280\times 720$) provides higher capacity for long-range spatiotemporal
+dependencies. For efficiency-critical applications, LTX2.3's aggressive 1:192
+VAE compression ($\text{cfg}=1.0$, 30 steps, $768\times 512$) enables faster
+turnaround. Temporal coherence is further reinforced by first-frame latent
+anchoring, where subsequent frames' initial noise is set to the first-frame
+latent plus position-encoded Gaussian perturbation
+$\boldsymbol{\epsilon}_t \sim \mathcal{N}(0, \sigma_t^2\mathbf{I})$ with
+$\sigma_t = 0.02 \cdot |t-1|$.
+
+\paragraph{Per-object motion verification.}
+After generation, we verify motion fidelity by computing the IoU between
+rendered object masks and SAM2-segmented masks in each generated frame. If the
+average IoU falls below 0.75, the pipeline triggers a re-composition step
+(dashed arrow in Figure~\ref{fig:overview}) that adjusts ControlNet strength or
+regenerates the affected segment with stronger depth conditioning.
+
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        node distance=0.3cm and 0.5cm,
+        bx/.style={draw=black!50, rounded corners=2pt, minimum width=1.8cm,
+                   minimum height=0.55cm, align=center, font=\tiny, thick},
+        ar/.style={->, >=Stealth, thick, draw=black!50}
+    ]
+        \node[bx, fill=purple!3] (sc) {$\mathcal{S}^*,\mathcal{D}^*$};
+        \node[bx, fill=red!5, right=of sc, minimum width=2.2cm,
+              minimum height=1.2cm] (rend) {\textbf{Multi-View}\\
+              \textbf{Render}\\$I_t,D_t,E_t$};
+        \node[bx, fill=black!3, right=of rend] (fr) {RGB $I_t$};
+        \node[bx, fill=black!3, below=of fr] (df) {Depth $D_t$};
+        \node[bx, fill=black!3, below=of df] (ef) {Edge $E_t$};
+        \node[bx, fill=red!8, below=0.5cm of rend, minimum width=2.2cm,
+              minimum height=1.2cm] (cn) {\textbf{Dual}\\
+              \textbf{ControlNet}\\Depth+HED};
+        \node[bx, fill=red!12, right=of cn, minimum width=2.2cm,
+              minimum height=1.2cm] (vd) {\textbf{Video DiT}\\
+              \textbf{Wan2.2/LTX2.3}\\Temp.\ attention};
+        \node[bx, fill=red!15, below=of vd, minimum width=2cm] (out)
+              {Output Video $V$};
+        \draw[ar] (sc) -- (rend);
+        \draw[ar] (rend) -- (fr);
+        \draw[ar] (rend) -- (df);
+        \draw[ar] (rend) -- (ef);
+        \draw[ar] (df) -- (cn);
+        \draw[ar] (ef) -- (cn);
+        \draw[ar] (cn) -- (vd);
+        \draw[ar] (fr) |- (vd);
+        \draw[ar] (vd) -- (out);
+    \end{tikzpicture}}
+    \caption{\textbf{ArtiFlow:} Multi-view keyframes (RGB + depth + HED edge)
+    are rendered from the composited 3D scene. Dual ControlNet conditioning is
+    injected into the video DiT (Wan2.2 or LTX2.3).}
+    \label{fig:artiflow}
+\end{figure}
+
+% =====================================================================
+\subsection{Pipeline Algorithm and Implementation}
+\label{sec:method:algo}
+
+Algorithm~\ref{alg:canvas3d} summarizes the full Canvas3D pipeline. Each
+component saves its outputs as checkpoint files, enabling fault-tolerant
+resumption and modular replacement---for instance, swapping YOLOv10 for YOLOv12
+without re-running downstream stages. Peak VRAM consumption across all four
+components remains within 24\,GB, achieved through serial model loading with
+memory release between stages.
+
+\begin{algorithm}[t]
+\caption{Canvas3D Pipeline}
+\label{alg:canvas3d}
+{\footnotesize
+\begin{algorithmic}[1]
+\REQUIRE Painting $P$, depth estimator DA-V2, line-art $L=\{\ell_i\}$
+\ENSURE Animated video $V$ with per-object motion
+\medskip
+\STATE \textbf{PaintParse:}
+    $\{M_i\}, M_\text{bg} \gets \text{YOLO-Seg}(P)$,
+    $\{d_i\} \gets \text{LayerDepth}(\text{DA-V2}(P), \{M_i\})$
+\STATE \textbf{MonoSplat:}
+    \FOR{$i = 1$ \TO $K$}
+\STATE \quad $\mathcal{G}_i \gets \text{Rescale}(\text{TripoSplat}(P \odot M_i), d_i)$
+\STATE \quad $\text{Lib}[i] \gets (\mathcal{G}_i, d_i, M_i)$
+\ENDFOR
+\STATE \textbf{SketchComp:}
+    \FOR{$i = 1$ \TO $K$}
+\STATE \quad $(\theta_i^*,\mathbf{t}_i^*,s_i^*) \gets
+    \text{ContourReg}(\mathcal{G}_i, \text{Canny}(\ell_i))$
+\STATE \quad $\mathcal{G}'_i \gets \text{Transform}(\mathcal{G}_i, \theta_i^*,\mathbf{t}_i^*,s_i^*)$
+\ENDFOR
+\STATE $\mathcal{S},\mathcal{D} \gets \text{DepthSort}(\{\mathcal{G}'_i\}, M_\text{bg})$
+\STATE $\Omega_\text{gap} \gets \text{DetectGap}(\mathcal{S}, M_\text{bg}^\text{orig})$
+\STATE $\mathcal{S}^*,\mathcal{D}^* \gets \text{DepthInpaint}(\mathcal{S},\mathcal{D},\Omega_\text{gap})$
+\STATE \textbf{ArtiFlow:}
+    $\{I_t,D_t,E_t\} \gets \text{3DGSRender}(\mathcal{S}^*,\text{BSpline}(T))$
+\STATE $V \gets \text{VideoDiT}(\{I_t\},\{D_t\},\{E_t\},\text{Wan2.2/LTX2.3})$
+\RETURN $V$
+\end{algorithmic}}
+\end{algorithm}

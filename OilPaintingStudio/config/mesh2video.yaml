@@ -1,0 +1,59 @@
+# Mesh2Video —— 基于 3D 动态白膜的图生视频配置
+# 与 settings.yaml 平级；由 Mesh2VideoConfig 读取（也支持直接传参）。
+
+# ── ComfyUI ──
+comfy_host: "127.0.0.1"
+comfy_port: 8188
+concurrency: 1
+
+# ── 后端模型 ──
+# "wan" → Wan2.1-I2V + depth Control LoRA（几何控制强，推荐）
+# "ltx" → LTX-Video + LTXVAddGuide（快、显存友好）
+backend: "wan"
+workflows_dir: ""           # 留空用项目内置 templates；指向自定义目录可覆盖
+
+# ── 视频参数 ──
+num_frames: 49
+width: 832
+height: 480
+fps: 24
+seed: 42                    # 固定 seed 保证风格稳定可复现；留空随机
+
+# ── 风格锚定（必填）──
+# 单张参考图锚定全局风格；推荐用画家代表作或风格 LoRA 的样图。
+style_image: "assets/style_vangogh.png"
+
+# ── 控制强度 ──
+# depth_control_strength: Wan depth ControlNet 强度（0.6~0.8 较稳，越大越贴几何）
+depth_control_strength: 0.7
+# guide_strength: LTX LTXVAddGuide 强度（0.4~0.6）
+guide_strength: 0.6
+# i2v_strength: 首帧保持强度（0.85~0.95，越大约贴近风格图）
+i2v_strength: 0.9
+
+# ── 提示词 ──
+positive_prompt: "oil painting, impasto brush strokes, cinematic lighting, masterpiece, vivid colors"
+negative_prompt: "static, 3d render, flat shading, low quality, jitter, watermark, text, blurry, distorted"
+
+# ── 采样 ──
+steps: 30
+cfg: 6.0
+
+# ── 输出 ──
+work_dir: ""                          # 留空 → <项目>/output/mesh2video
+output_filename_prefix: "mesh2video"
+
+# ── 3D 白膜渲染 ──
+# 由渲染器/相机直接传参，这里只放默认白膜颜色与背景
+render:
+  clay_color: [200, 200, 200]
+  bg_color: [15, 15, 15]
+
+# ── 相机轨迹（orbit_camera 参数）──
+camera:
+  target: [0.0, 0.0, 0.0]
+  radius: 2.5
+  num_turns: 1.0
+  tilt_deg: 15.0
+  height_offset: 0.5
+  fov_y_deg: 50.0

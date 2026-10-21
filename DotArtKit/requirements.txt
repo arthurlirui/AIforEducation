@@ -1,0 +1,20 @@
+# DotArtKit 依赖
+# 核心依赖 (所有流派必需)
+numpy>=1.24
+Pillow>=10.0
+opencv-python>=4.8
+
+# 可选: Voronoi Lloyd 松弛 (kusama_basic 的 scipy 路径)
+# 本机若 scipy 与 numpy 二进制不兼容, 不安装此项, kusama_basic 会退化到无 Lloyd 模式
+scipy>=1.11
+
+# 可选: 深度感知草间 (kusama_depth 模式)
+# 激活 polkadot-art conda 环境: conda activate polkadot-art
+# ultralytics>=8.1
+# torch>=2.0
+
+# 可选: 可学习深度→半径映射 (dotartkit.learned)
+# torch>=2.0
+
+# 可选: 论文实验图表
+# matplotlib>=3.7

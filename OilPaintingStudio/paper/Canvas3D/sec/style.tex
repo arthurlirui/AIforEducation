@@ -1,0 +1,24 @@
+% =====================================================================
+%  Section: Foundations of Artistic Style Transfer
+% =====================================================================
+\section{Foundations of Artistic Style Transfer}
+\label{sec:style}
+
+\subsection{Optimization-Based and Feed-Forward Methods}
+
+The seminal work of \citet{gatys2016image} demonstrated that the style of an artwork can
+be separated from its content using Gram-matrix statistics of deep CNN features, giving
+rise to Neural Style Transfer (NST). \citet{johnson2016perceptual} subsequently proposed
+a feed-forward network trained with perceptual losses, enabling real-time stylization.
+To support arbitrary styles at inference time, \citet{huang2017arbitrary} introduced
+Adaptive Instance Normalization (AdaIN), which aligns the channel-wise mean and variance
+of content features to those of style features. \citet{park2019arbitrary} further
+proposed style-attentional networks (SANet) to attend to relevant style patches.
+
+\subsection{Transformer-Based Arbitrary Style Transfer}
+
+Vision transformers have enabled long-range style modeling.
+\citet{deng2021stytr2} proposed StyTr$^2$, which uses a transformer encoder--decoder to
+transfer style across arbitrary contents, alleviating the loss of detail common to
+AdaIN-based methods. These foundations are the bedrock upon which painting-specific and
+video-specific methods are built.

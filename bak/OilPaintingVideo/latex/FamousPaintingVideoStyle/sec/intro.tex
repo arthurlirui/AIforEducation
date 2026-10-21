@@ -1,0 +1,107 @@
+% =====================================================================
+%  Section: Introduction
+% =====================================================================
+\section{Introduction}
+\label{sec:intro}
+
+Classical paintings---whether oil on canvas, ink on silk, or pigment on
+fresco---are cultural artifacts that encode centuries of human visual
+imagination~\cite{lowenthal2015heritage}. From van Gogh's swirling
+\textit{Starry Night} to Zhang Zeduan's panoramic \textit{Along the River During
+the Qingming Festival}, these works imply motion, narrative, and spatial depth
+that their static medium can only suggest. Animating such paintings as
+explorable videos has therefore emerged as a compelling research goal at the
+intersection of computer vision, generative modeling, and digital cultural
+heritage~\cite{zhang2024artgallery,dong2024enhancingpainting}.
+
+Recent years have witnessed remarkable progress on two fronts. On one hand,
+image-to-video (I2V) diffusion models---including Stable Video
+Diffusion~\cite{blattmann2023svd}, Wan2.2~\cite{wan2025},
+LTX-Video~\cite{ltxvideo2024}, and CogVideoX~\cite{yang2025cogvideox}---can
+animate a single photograph into a short clip with plausible dynamics. Combined
+with ControlNet~\cite{zhang2023controlnet} and its video
+extensions~\cite{wang2024easycontrol,peng2024controlnext}, these models achieve
+impressive per-frame visual quality and controllable motion. Yet when applied
+directly to oil paintings or ink-wash artworks, they suffer from two fundamental
+shortcomings. First, they operate entirely in 2D pixel space: the model has no
+geometric understanding of object depth ordering, self-occlusion, or relative
+spatial layout, and consequently cannot synthesize novel viewpoints or maintain
+consistent 3D structure across frames. Second, long-range temporal coherence
+degrades rapidly beyond 2--4 seconds, as the latent-space interpolation lacks
+explicit geometric constraints to anchor the motion trajectory.
+
+On the other hand, 3D reconstruction and rendering methods---Neural Radiance
+Fields (NeRF)~\cite{mildenhall2020nerf}, 3D Gaussian
+Splatting~(3DGS)~\cite{kerbl20233dgs}, and 2D Gaussian
+Splatting~(2DGS)~\cite{huang20242dgs}---can reconstruct explorable 3D scenes
+from sparse views. Monocular feed-forward variants such as
+TripoSplat~\cite{wang2024triposplat} and DreamGaussian~\cite{tang2024dreamgaussian}
+can even lift a single image to a 3D representation. However, these
+reconstruction pipelines are optimized for photorealistic fidelity;
+when applied to paintings, the rendering process replaces expressive
+brushstrokes with geometric artifacts, flattens the impasto texture, and bleeds
+semantic color boundaries under novel-view projection.
+
+The core tension is this: \textit{3D scene structure and artistic style
+fidelity} are governed by incompatible optimization objectives, and no single
+model family---neither pure diffusion nor pure 3D reconstruction---satisfactorily
+achieves both. This tension becomes especially acute when the animation task
+requires \textbf{object-level manipulation}: moving a painted figure from one
+compositional position to another while preserving its painterly identity and
+filling the resulting gaps with plausible background content.
+
+\smallskip
+\noindent\textbf{Our framework: Canvas3D.}
+We propose \textbf{Canvas3D}, a framework that resolves this tension by
+separating the problem into four interacting yet independently optimized
+sub-systems, each specialized for one aspect of the painting-to-video
+pipeline (Figure~\ref{fig:overview}). \textbf{PaintParse} decomposes the input
+painting into foreground objects and a background layer using a fine-tuned
+YOLO-family instance segmentation model, augmented with monocular depth
+estimation from Depth Anything V2 for metric-scale layer ordering.
+\textbf{MonoSplat} lifts each segmented foreground region into a high-fidelity
+3DGS asset via feed-forward TripoSplat reconstruction, assembling an
+object-level model library with depth-derived metric rescaling.
+\textbf{SketchComp} accepts hand-drawn line-art sketches specifying target
+object positions and spatial layout, solves a contour-based rigid registration
+to place each 3DGS object onto its sketch, and fills disocclusion gaps through a
+depth-aware inpainting module that preserves background artistic texture.
+\textbf{ArtiFlow} renders the composited 3D scene into multi-view keyframes and
+feeds them into a ComfyUI-based video synthesis pipeline combining Wan2.2 or
+LTX2.3 with dual ControlNet modules conditioned on depth and HED edge maps,
+producing temporally smooth animations with pixel-precise object motion governed
+by explicit 3D geometry rather than learned heuristics.
+
+This decomposition enables a clean separation of concerns: PaintParse handles
+perceptual grouping, MonoSplat handles geometric structure, SketchComp handles
+artistic intent, and ArtiFlow handles temporal rendering and style refinement.
+The result is a system that supports \textit{arbitrary object repositioning},
+\textit{multi-view explorability}, and \textit{style-anchored animation}---
+capabilities that no prior single-modality pipeline offers.
+
+\smallskip
+\noindent\textbf{Contributions.} Our contributions are:
+\begin{enumerate}
+    \item \textbf{The Canvas3D framework}, integrating PaintParse (art-domain
+    segmentation), MonoSplat (per-object 3DGS lifting), SketchComp (line-art
+    composition with depth inpainting), and ArtiFlow (dual-ControlNet video
+    synthesis) into the first end-to-end pipeline for 3D-aware, artistically
+    controllable painting animation.
+    \item \textbf{An object-level 3DGS asset pipeline} (MonoSplat) that combines
+    YOLO-based instance segmentation with TripoSplat monocular lifting,
+    producing a reusable library of 3D foreground objects from a single
+    painting.
+    \item \textbf{A sketch-conditioned 3D scene composition algorithm}
+    (SketchComp) with contour-based rigid registration and a depth-aware color
+    inpainting module that fills disocclusion gaps while preserving the
+    background's artistic texture.
+    \item \textbf{A geometry-grounded video synthesis workflow} (ArtiFlow)
+    combining Wan2.2/LTX2.3 with dual ControlNet (depth + HED edge) for
+    explicit 3D-structure-anchored animation with per-object motion control.
+    \item \textbf{Comprehensive evaluation} on a curated benchmark of 50
+    classical oil paintings and ink-wash works, achieving state-of-the-art
+    style fidelity (CLIP-I: 0.86), perceptual quality (LPIPS: 0.28), and
+    temporal coherence (FID-VID: 18.3), with user studies confirming 82\%
+    preference for artistic authenticity and 88\% for compositional intent
+    alignment.
+\end{enumerate}

@@ -1,0 +1,135 @@
+{
+  "_comment": "LTX-Video I2V 工作流（3D 白膜驱动 + 风格稳定）。API 格式。流程：风格参考图作为首帧 + 3D 渲染白膜图作为多帧 guide(LTXVAddGuide) → STG 时序稳定 → KSampler → 解码。需要 ComfyUI 已安装 ComfyUI-LTXVideo 节点 + ltxv 模型。注意 LTX 无原生 depth ControlNet，这里把 3D 白膜图通过 LTXVAddGuide 在多个 frame_idx 处注入作为结构引导；style_image 通过 LTXVImgToVideo 作为首帧。",
+  "input_style_image": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "style_ref.png"
+    }
+  },
+  "input_guide_frames": {
+    "class_type": "VHS_LoadVideo",
+    "inputs": {
+      "video": "guide_seq.mp4",
+      "force_rate": 0,
+      "frame_load_cap": 49,
+      "skip_first_frames": 0,
+      "select_every_nth": 1
+    }
+  },
+  "ltx_model": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "ltxv-2b-0.9.6-distilled.safetensors"
+    }
+  },
+  "ltx_clip": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+      "type": "wan"
+    }
+  },
+  "ltx_vae": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "ltxv-vae.safetensors"
+    }
+  },
+  "ltx_pos": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "oil painting, impasto brush strokes, cinematic lighting, masterpiece",
+      "clip": ["ltx_clip", 0]
+    }
+  },
+  "ltx_neg": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "static, 3d render, flat shading, low quality, jitter, watermark, text, blurry",
+      "clip": ["ltx_clip", 0]
+    }
+  },
+  "ltx_preprocess": {
+    "class_type": "LTXVPreprocess",
+    "inputs": {
+      "image": ["input_style_image", 0],
+      "img_compression": 0.0
+    }
+  },
+  "ltx_i2v": {
+    "class_type": "LTXVImgToVideo",
+    "inputs": {
+      "positive": ["ltx_pos", 0],
+      "negative": ["ltx_neg", 0],
+      "vae": ["ltx_vae", 0],
+      "image": ["ltx_preprocess", 0],
+      "width": 768,
+      "height": 512,
+      "length": 49,
+      "batch_size": 1,
+      "strength": 0.9
+    }
+  },
+  "ltx_add_guide": {
+    "class_type": "LTXVAddGuide",
+    "inputs": {
+      "positive": ["ltx_i2v", 0],
+      "negative": ["ltx_i2v", 1],
+      "vae": ["ltx_vae", 0],
+      "latent": ["ltx_i2v", 2],
+      "image": ["input_guide_frames", 0],
+      "frame_idx": 0,
+      "strength": 0.6
+    }
+  },
+  "ltx_stg": {
+    "class_type": "LTXVApplySTG",
+    "inputs": {
+      "model": ["ltx_model", 0],
+      "block_indices": "14,19",
+      "stg_scale": 1.0
+    }
+  },
+  "ltx_model_sampling": {
+    "class_type": "ModelSamplingLTXV",
+    "inputs": {
+      "model": ["ltx_stg", 0],
+      "steps": 30,
+      "max_shift": 0.9,
+      "base_shift": 0.1,
+      "stretch": true
+    }
+  },
+  "ltx_sampler": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["ltx_model_sampling", 0],
+      "positive": ["ltx_add_guide", 0],
+      "negative": ["ltx_add_guide", 1],
+      "latent_image": ["ltx_add_guide", 2],
+      "seed": 0,
+      "steps": 30,
+      "cfg": 1.0,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "denoise": 1.0
+    }
+  },
+  "ltx_decode": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["ltx_sampler", 0],
+      "vae": ["ltx_vae", 0]
+    }
+  },
+  "ltx_save": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+      "images": ["ltx_decode", 0],
+      "filename_prefix": "mesh2video_ltx",
+      "frame_rate": 24,
+      "format": "video/h264-mp4",
+      "save_metadata": false
+    }
+  }
+}

@@ -1,0 +1,176 @@
+% =====================================================================
+% Canvas3D Figure 2: PaintParse - Variants A/B/C
+% LAYOUT (new, collision-free):
+%   pin    ->  yolo                          out
+%              feat                          dm
+%              head                          (then to layer, right channel)
+%              dav2
+%              adapt
+%              layer
+%   Feedback arrows from adapt back up to feat/yolo hug the LEFT side.
+% =====================================================================
+
+% ============================ VARIANT A ==============================
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\sffamily,
+        bx/.style={draw=none, rounded corners=3pt, fill=blue!60, text=white,
+                   minimum width=2.4cm, minimum height=0.62cm, align=center,
+                   font=\sffamily\scriptsize, thick},
+        bx2/.style={draw=none, rounded corners=3pt, fill=teal!60, text=white,
+                    minimum width=2.4cm, minimum height=0.62cm, align=center,
+                    font=\sffamily\scriptsize, thick},
+        bx3/.style={draw=none, rounded corners=3pt, fill=orange!75, text=white,
+                    minimum width=2.4cm, minimum height=0.62cm, align=center,
+                    font=\sffamily\scriptsize, thick},
+        data/.style={draw=black!25, rounded corners=2pt, fill=white,
+                     font=\sffamily\tiny, minimum width=2.0cm,
+                     minimum height=0.4cm, align=center},
+        ar/.style={->, >=Stealth, very thick, draw=black!45},
+        ard/.style={->, >=Stealth, thick, draw=orange!75, dashed}
+    ]
+        % --- Input ---
+        \node[data, fill=yellow!15, draw=yellow!50!black] (pin) {Painting $P$};
+
+        % --- One central column (x aligned) ---
+        \node[bx,  right=1.1cm of pin] (yolo) {\textbf{YOLO-Seg}};
+        \node[bx,  below=0.5cm of yolo, fill=blue!45] (feat) {Feature Pyramid};
+        \node[bx,  below=0.5cm of feat, fill=blue!45] (head) {Det+Mask Heads};
+        \node[bx2, below=0.7cm of head] (dav2)
+            {\textbf{Depth Anything V2}};
+        \node[bx3, below=0.5cm of dav2] (adapt)
+            {\textbf{Art Adapter} (LoRA)};
+        \node[bx3, below=0.5cm of adapt, fill=purple!60] (layer)
+            {\textbf{Layer Assign}};
+
+        % --- Output chips on the right side of their parent ---
+        \node[data, right=1.1cm of head] (out)
+            {Masks $\{M_i\}$, $M_\text{bg}$};
+        \node[data, right=1.1cm of dav2] (dm)  {$D_\text{mono}$};
+
+        % --- Straight main chain (no crossings) ---
+        \draw[ar] (pin.east)   -- (yolo.west);
+        \draw[ar] (yolo.south) -- (feat.north);
+        \draw[ar] (feat.south) -- (head.north);
+        \draw[ar] (head.south) -- (dav2.north);
+        \draw[ar] (dav2.south) -- (adapt.north);
+        \draw[ar] (adapt.south) -- (layer.north);
+
+        % --- Outputs ---
+        \draw[ar] (head.east) -- (out.west);
+        \draw[ar] (dav2.east) -- (dm.west);
+
+        % --- out -> layer : right-side big curve, clear of dm ---
+        \draw[ar] (out.east) to[out=0,in=0,looseness=1.4] (layer.east);
+
+        % --- LoRA feedback: adapt -> feat, adapt -> yolo via LEFT channel ---
+        \draw[ard] (adapt.west) to[out=180,in=180,looseness=1.4] (feat.west);
+        \draw[ard] (adapt.west) to[out=180,in=180,looseness=1.7] (yolo.west);
+    \end{tikzpicture}}
+    \caption{\textbf{PaintParse (Variant A).} Modern flat colors: blue for
+    segmentation, teal for depth, orange for art-domain adapters.}
+    \label{fig:paintparse_A}
+\end{figure}
+
+% ============================ VARIANT B ==============================
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\sffamily,
+        bx/.style={draw=black!80, rounded corners=1pt, minimum width=2.5cm,
+                   minimum height=0.6cm, align=center,
+                   font=\sffamily\scriptsize, thick},
+        data/.style={draw=black!40, rounded corners=1pt, fill=white,
+                     font=\sffamily\tiny, minimum width=2.1cm,
+                     minimum height=0.4cm, align=center},
+        ar/.style={->, >=Stealth, thick, draw=black!70},
+        ard/.style={->, >=Stealth, thick, draw=black!50, dashed}
+    ]
+        \node[data] (pin) {Painting $P$};
+
+        \node[bx, right=1.1cm of pin] (yolo) {YOLO-Seg};
+        \node[bx, below=0.5cm of yolo] (feat) {Feature Pyramid};
+        \node[bx, below=0.5cm of feat] (head) {Det+Mask Heads};
+        \node[bx, below=0.7cm of head] (dav2) {Depth Anything V2};
+        \node[bx, below=0.5cm of dav2] (adapt) {Art Adapter (LoRA)};
+        \node[bx, below=0.5cm of adapt] (layer) {Layer Assign};
+
+        \node[data, right=1.1cm of head] (out)
+            {Masks $\{M_i\}$, $M_\text{bg}$};
+        \node[data, right=1.1cm of dav2] (dm) {$D_\text{mono}$};
+
+        \draw[ar] (pin.east)   -- (yolo.west);
+        \draw[ar] (yolo.south) -- (feat.north);
+        \draw[ar] (feat.south) -- (head.north);
+        \draw[ar] (head.south) -- (dav2.north);
+        \draw[ar] (dav2.south) -- (adapt.north);
+        \draw[ar] (adapt.south) -- (layer.north);
+
+        \draw[ar] (head.east) -- (out.west);
+        \draw[ar] (dav2.east) -- (dm.west);
+
+        \draw[ar] (out.east) to[out=0,in=0,looseness=1.4] (layer.east);
+
+        \draw[ard] (adapt.west) to[out=180,in=180,looseness=1.4] (feat.west);
+        \draw[ard] (adapt.west) to[out=180,in=180,looseness=1.7] (yolo.west);
+    \end{tikzpicture}}
+    \caption{\textbf{PaintParse (Variant B).} Monochrome minimal style, all
+    modules white with thin outlines.}
+    \label{fig:paintparse_B}
+\end{figure}
+
+% ============================ VARIANT C ==============================
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\sffamily,
+        bx/.style={draw=black!60, fill=black!8, rounded corners=2pt,
+                   minimum width=2.5cm, minimum height=0.6cm, align=center,
+                   font=\sffamily\scriptsize, thick},
+        acc/.style={draw=blue!60!black, fill=blue!12, rounded corners=2pt,
+                    minimum width=2.5cm, minimum height=0.6cm, align=center,
+                    font=\sffamily\scriptsize, thick},
+        data/.style={draw=black!35, fill=white, rounded corners=1pt,
+                     font=\sffamily\tiny, minimum width=2.1cm,
+                     minimum height=0.4cm, align=center},
+        ar/.style={->, >=Stealth, thick, draw=black!55},
+        ard/.style={->, >=Stealth, thick, draw=blue!60!black, dashed}
+    ]
+        \node[data] (pin) {Painting $P$};
+
+        \node[bx,  right=1.1cm of pin] (yolo) {\textbf{YOLO-Seg}};
+        \node[bx,  below=0.5cm of yolo] (feat) {Feature Pyramid};
+        \node[bx,  below=0.5cm of feat] (head) {Det+Mask Heads};
+        \node[acc, below=0.7cm of head] (dav2)
+            {\textbf{Depth Anything V2}};
+        \node[acc, below=0.5cm of dav2] (adapt)
+            {\textbf{Art Adapter} (LoRA)};
+        \node[bx,  below=0.5cm of adapt] (layer) {Layer Assign};
+
+        \node[data, right=1.1cm of head] (out)
+            {Masks $\{M_i\}$, $M_\text{bg}$};
+        \node[data, right=1.1cm of dav2] (dm) {$D_\text{mono}$};
+
+        \draw[ar] (pin.east)   -- (yolo.west);
+        \draw[ar] (yolo.south) -- (feat.north);
+        \draw[ar] (feat.south) -- (head.north);
+        \draw[ar] (head.south) -- (dav2.north);
+        \draw[ar] (dav2.south) -- (adapt.north);
+        \draw[ar] (adapt.south) -- (layer.north);
+
+        \draw[ar] (head.east) -- (out.west);
+        \draw[ar] (dav2.east) -- (dm.west);
+
+        \draw[ar] (out.east) to[out=0,in=0,looseness=1.4] (layer.east);
+
+        \draw[ard] (adapt.west) to[out=180,in=180,looseness=1.4] (feat.west);
+        \draw[ard] (adapt.west) to[out=180,in=180,looseness=1.7] (yolo.west);
+    \end{tikzpicture}}
+    \caption{\textbf{PaintParse (Variant C).} Grayscale with blue accent on
+    depth/adapter branches, emphasizing the novel art-domain adaptation.}
+    \label{fig:paintparse_C}
+\end{figure}

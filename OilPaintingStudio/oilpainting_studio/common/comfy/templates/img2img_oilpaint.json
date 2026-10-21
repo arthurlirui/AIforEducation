@@ -1,0 +1,70 @@
+{
+  "_comment": "关键帧油画化工作流（API 格式）。节点 id 约定：ckpt(CheckpointLoaderSimple)、prompt_pos(CLIPTextEncode正)、prompt_neg(CLIPTextEncode负)、sampler(KSampler)、vae(VAEDecode)、save(SaveImage)、latent(EmptyLatentImage)。注入字段见 workflows.apply_params。可替换为含风格 LoRA / IPAdapter 的版本。",
+  "ckpt": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "sd_xl_base_1.0.safetensors"
+    }
+  },
+  "lora": {
+    "class_type": "LoraLoader",
+    "inputs": {
+      "model": ["ckpt", 0],
+      "clip": ["ckpt", 1],
+      "lora_name": "",
+      "strength_model": 0.8,
+      "strength_clip": 0.8
+    }
+  },
+  "latent": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 1080,
+      "height": 1920,
+      "batch_size": 1
+    }
+  },
+  "prompt_pos": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "classic oil painting",
+      "clip": ["lora", 1]
+    }
+  },
+  "prompt_neg": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "photorealistic, digital art, anime, lowres, watermark, text",
+      "clip": ["lora", 1]
+    }
+  },
+  "sampler": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["lora", 0],
+      "positive": ["prompt_pos", 0],
+      "negative": ["prompt_neg", 0],
+      "latent_image": ["latent", 0],
+      "seed": 0,
+      "steps": 30,
+      "cfg": 7.0,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0
+    }
+  },
+  "vae": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["sampler", 0],
+      "vae": ["ckpt", 2]
+    }
+  },
+  "save": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": ["vae", 0],
+      "filename_prefix": "oilpaint_keyframe"
+    }
+  }
+}

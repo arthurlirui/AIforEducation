@@ -1,0 +1,335 @@
+\begin{thebibliography}{}
+
+\bibitem[\protect\citeauthoryear{Blattmann \bgroup \em et al.\egroup
+  }{2023}]{blattmann2023svd}
+Andreas Blattmann, Robin Rombach, Huan Ling, Tim Dockhorn, Karsten Kreis, Sanja
+  Fidler, and Patrick Esser.
+\newblock Align your latents: High-resolution video synthesis with latent
+  diffusion models.
+\newblock {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, pages 22563--22575, 2023.
+
+\bibitem[\protect\citeauthoryear{Ceylan \bgroup \em et al.\egroup
+  }{2023}]{ceylan2023pix2video}
+Duygu Ceylan, Chun-Hao~P. Huang, and Niloy~J. Mitra.
+\newblock {Pix2Video}: Video editing using image diffusion.
+\newblock In {\em Proceedings of the IEEE/CVF International Conference on
+  Computer Vision (ICCV)}, pages 23149--23160, 2023.
+
+\bibitem[\protect\citeauthoryear{Chai \bgroup \em et al.\egroup
+  }{2023}]{chai2023stablevideo}
+Wenhao Chai, Xun Guo, Gao Wang, and Yan Lu.
+\newblock {StableVideo}: Text-driven consistency-aware diffusion video editing.
+\newblock In {\em Proceedings of the IEEE/CVF International Conference on
+  Computer Vision (ICCV)}, pages 22983--22993, 2023.
+
+\bibitem[\protect\citeauthoryear{Chen \bgroup \em et al.\egroup
+  }{2017}]{chen2017coherent}
+Dongdong Chen, Jing Liao, Lu~Yuan, Nenghai Yu, and Gang Hua.
+\newblock Coherent online video style transfer.
+\newblock In {\em Proceedings of the IEEE International Conference on Computer
+  Vision (ICCV)}, pages 1114--1123, 2017.
+
+\bibitem[\protect\citeauthoryear{Chen \bgroup \em et al.\egroup
+  }{2024}]{chen2024artadapter}
+Dar-Yen Chen, Hamish Tennent, and Ching-Wen Hsu.
+\newblock {ArtAdapter}: Text-to-image style transfer using multi-level style
+  encoder and explicit adaptation.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, 2024.
+
+\bibitem[\protect\citeauthoryear{Deng \bgroup \em et al.\egroup
+  }{2021}]{deng2021arbitrary}
+Yingying Deng, Fan Tang, Weiming Dong, Wen Sun, Feiyue Huang, and Changsheng
+  Xu.
+\newblock Arbitrary video style transfer via multi-channel correlation.
+\newblock In {\em Proceedings of the AAAI Conference on Artificial
+  Intelligence}, volume~35, pages 1210--1217, 2021.
+
+\bibitem[\protect\citeauthoryear{Deng \bgroup \em et al.\egroup
+  }{2022}]{deng2021stytr2}
+Yingying Deng, Fan Tang, Weiming Dong, Wen Sun, Feiyue Huang, and Changsheng
+  Xu.
+\newblock {StyTr$^2$}: Image style transfer with transformers.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, pages 13626--13636, 2022.
+
+\bibitem[\protect\citeauthoryear{Gal \bgroup \em et al.\egroup
+  }{2023}]{gal2023textualinversion}
+Rinon Gal, Yuval Alaluf, Yuval Atzmon, Or~Patashnik, Amit~H. Bermano, Gal
+  Chechik, and Daniel Cohen-Or.
+\newblock An image is worth one word: Personalizing text-to-image generation
+  using textual inversion.
+\newblock In {\em Proceedings of the International Conference on Learning
+  Representations (ICLR)}, 2023.
+
+\bibitem[\protect\citeauthoryear{Gao \bgroup \em et al.\egroup
+  }{2018}]{gao2020reconet}
+Chuan Gao, Dayan Gu, Fangzhou Zhang, and Yizhou Yu.
+\newblock {ReCoNet}: Real-time coherent video style transfer network.
+\newblock In {\em Proceedings of the European Conference on Computer Vision
+  (ECCV)}, pages 637--653, 2018.
+
+\bibitem[\protect\citeauthoryear{Gatys \bgroup \em et al.\egroup
+  }{2016}]{gatys2016image}
+Leon~A. Gatys, Alexander~S. Ecker, and Matthias Bethge.
+\newblock Image style transfer using convolutional neural networks.
+\newblock In {\em Proceedings of the IEEE Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, pages 2414--2423, 2016.
+
+\bibitem[\protect\citeauthoryear{Geyer \bgroup \em et al.\egroup
+  }{2024}]{geyer2023tokenflow}
+Michal Geyer, Omer Bar-Tal, Shai Bagon, and Tali Dekel.
+\newblock {TokenFlow}: Consistent diffusion features for consistent video
+  editing.
+\newblock In {\em Proceedings of the International Conference on Learning
+  Representations (ICLR)}, 2024.
+
+\bibitem[\protect\citeauthoryear{Guo \bgroup \em et al.\egroup
+  }{2024}]{guo2024liveportrait}
+Jianzhu Guo, Ding-Yun Zhang, Yuan Liu, Zhizhou Zhong, Yuan Zhang, Pengfei Wan,
+  and Di~Zhang.
+\newblock {LivePortrait}: Efficient portrait animation with stitching and
+  retargeting control.
+\newblock {\em arXiv preprint arXiv:2407.03168}, 2024.
+
+\bibitem[\protect\citeauthoryear{He \bgroup \em et al.\egroup
+  }{2023}]{he2023bitgan}
+Xiao He, Mingrui Zhu, Nannan Wang, Xiaoyu Wang, and Xinbo Gao.
+\newblock {BiTGAN}: Bilateral generative adversarial networks for {Chinese} ink
+  wash painting style transfer.
+\newblock {\em Science China Information Sciences}, 66(1):119104, 2023.
+
+\bibitem[\protect\citeauthoryear{Ho \bgroup \em et al.\egroup
+  }{2022}]{ho2022video}
+Jonathan Ho, Tim Salimans, Alexey Gritsenko, William Chan, Mohammad Norouzi,
+  and David~J. Fleet.
+\newblock Video diffusion models.
+\newblock {\em Advances in Neural Information Processing Systems (NeurIPS)},
+  35:8633--8646, 2022.
+
+\bibitem[\protect\citeauthoryear{Hu \bgroup \em et al.\egroup
+  }{2022}]{hu2022lora}
+Edward~J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean
+  Wang, Lu~Wang, and Weizhu Chen.
+\newblock {LoRA}: Low-rank adaptation of large language models.
+\newblock In {\em Proceedings of the International Conference on Learning
+  Representations (ICLR)}, 2022.
+
+\bibitem[\protect\citeauthoryear{Huang and Belongie}{2017}]{huang2017arbitrary}
+Xun Huang and Serge Belongie.
+\newblock Arbitrary style transfer in real-time with adaptive instance
+  normalization.
+\newblock In {\em Proceedings of the IEEE International Conference on Computer
+  Vision (ICCV)}, pages 1510--1519, 2017.
+
+\bibitem[\protect\citeauthoryear{Huang \bgroup \em et al.\egroup
+  }{2017}]{huang2017realtime}
+Haozhi Huang, Hao Wang, Wenhan Luo, Lin Ma, Wei Jiang, Xiaolong Zhu, Zhifeng
+  Li, and Wei Liu.
+\newblock Real-time neural style transfer for videos.
+\newblock In {\em Proceedings of the IEEE Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, pages 783--791, 2017.
+
+\bibitem[\protect\citeauthoryear{Johnson \bgroup \em et al.\egroup
+  }{2016}]{johnson2016perceptual}
+Justin Johnson, Alexandre Alahi, and Li~Fei-Fei.
+\newblock Perceptual losses for real-time style transfer and super-resolution.
+\newblock In {\em Proceedings of the European Conference on Computer Vision
+  (ECCV)}, pages 694--711, 2016.
+
+\bibitem[\protect\citeauthoryear{Jones \bgroup \em et al.\egroup
+  }{2026}]{jones2026refvfx}
+Maxwell Jones, Rameen Abdal, Or~Patashnik, Ruslan Salakhutdinov, Sergey
+  Tulyakov, Jun-Yan Zhu, and Kuan-Chieh~Jackson Wang.
+\newblock Tuning-free visual effect transfer across videos.
+\newblock In {\em Proceedings of the European Conference on Computer Vision
+  (ECCV)}, 2026.
+
+\bibitem[\protect\citeauthoryear{Li \bgroup \em et al.\egroup
+  }{2026}]{li2026echostyle}
+Huaqiu Li, Jiahao Wang, Sijia Cai, Hualian Sheng, Bing Deng, Jieping Ye, and
+  Wenhan Luo.
+\newblock {EchoStyle}: Unlocking high-fidelity video stylization with reverse
+  data synthesis.
+\newblock In {\em Proceedings of the European Conference on Computer Vision
+  (ECCV)}, 2026.
+
+\bibitem[\protect\citeauthoryear{Liang \bgroup \em et al.\egroup
+  }{2021}]{liang2021instance}
+Hao Liang, Shuai Yang, Wenjing Wang, and Jiaying Liu.
+\newblock Instance-aware coherent video style transfer for {Chinese} ink wash
+  painting.
+\newblock In {\em Proceedings of the International Joint Conference on
+  Artificial Intelligence (IJCAI)}, pages 823--829, 2021.
+
+\bibitem[\protect\citeauthoryear{Liang \bgroup \em et al.\egroup
+  }{2024}]{liang2024flowvid}
+Feng Liang, Hang Ouyang, Zhaoyang Pan, Yingqing He, Yuwei Wang, Tong Zhang, Wei
+  Xing, Yong Zhang, and Wenhu Xing.
+\newblock {FlowVid}: Taming imperfect optical flows for consistent
+  video-to-video synthesis.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, pages 8207--8216, 2024.
+
+\bibitem[\protect\citeauthoryear{Liu \bgroup \em et al.\egroup
+  }{2021}]{liu2021neuralstrokes}
+Difan Liu, Matthew Fisher, Aaron Hertzmann, and Evangelos Kalogerakis.
+\newblock Neural strokes: Stylized line drawing of {3D} shapes.
+\newblock In {\em Proceedings of the IEEE/CVF International Conference on
+  Computer Vision (ICCV)}, pages 14204--14213, 2021.
+
+\bibitem[\protect\citeauthoryear{Liu \bgroup \em et al.\egroup
+  }{2026}]{liu2026chipdiff}
+Heng Liu, Zhiwei Song, Yongzhen Wang, Bingwen Hu, and Yang Wang.
+\newblock {ChipDiff}: Staged diffusion model with loss gradient guidance for
+  {Chinese} ink painting style transfer.
+\newblock {\em Pattern Recognition}, 177:113309, 2026.
+
+\bibitem[\protect\citeauthoryear{Madono and Simo-Serra}{2023}]{madono2023data}
+Koki Madono and Edgar Simo-Serra.
+\newblock Data-driven ink painting brushstroke rendering.
+\newblock {\em Computer Graphics Forum}, 42(7):e14965, 2023.
+
+\bibitem[\protect\citeauthoryear{Ouyang \bgroup \em et al.\egroup
+  }{2024}]{ouyang2024codef}
+Haoyu Ouyang, Tengfei Xiao, Qidong Wang, Guoqiang He, Yu~Bian, Yifan Zhou,
+  Jinbo Bai, Junhui Zhang, and Hao Lu.
+\newblock {CoDeF}: Content deformation fields for temporally consistent video
+  processing.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, pages 8089--8099, 2024.
+
+\bibitem[\protect\citeauthoryear{Park and Lee}{2019}]{park2019arbitrary}
+Dae~Young Park and Kwang~Hee Lee.
+\newblock Arbitrary style transfer with style-attentional networks.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, pages 5880--5888, 2019.
+
+\bibitem[\protect\citeauthoryear{Rombach \bgroup \em et al.\egroup
+  }{2022}]{rombach2022ldm}
+Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Bj{\"o}rn
+  Ommer.
+\newblock High-resolution image synthesis with latent diffusion models.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, pages 10684--10695, 2022.
+
+\bibitem[\protect\citeauthoryear{Ruder \bgroup \em et al.\egroup
+  }{2016}]{ruder2016artistic}
+Manuel Ruder, Alexey Dosovitskiy, and Thomas Brox.
+\newblock Artistic style transfer for videos.
+\newblock In {\em German Conference on Pattern Recognition (GCPR)}, pages
+  26--36, 2016.
+
+\bibitem[\protect\citeauthoryear{Ruiz \bgroup \em et al.\egroup
+  }{2023}]{ruiz2023dreambooth}
+Nataniel Ruiz, Yuanzhen Li, Varun Jampani, Yael Pritch, Michael Rubinstein, and
+  Kfir Aberman.
+\newblock {DreamBooth}: Fine tuning text-to-image diffusion models for
+  subject-driven generation.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, pages 22500--22510, 2023.
+
+\bibitem[\protect\citeauthoryear{Tan \bgroup \em et al.\egroup
+  }{2024}]{tan2024edtalk}
+Shuai Tan, Bin Ji, Mengxiao Bi, and Ye~Pan.
+\newblock {EDTalk}: Efficient disentanglement for emotional talking head
+  synthesis.
+\newblock In {\em Proceedings of the European Conference on Computer Vision
+  (ECCV)}, 2024.
+
+\bibitem[\protect\citeauthoryear{Texler \bgroup \em et al.\egroup
+  }{2020}]{texler2020interactive}
+Ondrej Texler, David Futschik, Shu-Zhe Chai, Sergey Tulyakov, Javier
+  Echevarria, Ondrej Dvoro{\v{z}}n{\'a}k, Erik H{\v{a}}rk{\"o}nen, and Daniel
+  Sykora.
+\newblock Interactive video stylization using few-shot patch-based training.
+\newblock In {\em ACM Transactions on Graphics (SIGGRAPH)}, volume~39, pages
+  1--14, 2020.
+
+\bibitem[\protect\citeauthoryear{Wang \bgroup \em et al.\egroup
+  }{2020a}]{wang2020mead}
+Kaisiyuan Wang, Qianyi Wu, Linsen Song, Zhuo Yang, Wei Wu, Chen Qian, Ran He,
+  Fan Meng, and Chen~Change Loy.
+\newblock {MEAD}: A large-scale audio-visual dataset for emotional talking-face
+  generation.
+\newblock In {\em Proceedings of the European Conference on Computer Vision
+  (ECCV)}, pages 700--717, 2020.
+
+\bibitem[\protect\citeauthoryear{Wang \bgroup \em et al.\egroup
+  }{2020b}]{wang2020consistent}
+Wenjing Wang, Jizheng Xu, Li~Zhang, Yue Wang, and Jiaying Liu.
+\newblock Consistent video style transfer via compound regularization.
+\newblock In {\em Proceedings of the AAAI Conference on Artificial
+  Intelligence}, volume~34, pages 12263--12270, 2020.
+
+\bibitem[\protect\citeauthoryear{Wang \bgroup \em et al.\egroup
+  }{2024}]{wang2024cvstgan}
+Zunfu Wang, Fang Liu, and Changjuan Ran.
+\newblock {CVSTGAN}: A controllable generative adversarial network for video
+  style transfer of {Chinese} painting.
+\newblock {\em Multimedia Systems}, 30(5):256, 2024.
+
+\bibitem[\protect\citeauthoryear{Wu \bgroup \em et al.\egroup
+  }{2023}]{wu2023tuneavideo}
+Jay~Zhangjie Wu, Yixiao Ge, Xintao Wang, Stan~Weixian Lei, Yufei Gu, Yufei Shi,
+  Wynne Hsu, Ying Shan, Xiaohu Qie, and Mike~Zheng Shou.
+\newblock {Tune-A-Video}: One-shot tuning of image diffusion models for
+  text-to-video generation.
+\newblock In {\em Proceedings of the IEEE/CVF International Conference on
+  Computer Vision (ICCV)}, pages 7589--7599, 2023.
+
+\bibitem[\protect\citeauthoryear{Ye \bgroup \em et al.\egroup
+  }{2025}]{ye2025stylemaster}
+Zixuan Ye, Huijuan Huang, Xintao Wang, Pengfei Wan, Di~Zhang, and Wenhan Luo.
+\newblock {StyleMaster}: Stylize your video with artistic generation and
+  translation.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, pages 2630--2640, 2025.
+
+\bibitem[\protect\citeauthoryear{Zakharov \bgroup \em et al.\egroup
+  }{2019}]{zakharov2019fewshot}
+Egor Zakharov, Aliaksandra Shysheya, Egor Burkov, and Victor Lempitsky.
+\newblock Few-shot adversarial learning of realistic neural talking head
+  models.
+\newblock {\em arXiv preprint arXiv:1905.08233}, 2019.
+
+\bibitem[\protect\citeauthoryear{Zhang \bgroup \em et al.\egroup
+  }{2023a}]{zhang2023controlnet}
+Lvmin Zhang, Anyi Rao, and Maneesh Agrawala.
+\newblock Adding conditional control to text-to-image diffusion models.
+\newblock In {\em Proceedings of the IEEE/CVF International Conference on
+  Computer Vision (ICCV)}, pages 3836--3847, 2023.
+
+\bibitem[\protect\citeauthoryear{Zhang \bgroup \em et al.\egroup
+  }{2023b}]{zhang2023inversion}
+Yuxin Zhang, Nisha Huang, Fan Tang, Haibin Huang, Chongyang Ma, and Weiming
+  Dong.
+\newblock Inversion-based style transfer with diffusion models.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, pages 10146--10156, 2023.
+
+\bibitem[\protect\citeauthoryear{Zhang \bgroup \em et al.\egroup
+  }{2025}]{zhang2025inkspirit}
+Di~Zhang, Chen Yi, Xinyu Gao, Xiangsheng Zeng, Runqiao Xia, Yongbo Jiang,
+  Yingchaojie Feng, Wei Zhang, and Wei Chen.
+\newblock {InkSpirit}: An expert knowledge-driven approach for enhancing the
+  visual logic of traditional {Chinese} painting text-to-image generation.
+\newblock {\em Computers and Graphics}, 132:104330, 2025.
+
+\bibitem[\protect\citeauthoryear{Zhao \bgroup \em et al.\egroup
+  }{2020}]{zhao2020painting}
+Amy Zhao, Guha Balakrishnan, Kathleen~M. Lewis, Fredo Durand, John~V. Guttag,
+  and Adrian~V. Dalca.
+\newblock Painting many pasts: Synthesizing time lapse videos of paintings.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, pages 8435--8445, 2020.
+
+\bibitem[\protect\citeauthoryear{Zou \bgroup \em et al.\egroup
+  }{2021}]{zou2021stylized}
+Zhengxia Zou, Tianyang Shi, Shuang Qiu, Yi~Yuan, and Zhenwei Shi.
+\newblock Stylized neural painting.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, pages 15689--15698, 2021.
+
+\end{thebibliography}

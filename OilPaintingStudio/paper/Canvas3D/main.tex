@@ -1,0 +1,172 @@
+%%%% main.tex -- Canvas3D: A Unified 3D-Aware Framework for Painting Animation
+%%%% via Object-Level Decomposition, Monocular 3D Lifting, Line-Art Composition,
+%%%% and Geometry-Grounded Video Synthesis
+%%%% IJCAI 2027 submission
+%%%% Based on the official IJCAI--ECAI 26 template (ijcai26.sty).
+
+\typeout{IJCAI 2027 Submission: Canvas3D}
+
+\documentclass{article}
+\pdfpagewidth=8.5in
+\pdfpageheight=11in
+
+\usepackage{ijcai26}
+
+% Use the postscript times font!
+\usepackage{times}
+\usepackage{soul}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage[utf8]{inputenc}
+\usepackage{xeCJK}   % CJK support (compile with XeLaTeX)
+\setCJKmainfont{SimSun}[AutoFakeBold=true,AutoFakeSlant=true]
+\usepackage[small]{caption}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}    % for \mathbb{R}, \mathbb{E}
+\usepackage{natbib}   % required for \citet / \citep
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{multirow}
+\usepackage{pifont}       % for \ding{55} (cross) and \ding{51} (check)
+\usepackage[switch]{lineno}
+\usepackage{microtype}    % improve paragraph breaking, reduce overfull boxes
+
+% TikZ for high-quality architecture diagrams
+\usepackage{tikz}
+\usetikzlibrary{
+    shapes, arrows, arrows.meta, positioning, fit,
+    backgrounds, calc, decorations.pathreplacing,
+    decorations.pathmorphing, shadows, shapes.geometric,
+    shapes.multipart, patterns, matrix, chains,
+    decorations.markings, decorations.text
+}
+
+% Custom TikZ styles
+\tikzset{
+    modbox/.style={
+        draw=black!60, fill=blue!5, rounded corners=3pt,
+        minimum width=2.8cm, minimum height=1.0cm,
+        align=center, font=\footnotesize,
+        thick
+    },
+    modbox_blue/.style={
+        modbox, fill=blue!5
+    },
+    modbox_green/.style={
+        modbox, fill=green!5
+    },
+    modbox_orange/.style={
+        modbox, fill=orange!5
+    },
+    modbox_purple/.style={
+        modbox, fill=purple!5
+    },
+    modbox_red/.style={
+        modbox, fill=red!5
+    },
+    dataarrow/.style={
+        ->, >=Stealth, thick, draw=black!50
+    },
+    dataarrow_blue/.style={
+        ->, >=Stealth, thick, draw=blue!60
+    },
+    dataarrow_red/.style={
+        ->, >=Stealth, thick, draw=red!60
+    }
+}
+
+% Comment out this line in the camera-ready submission
+\linenumbers
+
+\urlstyle{same}
+
+\newtheorem{example}{Example}
+\newtheorem{theorem}{Theorem}
+\newtheorem{definition}{Definition}
+
+% \pdfinfo is pdftex-only; guard it so XeLaTeX can compile this file too.
+\ifdefined\pdfinfo
+\pdfinfo{
+/TemplateVersion (IJCAI.2026.0)
+}
+\fi
+
+% =====================================================================
+%  Title and authors
+% =====================================================================
+\title{Canvas3D: Object-Level 3D Lifting and Line-Art Composition\\
+for Painting Animation}
+
+\author{
+    Anonymous Authors
+    \affiliations
+    AIforEducation Project
+    \emails
+    aiforeducation@example.com
+}
+
+\begin{document}
+
+\maketitle
+
+% =====================================================================
+%  Abstract  (rewritten for IJCAI 2027: idea-centric, no model names)
+% =====================================================================
+\begin{abstract}
+Animating static artworks---oil paintings, ink-wash scrolls, and
+frescoes---into explorable, narratively coherent videos is a long-standing
+goal at the intersection of computer vision, generative modeling, and digital
+cultural heritage. Existing approaches remain bifurcated: image-to-video
+diffusion models produce visually fluent motion but collapse three-dimensional
+structure under viewpoint change, while feed-forward 3D reconstruction
+pipelines capture geometry at the cost of obliterating painterly texture,
+impasto, and brushstroke identity. The root cause is a fundamental
+\emph{objective tension}: artistic style fidelity and 3D scene structure are
+governed by incompatible optimization targets, and no single end-to-end model
+satisfies both, especially when the task demands object-level manipulation.
+We propose \textbf{Canvas3D}, a framework that resolves this tension through
+a \emph{modular decomposition of concerns}. Rather than training a monolithic
+network, Canvas3D factors the painting-to-video problem into four
+independently optimized, mutually reinforcing sub-problems:
+\emph{(i) perceptual grouping} of a painting into semantically meaningful
+foreground objects and a preserved background, jointly with monocular
+depth-derived layer ordering; \emph{(ii) per-object geometric lifting} that
+converts each 2D region into a metric-scaled 3D representation and assembles
+a reusable, retrievable object-level model library; \emph{(iii) line-art
+scene composition} in which hand-drawn sketches serve as \emph{spatial
+constraints} rather than stylistic hints, solved by a contour-based rigid
+registration that places each 3D object at its sketched location and a
+depth-conditioned inpainting module that restores disoccluded background
+texture in a geometry-aware manner; and \emph{(iv) geometry-grounded video
+synthesis} that renders the composited 3D scene into multi-view keyframes
+and injects depth and edge cues as dual control signals into a video
+diffusion backbone, anchoring temporal motion to explicit 3D structure
+rather than learned heuristics. The key insight is that \emph{separating
+perceptual, geometric, compositional, and temporal concerns} turns an
+ill-posed, conflicting joint problem into four well-posed sub-problems,
+each addressable by an off-the-shelf specialist, while their interaction
+yields capabilities---arbitrary object repositioning, multi-view
+explorability, and style-anchored animation---that no single-modality
+pipeline offers. On a curated benchmark of classical paintings, Canvas3D
+achieves state-of-the-art style fidelity, perceptual quality, and temporal
+coherence, with user studies confirming strong preference for artistic
+authenticity, motion naturalness, and compositional-intent alignment.
+\end{abstract}
+
+% =====================================================================
+%  Body: each section lives in its own file under sec/
+% =====================================================================
+\input{sec/intro}
+\input{sec/related}
+\input{sec/method}
+\input{sec/experiment}
+\input{sec/conclusion}
+
+%% The file named.bst is a bibliography style file for BibTeX 0.99c
+\bibliographystyle{named}
+\bibliography{references}
+
+\end{document}

@@ -1,0 +1,104 @@
+% =====================================================================
+%  Section: Related Work
+% =====================================================================
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Image Segmentation for Artistic Content}
+
+Instance segmentation in natural images has matured rapidly with the YOLO
+family~\cite{jocher2023yolov8,wang2024yolov9,wang2024yolov10,tian2025yolov12}
+and the Segment Anything Model
+(SAM)~\cite{kirillov2023sam,ravi2024sam2}. However, paintings pose unique
+challenges: brushstroke textures confound edge detectors, semantic boundaries
+blend intentionally in impressionist works, and foreground-background separation
+lacks the depth cues present in photographs. Specialized art-domain
+adaptations have begun to emerge---PLDS-YOLO~\cite{chen2025pldsyolo} adapts
+YOLOv8 for mural paint-loss detection, and art-specific segmentation
+datasets~\cite{saleh2016metric} provide annotated painting regions---but a
+general-purpose painting segmentation pipeline suitable as the front-end of
+a 3D animation framework remains absent. Canvas3D bridges this gap by
+fine-tuning a YOLO-family detector on a curated art-segmentation dataset,
+enabling reliable foreground-object extraction from diverse painting styles.
+
+\subsection{3D Gaussian Splatting and Monocular Reconstruction}
+
+3D Gaussian Splatting (3DGS)~\cite{kerbl20233dgs} represents a scene as a
+collection of anisotropic 3D Gaussians with differentiable rasterization,
+enabling real-time photorealistic rendering. 2D Gaussian Splatting
+(2DGS)~\cite{huang20242dgs} collapses the third scale dimension into a surface
+normal, improving geometric fidelity for surface-like content.
+Feed-forward monocular reconstruction models have recently emerged that
+predict 3DGS parameters directly from a single image:
+DreamGaussian~\cite{tang2024dreamgaussian} uses a generative prior for
+efficient 3D content creation; TripoSplat~\cite{wang2024triposplat} achieves
+state-of-the-art single-image-to-3DGS quality; pixelSplat~\cite{charatan2024pixelsplat}
+and AnySplat~\cite{jiang2025anysplat} handle two-view and unconstrained-view
+settings respectively. These advances make it feasible to lift individual
+painting regions into 3D---but none address the downstream challenge of
+composing multiple such objects into a coherent scene with artistic control.
+Canvas3D leverages TripoSplat per-object and addresses the composition and
+manipulation gap.
+
+\subsection{Hand-Drawn Sketch and Line-Art Guidance}
+
+Hand-drawn sketches have long served as an intuitive interface for visual
+content creation. In 3D modeling, sketch-based interfaces~\cite{olson2011sketch}
+enable rapid shape prototyping. ShadowDraw~\cite{luo2026shadowdraw} generates
+compositional shadow-drawing art from object inputs, demonstrating that
+contour-based spatial reasoning is tractable with modern vision models.
+LineArt~\cite{wang2024lineart} performs training-free appearance transfer onto
+design drawings via diffusion models. For 3D scene composition, region-aware
+line drawing simplification~\cite{nguyen2024region} and volumetric animation
+toolkits~\cite{foxgieg2024lightning} illustrate the expressive potential of
+hand-drawn control. Canvas3D extends this lineage by using line-art not merely
+for stylization, but as the \textit{spatial constraint} that solves the
+which-object-where problem in 3D scene assembly.
+
+\subsection{Controlled Image-to-Video Generation}
+
+The leap from text-to-image to text-to-video has been powered by diffusion
+transformers~(DiT)~\cite{peebles2023dit} and video diffusion
+models~\cite{ho2022vdm}. CogVideoX~\cite{yang2025cogvideox} introduces an expert
+transformer for efficient video generation. Wan2.2~\cite{wan2025} scales to
+large MoE architectures with text- and image-conditioned video synthesis.
+LTX-Video~\cite{ltxvideo2024} achieves real-time generation with aggressive
+VAE compression.
+
+Controllability has been addressed through auxiliary conditioning.
+ControlNet~\cite{zhang2023controlnet} injects edge, depth, and pose maps into
+the diffusion U-Net; EasyControl~\cite{wang2024easycontrol} extends this to
+U-Net--based video diffusion; ControlNeXt~\cite{peng2024controlnext} reduces
+parameter overhead by up to 90\%. MotionCanvas~\cite{xing2025motioncanvas}
+achieves cinematic shot design with 3D-aware motion control in I2V without
+3D training data. AniClipart~\cite{wu2025aniclipart} animates clipart via
+Video Score Distillation Sampling from text-to-video priors.
+
+Despite these advances, existing I2V control methods are limited to
+\textit{per-frame conditioning signals}---they cannot reason about 3D object
+identity, depth ordering, or occlusion across frames. Canvas3D addresses
+this by grounding all control signals in an explicit 3D scene representation
+that is composited, rendered, and then fed into the video diffusion pipeline.
+
+\subsection{Artistic Video Generation and Painting Animation}
+
+Dedicated painting animation methods span several paradigms.
+Stroke-level synthesis~\cite{zou2021stylized,liu2021neuralstrokes}
+reproduces the brushstroke generation process as a time-lapse but does not
+introduce novel motion. Portrait animation methods such as
+LivePortrait~\cite{guo2024liveportrait} and EDTalk~\cite{tan2024edtalk}
+drive facial motion on painted faces but cannot animate full-body figures
+or background elements. The recently proposed ``Printing the
+Underdetermined''~\cite{ming2026printing} translates paintings to 3DGS via video
+generative models but operates on the entire image jointly rather than at the
+object level. OilPaintingRevive~\cite{oilpaintingrevive2026} proposes a
+five-stage pipeline combining 2DGS with LTX-Video refinement, but its skeleton
+binding network requires per-scene optimization that limits compositional
+flexibility.
+
+Canvas3D advances beyond these works by: (i)~operating at the object level
+rather than the image level, enabling independent manipulation; (ii)~using
+hand-drawn line-art as the compositional control interface, separating artistic
+intent from algorithmic prediction; (iii)~integrating depth-aware inpainting to
+handle disocclusion; and (iv)~employing multi-modal ControlNet (depth~+~edge)
+for geometry-grounded video synthesis with stronger 3D consistency guarantees.

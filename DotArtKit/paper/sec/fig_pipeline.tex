@@ -1,0 +1,85 @@
+% fig_pipeline.tex — TikZ 流程框图 (无重叠, 适配 columnwidth)
+% 五阶段: Input → Depth/Seg → Density → 3-Layer Stippling → Rendering
+\begin{figure}[t]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[
+    font=\small,
+    node distance=4mm and 5mm,
+    box/.style={draw, rounded corners=1mm, align=center, inner sep=2.5mm,
+                minimum height=9mm, fill=blue!8},
+    stage/.style={draw, thick, rounded corners=1mm, align=center,
+                  inner sep=3mm, minimum height=10mm, fill=orange!15},
+    data/.style={draw, dashed, rounded corners=1mm, align=center,
+                 inner sep=2mm, fill=green!10},
+    arr/.style={-{Stealth[length=2.5mm]}, thick},
+    lbl/.style={font=\scriptsize, midway, above=0.5mm},
+]
+% --- 顶层五个 stage 横向排列 ---
+\node[stage, minimum width=22mm] (input) {Input\\RGB image $I$};
+\node[stage, minimum width=30mm, right=of input] (vision) {Monocular\\vision backbone\\(YOLO26x)};
+\node[stage, minimum width=30mm, right=of vision] (density) {Composite\\density field\\$\rho(x,y)$};
+\node[stage, minimum width=34mm, right=of density] (stipple) {Three-layer\\Voronoi stippling};
+\node[stage, minimum width=26mm, right=of stipple] (render) {Semantic-aware\\rendering};
+
+% --- vision 内部细化为 depth 和 seg 两个并行支路 ---
+\node[data, above=2mm of vision, xshift=-13mm, minimum width=18mm] (depthmap) {depth map\\$D(x,y)$};
+\node[data, below=2mm of vision, xshift=-13mm, minimum width=18mm] (segmap) {seg map\\$S(x,y)$};
+
+% --- density 输入 ---
+\node[data, below=2mm of density, minimum width=30mm] (norm) {normalized depth $\hat d$,\\foreground mask $M_{\mathrm{fg}}$,\\luminance $\gamma(I)$};
+
+% --- stipple 内部三层 ---
+\node[box, above=2mm of stipple, xshift=-18mm, minimum width=20mm] (l1) {Layer 1\\fine stipple\\$r\in[1,5]$};
+\node[box, above=2mm of stipple, xshift=18mm, minimum width=20mm] (l2) {Layer 2\\depth-emphasis\\$r\in[7.5,r_{\max}]$};
+\node[box, below=2mm of stipple, minimum width=34mm] (l3) {Layer 3\\edge + horror-vacui background};
+
+% --- render 输出 ---
+\node[data, right=of render, minimum width=18mm] (output) {Kusama-style\\image};
+
+% --- 主流箭头 ---
+\draw[arr] (input) -- (vision);
+\draw[arr] (vision) -- (density);
+\draw[arr] (density) -- (stipple);
+\draw[arr] (stipple) -- (render);
+\draw[arr] (render) -- (output);
+
+% --- 子箭头 (vision → depthmap/segmap) ---
+\draw[arr] (vision.north) -- (depthmap.south);
+\draw[arr] (vision.south) -- (segmap.north);
+
+% --- depthmap/segmap 汇入 density ---
+\draw[arr, dashed] (depthmap.east) to[out=0,in=90] (density.north);
+\draw[arr, dashed] (segmap.east)  to[out=0,in=270] (density.south);
+
+% --- density 与 norm 之间 ---
+\draw[arr, dashed] (norm.north) -- (density.south);
+
+% --- 三层汇入 stipple ---
+\draw[arr] (l1.south) -- (stipple.north west);
+\draw[arr] (l2.south) -- (stipple.north east);
+\draw[arr] (l3.north) -- (stipple.south);
+
+% --- 跨层剪枝注释 ---
+\node[font=\scriptsize, text=red!60!black, below=1mm of l3, align=center]
+    (prune) {cross-layer overlap pruning (Alg.~\ref{alg:cross_prune})};
+\draw[-{Stealth[length=2mm]}, dashed, red!60!black]
+    (prune.west) to[out=180,in=270] (stipple.south west);
+
+% --- 关键公式注释 (顶部) ---
+\node[font=\scriptsize, align=center, above=2mm of l1, text=blue!60!black]
+    (eqnote) {$r = [\,r_{\min}+(r_{\max}-r_{\min})(1-\hat d)^\alpha\,]\,(1+\varepsilon)$};
+\draw[-{Stealth[length=2mm]}, dotted, blue!60!black]
+    (eqnote.south) -- (l1.north);
+
+\end{tikzpicture}}
+\caption{Pipeline overview. A single RGB image is processed by a
+unified YOLO26x backbone to produce a metric depth map and a
+Cityscapes semantic segmentation map. Foreground-aware depth
+normalization and luminance modulation yield a composite density
+field, which drives a three-layer Weighted Voronoi stippling
+architecture (fine, depth-emphasis, edge/background) with cross-layer
+overlap pruning. Semantic-aware rendering assigns distinct dot colors
+to foreground and background within a shared palette.}
+\label{fig:pipeline}
+\end{figure}

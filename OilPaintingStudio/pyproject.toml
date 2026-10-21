@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oilpainting-studio"
+version = "1.0.0"
+description = "经典油画动态艺术生成统一项目 — 剧本驱动短视频 (video) + 单画物体级 3D 重排动画 (revive/Canvas3D)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "AIforEducation Project" }]
+keywords = ["oil-painting", "video-generation", "3dgs", "comfyui", "controlnet", "npr", "canvas3d"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+
+# 核心依赖 (两管线都需要)
+dependencies = [
+    "httpx>=0.27",
+    "pyyaml>=6.0",
+    "pillow>=10.0",
+    "python-dotenv>=1.0",
+    "click>=8.1",
+    "pydantic>=2.6",
+    "numpy>=1.24",
+    "opencv-python-headless>=4.8",
+]
+
+[project.optional-dependencies]
+# mesh2video (video 管线的风格×几何解耦)
+mesh2video = [
+    "trimesh>=4.0",
+    "imageio>=2.31",
+    "imageio-ffmpeg>=0.4",
+]
+# Revive 真实模型推理 (GS / 深度 / 分割)
+torch = ["torch>=2.1", "torchvision"]
+gs = ["plyfile>=0.9", "tqdm>=4.65"]
+# 开发 / 测试
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+# 全部可选依赖
+all = [
+    "trimesh>=4.0", "imageio>=2.31", "imageio-ffmpeg>=0.4",
+    "torch>=2.1", "torchvision", "plyfile>=0.9", "tqdm>=4.65",
+    "pytest>=8.0", "pytest-asyncio>=0.23",
+]
+
+[project.scripts]
+# 两个 CLI 入口 (待注册; 当前用 python -m 调用)
+oilpainting-studio = "oilpainting_studio.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["oilpainting_studio*"]
+
+[tool.setuptools.package-data]
+"oilpainting_studio.common.comfy" = ["templates/*.json"]
+"oilpainting_studio.revive.stage5" = ["*.json"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.db
+data/
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+*.log
+
+# Large model files
+*.pt
+*.pth
+*.onnx
+*.bin
+models/
+
+# Backup dir (contains large model files)
+bak/
+
+# IDE
+.vscode/
+.idea/
+
+# Test artifacts
+_*_test.db
+_test_unified.db
+_e2e.db
+_tmp_anim/
+
+# Env
+.env
+
+# OS
+Thumbs.db
+.DS_Store

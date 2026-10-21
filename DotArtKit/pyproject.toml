@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dotartkit"
+version = "1.0.0"
+description = "统一波点艺术生成器 — 8 流派 (点彩 / 草间弥生 / 半调 / 欧普 / 点绘 / 叶序 / 深度感知)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "AIforEducation Project" }]
+keywords = ["stippling", "polka-dot", "kusama", "npr", "non-photorealistic-rendering", "voronoi", "pointillism"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Graphics :: Graphics Conversion",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+
+# 核心依赖: 仅 numpy + PIL + opencv, 所有"纯 numpy"流派可用
+dependencies = [
+    "numpy>=1.24",
+    "Pillow>=10.0",
+    "opencv-python>=4.8",
+]
+
+[project.optional-dependencies]
+# Voronoi Lloyd 松弛 (kusama_basic 的 scipy 路径)
+scipy = ["scipy>=1.11"]
+# 深度感知草间 (kusama_depth)
+depth = ["ultralytics>=8.1", "torch>=2.0"]
+# 可学习深度→半径映射 (learned.py)
+learned = ["torch>=2.0"]
+# 论文实验 / 图表生成
+experiments = ["matplotlib>=3.7"]
+# 全部可选依赖
+all = ["scipy>=1.11", "ultralytics>=8.1", "torch>=2.0", "matplotlib>=3.7"]
+
+[project.scripts]
+dotart = "dotartkit.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["dotartkit*"]
+exclude = ["tests*", "scripts*", "docs*", "paper*", "inputs*", "outputs*", "models*"]

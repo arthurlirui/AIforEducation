@@ -1,0 +1,114 @@
+%%%% main.tex -- Depth-Aware Polka Dot Art Generation (IJCAI'26 Arts track)
+% Based on the official IJCAI--ECAI 26 template (ijcai26.sty).
+
+\typeout{IJCAI--ECAI 26 Submission: Depth-Aware Polka Dot Art Generation}
+
+\documentclass{article}
+\pdfpagewidth=8.5in
+\pdfpageheight=11in
+
+\usepackage{ijcai26}
+
+\usepackage{times}
+\usepackage{soul}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage[small]{caption}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{natbib}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage[switch]{lineno}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc}
+
+\linenumbers
+
+\urlstyle{same}
+
+\newtheorem{definition}{Definition}
+\newtheorem{proposition}{Proposition}
+
+\ifdefined\pdfinfo
+\pdfinfo{
+/TemplateVersion (IJCAI.2026.0)
+}
+\fi
+
+% =====================================================================
+%  Title and authors
+% =====================================================================
+\title{Depth-as-Radius: Kusama-Style Polka Dot Generation\\
+via Monocular Vision and Three-Layer Voronoi Stippling}
+
+\author{
+    Anonymous Authors
+    \affiliations
+    AIforEducation Project
+    \emails
+    aiforeducation@example.com
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We present \emph{Depth-as-Radius}, a non-photorealistic rendering
+pipeline that translates a single RGB image into a Yayoi
+Kusama--style polka dot composition in which dot size---rather
+than luminance---encodes scene depth. The key idea is a simple
+yet expressive depth-to-radius mapping: a per-pixel monocular
+depth estimate is normalized over the foreground region and
+passed through a power-law falloff with multiplicative Gaussian
+jitter, so that near surfaces receive large, prominent dots
+while distant content dissolves into fields of fine specks.
+Combined with a semantic segmentation mask, the same pipeline
+assigns distinct dot colors to foreground and background,
+producing a figure--ground separation that echoes Kusama's
+installation practice.
+
+Algorithmically, the pipeline couples a modern unified vision
+backbone (YOLO26, used for both depth estimation and semantic
+segmentation) with a three-layer Weighted Voronoi stippling
+architecture. A fine-stipple layer provides dense texture; a
+depth-emphasis layer places large dots only in near regions;
+an edge-and-background layer completes the horror-vacui
+coverage. A dedicated cross-layer overlap-pruning step
+guarantees that large dots remain visually distinct from the
+fine texture, which is essential at the extreme radius range
+(roughly 1--15\,px) that our depth mapping demands.
+
+Experiments on three natural images and five Kusama palettes
+show that the method produces controllable depth encoding
+(radius span 0.5--15.4\,px within a single composition),
+preserves dot separation (maximum blob ratio below 0.65\%
+of canvas), and supports intuitive artistic control through
+a small set of interpretable parameters. Our results suggest
+that pretrained monocular vision models---originally trained
+for autonomous driving---can serve as practical artistic
+primitives, supplying geometric and semantic control signals
+that purely luminance-based stippling cannot express.
+\end{abstract}
+
+% =====================================================================
+%  Body
+% =====================================================================
+\input{sec/introduction}
+\input{sec/related}
+\input{sec/fig_pipeline}
+\input{sec/method}
+\input{sec/experiments}
+\input{sec/discussion}
+\input{sec/conclusion}
+
+%% The file named.bst is a bibliography style file for BibTeX 0.99c
+\bibliographystyle{named}
+\bibliography{references}
+
+\end{document}

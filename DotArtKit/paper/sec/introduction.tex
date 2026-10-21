@@ -1,0 +1,118 @@
+\section{Introduction}
+\label{sec:introduction}
+
+Yayoi Kusama (born 1929) is one of the most influential living artists,
+renowned for her obsessive deployment of polka dots across paintings,
+sculptures, and immersive installations. Her visual language is built
+upon four signature traits: geometrically precise hard-edged dots,
+multi-scale coexistence of dot sizes ranging from sub-millimeter specks
+to large medallions, ultra-pure high-chroma color palettes applied in
+flat fields, and \emph{horror vacui}---a compulsion to cover every
+available surface with dots, leaving no void untouched
+\citep{moma_kusama,archdaily_kusama}. The polka dot, in
+Kusama's universe, is simultaneously a decorative motif, a signifier of
+infinity, and a mechanism for dissolving the boundary between the self
+and the environment.
+
+Translating this artistic language into a computational framework
+presents a unique set of challenges. Classical stippling algorithms,
+pioneered by \citet{secord2002weighted} and grounded in Centroidal
+Voronoi Tessellation (CVT) and Lloyd relaxation \citep{lloyd1982least},
+excel at producing blue-noise point distributions modulated by image
+density. However, these methods map dot size and density to a single
+scalar field---typically luminance: dark regions receive larger or
+denser dots, bright regions receive fewer and smaller ones. This
+one-dimensional mapping is fundamentally at odds with Kusama's
+practice. A pumpkin painted by Kusama does not merely have dots of
+varying size due to shading; the dots themselves carry a sense of
+volume, of near and far, of the object inhabiting space. Capturing
+this requires a control signal that luminance alone cannot provide.
+
+Monocular depth estimation supplies exactly such a signal. The field
+has matured rapidly, and recent unified real-time backbones---most
+notably the YOLO26 family \citep{ultralytics2025yolo26}---now produce
+dense metric depth maps at interactive rates on consumer GPUs. Three
+considerations motivate our choice of YOLO26 over alternatives such as
+MiDaS or DepthAnything: (i) a single checkpoint family also provides
+semantic segmentation from the same feature backbone, guaranteeing
+that the geometric and semantic control signals are spatially
+consistent by construction; (ii) inference times of a few seconds at
+$1024 \times 1024$ resolution fit an artist-in-the-loop workflow; and
+(iii) the metric (rather than disparity) output simplifies the
+normalization step that drives our radius mapping. We emphasize,
+however, that the proposed pipeline is \emph{backbone-agnostic}: any
+monocular depth estimator and any semantic segmentor can be
+substituted without algorithmic changes.
+
+In this paper, we propose a \emph{depth-aware polka dot art generation
+pipeline} that integrates monocular depth estimation and semantic
+segmentation with Weighted Voronoi Stippling. The central mathematical
+component is a depth-to-radius mapping:
+
+\begin{equation}
+    r(x,y) = \Bigl[\, r_{\min} + (r_{\max} - r_{\min}) \cdot (1 - \hat{d})^\alpha \,\Bigr] \cdot (1 + \varepsilon),
+    \label{eq:depth_radius}
+\end{equation}
+
+\noindent where $\hat{d}(x,y) \in [0,1]$ is the normalized depth (0 =
+nearest, 1 = farthest), $\alpha$ is a curvature exponent controlling
+the depth-size falloff, and $\varepsilon \sim \mathcal{N}(0,
+\sigma^2)$ is a multiplicative Gaussian jitter that injects the
+organic variation characteristic of hand-painted dots. Near
+objects---which occupy more of the visual field and carry greater
+perceptual weight---receive large, prominent dots, while distant
+surfaces recede into fields of small, sparse dots. The result is a
+polka dot rendering that conveys three-dimensional structure through
+dot size alone, without resorting to perspective projection or
+shading.
+
+We further leverage semantic segmentation to enable \emph{region-aware
+coloring}: foreground objects and background regions receive different
+dot colors within the same duotone palette, creating a figure--ground
+separation that echoes Kusama's practice of placing contrasting
+colored dots on different surfaces within a single composition.
+
+Two design decisions differentiate the pipeline from a naive
+combination of off-the-shelf components. First, the radius range
+demanded by the depth mapping (roughly 1--15\,px) is far wider than
+what a single-layer stipple can support without blob merging. We
+therefore decompose the rendering into a three-layer architecture:
+(1) a fine stipple layer of small, densely packed dots whose density
+follows a composite depth-luminance field; (2) a depth-emphasis layer
+of large dots placed exclusively in near regions, pruned against the
+fine layer; and (3) an edge and background layer providing structural
+emphasis and horror-vacui coverage. Second, a dedicated cross-layer
+overlap-pruning step enforces a minimum pairwise distance between the
+large emphasis dots and the fine stipple, which we show
+(Section~\ref{sec:experiments}) to be the single most important
+component for preserving dot separation.
+
+We summarize our contributions as follows:
+\begin{enumerate}
+    \item A depth-to-radius mapping function (Eq.~\ref{eq:depth_radius})
+    that encodes scene depth into dot size with controlled
+    multiplicative randomization, enabling three-dimensional perception
+    in the inherently flat polka dot medium.
+    \item A three-layer stippling architecture with cross-layer overlap
+    pruning that maintains dot separation (maximum blob ratio below
+    0.65\%) while supporting a wide dot radius range (0.5--15.4\,px).
+    \item Semantic-aware dual-color rendering using a unified YOLO26
+    backbone, assigning distinct dot colors to foreground and
+    background regions within a Kusama-style palette.
+    \item A \emph{learnable} depth-to-radius network trained via a
+    self-supervised perceptual stippling loss, providing a data-driven
+    alternative to the fixed power-law mapping that adapts across scene
+    types without manual parameter tuning.
+\end{enumerate}
+
+The remainder of this paper is organized as follows.
+Section~\ref{sec:related} reviews related work in stippling, depth
+estimation, and neural style transfer. Section~\ref{sec:method} presents
+the mathematical formulation and pipeline architecture in detail.
+Section~\ref{sec:experiments} reports experimental results and quality
+metrics. Section~\ref{sec:discussion} discusses artistic implications,
+limitations, and future directions. Section~\ref{sec:conclusion}
+concludes the paper. This work is part of a broader research program on
+\emph{AI for Art Process}---using AI to understand and intervene in the
+creative \emph{process} of art-making, complementary to work on
+real-time painting coaching and painting-to-video animation.

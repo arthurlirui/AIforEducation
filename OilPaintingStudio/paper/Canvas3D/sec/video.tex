@@ -1,0 +1,32 @@
+% =====================================================================
+%  Section: Video Style Transfer and Temporal Consistency
+% =====================================================================
+\section{Video Style Transfer and Temporal Consistency}
+\label{sec:video}
+
+A naive application of image style transfer frame-by-frame produces severe flicker.
+Addressing this, \citet{ruder2016artistic} introduced a temporal loss based on optical
+flow to constrain consecutive frames, while \citet{chen2017coherent} proposed an online
+recurrent framework that propagates stylized features across frames.
+\citet{huang2017realtime} presented a real-time feed-forward model for video stylization.
+
+\subsection{Regularization-Based Approaches}
+
+\citet{wang2020consistent} reinterpreted temporal consistency as a compound
+regularization problem and designed a zero-shot video style transfer framework,
+published at AAAI~2020. \citet{deng2021arbitrary} proposed multi-channel correlation for
+arbitrary video style transfer (AAAI~2021), enabling a single network to handle diverse
+artistic references without retraining. \citet{gao2020reconet} introduced ReCoNet,
+optimizing temporal stability through flow-based warping losses.
+
+\subsection{Diffusion-Based Video Stylization}
+
+The diffusion era has dramatically reshaped video stylization. \citet{ceylan2023pix2video}
+and \citet{chai2023stablevideo} (ICCV~2023) showed that image diffusion models can be
+extended to video editing by self-attention injection and consistency-aware sampling.
+\citet{geyer2023tokenflow} enforced feature consistency across frames through token-level
+propagation. More recently, \citet{ye2025stylemaster} proposed StyleMaster (CVPR~2025),
+which combines prompt-patch similarity filtering, contrastive style learning, and a
+lightweight motion adapter to bridge the image-to-video gap. EchoStyle~\cite{li2026echostyle}
+constructs a large-scale stylization dataset of 20k video pairs via reverse synthesis and
+achieves performance comparable to commercial closed-source solutions.

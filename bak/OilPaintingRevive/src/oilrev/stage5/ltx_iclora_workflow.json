@@ -1,0 +1,78 @@
+{
+  "_comment": "LTX-2.3 IC-LoRA Union Control 图生视频工作流（API 格式）。节点 id 约定：input_rgb(LoadVideo/LoadImage序列)、input_depth(LoadVideo)、iclora_guide_depth(LTXAddVideoICLoRAGuide)、iclora_guide_rgb(LTXAddVideoICLoRAGuide)、sampler(LTXVideoSampler)、save(VHS_VideoCombine)。注入字段见 stage5/workflow.py。",
+  "input_rgb": {
+    "class_type": "VHS_LoadVideo",
+    "inputs": {
+      "video": "coarse_rgb.mp4",
+      "frame_load_cap": 0,
+      "skip_first_frames": 0,
+      "select_every_nth": 1
+    }
+  },
+  "input_depth": {
+    "class_type": "VHS_LoadVideo",
+    "inputs": {
+      "video": "depth.mp4",
+      "frame_load_cap": 0,
+      "skip_first_frames": 0,
+      "select_every_nth": 1
+    }
+  },
+  "ltx_model": {
+    "class_type": "LTXVLoader",
+    "inputs": {
+      "model": "ltxv-2b-v0.9.5.safetensors"
+    }
+  },
+  "iclora_loader": {
+    "class_type": "LoraLoader",
+    "inputs": {
+      "model": ["ltx_model", 0],
+      "clip": ["ltx_model", 1],
+      "lora_name": "LTX-2-19b-IC-LoRA-Union-Control.safetensors",
+      "strength_model": 1.0,
+      "strength_clip": 1.0
+    }
+  },
+  "iclora_guide_depth": {
+    "class_type": "LTXAddVideoICLoRAGuide",
+    "inputs": {
+      "positive": ["iclora_loader", 0],
+      "guide_image": ["input_depth", 0],
+      "strength": 1.0
+    }
+  },
+  "iclora_guide_rgb": {
+    "class_type": "LTXAddVideoICLoRAGuide",
+    "inputs": {
+      "positive": ["iclora_guide_depth", 0],
+      "guide_image": ["input_rgb", 0],
+      "strength": 0.6
+    }
+  },
+  "sampler": {
+    "class_type": "LTXVideoSampler",
+    "inputs": {
+      "model": ["iclora_loader", 0],
+      "positive": ["iclora_guide_rgb", 0],
+      "negative": ["iclora_loader", 1],
+      "seed": 0,
+      "steps": 30,
+      "cfg": 1.0,
+      "width": 768,
+      "height": 512,
+      "num_frames": 49,
+      "sampler_name": "euler"
+    }
+  },
+  "save": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+      "images": ["sampler", 0],
+      "filename_prefix": "oilrev_stage5a",
+      "frame_rate": 24,
+      "format": "video/h264-mp4",
+      "save_metadata": false
+    }
+  }
+}

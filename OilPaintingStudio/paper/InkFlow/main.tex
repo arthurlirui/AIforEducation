@@ -1,0 +1,109 @@
+%%%% main.tex -- InkFlow: Dual-Conditioned Video Diffusion for
+%               Chinese Ink-Wash Painting (IJCAI'27 submission)
+% Based on the official IJCAI--ECAI 26 template (ijcai26.sty).
+% Compile with: pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex
+
+\typeout{IJCAI--ECAI 27 Submission: InkFlow}
+
+\documentclass{article}
+\pdfpagewidth=8.5in
+\pdfpageheight=11in
+
+\usepackage{ijcai26}
+
+\usepackage{times}
+\usepackage{soul}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage[utf8]{inputenc}
+\usepackage{xeCJK}   % CJK support for Chinese art terms
+\setCJKmainfont{SimSun}[AutoFakeBold=true,AutoFakeSlant=true]
+\usepackage[small]{caption}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{natbib}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage[switch]{lineno}
+\usepackage{xcolor}
+
+% Comment out for camera-ready
+\linenumbers
+
+\urlstyle{same}
+
+\newtheorem{definition}{Definition}
+
+\ifdefined\pdfinfo
+\pdfinfo{
+/TemplateVersion (IJCAI.2026.0)
+}
+\fi
+
+% =====================================================================
+%  Title and authors
+% =====================================================================
+\title{InkFlow: Dual-Conditioned Video Diffusion for Chinese\\
+Ink-Wash Painting with Five-Level Ink Theory}
+
+\author{
+    Anonymous Authors
+    \affiliations
+    AIforEducation Project
+    \emails
+    aiforeducation@example.com
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Chinese ink-wash (Shanshui) painting is governed by the classical
+\emph{five-level ink theory} (\begin{CJK*}{UTF8}{SimSun}焦、浓、重、淡、清\end{CJK*})
+and deliberate \emph{negative space}
+(\begin{CJK*}{UTF8}{UTF8}留白\end{CJK*}).
+Existing image-to-video (I2V) diffusion models, trained on natural
+imagery, fail to preserve these art-specific aesthetic principles when
+animating static paintings. We present \textbf{InkFlow}, a
+dual-conditioned video diffusion framework that fine-tunes an
+open-source I2V backbone (Wan2.1-I2V) with two complementary
+conditioning signals: (1)~a \emph{line-distribution map} (the artist's
+line draft) injected during early denoising steps to govern structural
+composition, and (2)~an \emph{ink-density distribution map}
+specifying the five-level ink tones, injected during later steps to
+govern tonal rendering. We further introduce a \emph{blank-space loss}
+that penalizes texture generation inside user-designated negative-space
+regions, formalizing the aesthetic principle of
+\emph{treating white as black}
+(\begin{CJK*}{UTF8}{UTF8}计白当黑\end{CJK*}).
+A \emph{rhythm-of-strokes} prior derived from calligraphic timing
+encourages temporally coherent ``breathing'' motion (drifting mist,
+flowing water) that respects compositional voids. Experiments on 30
+Shanshui paintings demonstrate that InkFlow produces videos with
+significantly better ink-density fidelity, blank-space preservation,
+and temporal coherence than unconditional and single-condition
+baselines, as measured by quantitative metrics and a perceptual user
+study. This work is part of a broader research program on
+\emph{AI for Art Process}---using AI to understand and extend the
+creative \emph{process} of art-making.
+\end{abstract}
+
+% =====================================================================
+%  Body
+% =====================================================================
+\input{sec/introduction}
+\input{sec/related}
+\input{sec/method}
+\input{sec/experiments}
+\input{sec/discussion}
+\input{sec/conclusion}
+
+%% The file named.bst is a bibliography style file for BibTeX 0.99c
+\bibliographystyle{named}
+\bibliography{references}
+
+\end{document}

@@ -1,0 +1,133 @@
+%%%% main.tex -- Famous Painting Dynamic Video-Style Generation (IJCAI'26 draft)
+% Based on the official IJCAI--ECAI 26 template (ijcai26.sty).
+% Section bodies are kept in the sec/ subfolder and included via \input.
+
+\typeout{IJCAI--ECAI 26 Submission: Famous Painting Dynamic Video-Style Generation}
+
+\documentclass{article}
+\pdfpagewidth=8.5in
+\pdfpageheight=11in
+
+\usepackage{ijcai26}
+
+% Use the postscript times font!
+\usepackage{times}
+\usepackage{soul}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage[utf8]{inputenc}
+\usepackage{xeCJK}   % CJK support for Chinese art terms (compile with XeLaTeX)
+\setCJKmainfont{SimSun}[AutoFakeBold=true,AutoFakeSlant=true]
+\usepackage[small]{caption}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{natbib}   % required for \citet / \citep (used in section files)
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage[switch]{lineno}
+
+% Comment out this line in the camera-ready submission
+\linenumbers
+
+\urlstyle{same}
+
+\newtheorem{example}{Example}
+\newtheorem{theorem}{Theorem}
+
+% \pdfinfo is pdftex-only; guard it so XeLaTeX can compile this file too.
+\ifdefined\pdfinfo
+\pdfinfo{
+/TemplateVersion (IJCAI.2026.0)
+}
+\fi
+
+% =====================================================================
+%  Title and authors (copied from main-bak.tex)
+% =====================================================================
+\title{A Survey on Dynamic Video-Style Generation Techniques for World-Famous Paintings:\\
+From Oil and Ink Style Transfer to Painting Animation}
+
+\author{
+    Anonymous Authors
+    \affiliations
+    AIforEducation Project
+    \emails
+    aiforeducation@example.com
+}
+
+% Multiple author syntax (uncomment and edit if needed)
+\iffalse
+\author{
+First Author$^1$
+\and
+Second Author$^2$\and
+Third Author$^{2,3}$\And
+Fourth Author$^4$\\
+\affiliations
+$^1$First Affiliation\\
+$^2$Second Affiliation\\
+$^3$Third Affiliation\\
+$^4$Fourth Affiliation\\
+\emails
+\{first, second\}@example.com,
+third@other.example.com,
+fourth@example.com
+}
+\fi
+
+\begin{document}
+
+\maketitle
+
+% =====================================================================
+%  Abstract (copied from main-bak.tex)
+% =====================================================================
+\begin{abstract}
+World-famous paintings, ranging from Western oil masterpieces of Van Gogh and Rembrandt
+to Eastern ink wash landscapes, constitute a unique reservoir of human cultural heritage.
+In recent years, the rapid development of deep generative models has opened a new direction:
+\emph{dynamic video-style generation for famous paintings}, which aims to bring static
+artworks to life through artistic style transfer, image-to-video synthesis, and
+portrait/painting animation. This survey provides a structured overview of this emerging
+area along four axes: (i) foundations of artistic style transfer; (ii) video style
+transfer with temporal consistency; (iii) diffusion-based image and video stylization;
+and (iv) painting synthesis, stroke rendering, and ``talking painting'' animation.
+We focus on representative works published in top-tier venues including CVPR, ICCV,
+ECCV, AAAI, and IJCAI, and discuss open challenges such as content leakage, long-video
+coherence, and art-specific aesthetic preservation. Building on the survey, we further
+propose four research ideas that combine open-source local video diffusion backbones
+(LTX-Video, Wan2.1/2.2) with human-in-the-loop artistic guidance, multi-granular control
+over color and stroke distributions, and innovations drawn from classical art-creation
+theory.
+\end{abstract}
+
+% =====================================================================
+%  Body: each section lives in its own file under sec/
+% =====================================================================
+\input{sec/intro}
+\input{sec/style}
+\input{sec/video}
+\input{sec/diffusion}
+\input{sec/painting}
+\input{sec/artstyle}
+\input{sec/portrait}
+\input{sec/discussion}
+\input{sec/ideas}
+\input{sec/conclusion}
+
+% =====================================================================
+%  Optional sections (kept for template compliance; safe to remove)
+% =====================================================================
+% \section*{Ethical Statement}
+% There are no ethical issues.
+
+% \section*{Acknowledgments}
+% (Add acknowledgments in the camera-ready version.)
+
+%% The file named.bst is a bibliography style file for BibTeX 0.99c
+\bibliographystyle{named}
+\bibliography{references}
+
+\end{document}

@@ -1,0 +1,41 @@
+% =====================================================================
+%  Section: Discussion and Open Challenges
+% =====================================================================
+\section{Discussion and Open Challenges}
+\label{sec:discussion}
+
+\textbf{Content leakage and style--content disentanglement.} Image-trained stylization
+often transfers semantic content from the style reference, distorting the target.
+Recent works~\cite{ye2025stylemaster,chen2024artadapter} tackle this through patch
+filtering and auxiliary content adapters, but the problem remains open for long videos.
+
+\textbf{Long-video temporal coherence.} Sliding-window strategies~\cite{li2026echostyle}
+and content deformation fields~\cite{ouyang2024codef} mitigate drift but struggle with
+large motion and complex scenes. Cross-turn consistency in iterative editing is a
+related open problem.
+
+\textbf{Art-specific aesthetic preservation.} General style transfer fails to capture
+art-specific features such as ink density, brush direction, and compositional blank
+space. Specialized losses and datasets~\cite{he2023bitgan,liu2026chipdiff,zhang2025inkspirit}
+are essential but currently limited to specific art traditions.
+
+\textbf{Integration of generation and animation pipelines.} Combining painting-specific
+style LoRAs, ControlNet conditioning, I2V diffusion models, and talking-portrait
+animation into a single pipeline---as exemplified by the OilPaintingVideo project---is
+an emerging engineering direction with significant educational potential.
+
+\textbf{Open-source local video generation backbones.} Recent open-weights video
+diffusion models such as LTX-Video~2.x and Wan2.1/2.2-I2V provide powerful, locally
+deployable backbones for famous-painting video generation. They offer controllable
+image-to-video synthesis with manageable GPU footprints, but are typically trained on
+natural imagery and struggle to preserve the rich textures and stylistic features of
+artworks. Bridging this domain gap---through style-aware fine-tuning, art-specific
+conditioning, or stroke-level guidance---remains an open and practically important
+problem.
+
+\textbf{Human-in-the-loop artistic guidance.} Existing pipelines accept textual or
+image references as guidance, but professional artistic creation typically involves
+iterative human input through sketches, color blocks, and line drawings. Allowing
+artists to steer video generation with hand-drawn drafts at multiple abstraction
+levels---from precise line constraints to loose color palettes---is largely unexplored
+and offers a promising direction for human--AI co-creation.

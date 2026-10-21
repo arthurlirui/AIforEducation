@@ -1,0 +1,203 @@
+% =====================================================================
+% Canvas3D Figure 5: ArtiFlow - Variants A/B/C  (LAYOUT v3, collision-free)
+%
+% Geometry summary (all three variants share the SAME layout):
+%
+%       [sc]x --> [rend] --> [fr] --> [vd]  --> [out] (down)
+%                  |    \--> [df]
+%                  |    \--> [ef]
+%                  v
+%                 [cn]  (a full row below rend, x-aligned with rend)
+%
+% Key invariants kept by construction:
+%   * vd sits on the TOP row (right of fr), never in the same vertical
+%     band as df/ef/cn.
+%   * cn sits on the BOTTOM row directly below rend, with a clear
+%     vertical gutter between the rend column and the df/ef column.
+%   * df and ef bleed down and left into cn through that gutter,
+%     without touching rend, vd, or each other.
+%   * fr attaches to vd via a straight east-west arrow; no big arcs.
+% =====================================================================
+
+% ============================ VARIANT A ==============================
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\sffamily,
+        bx/.style={draw=none, rounded corners=3pt, minimum width=2.4cm,
+                   minimum height=0.72cm, align=center,
+                   font=\sffamily\scriptsize, thick, text=white},
+        data/.style={draw=black!25, rounded corners=2pt, fill=white,
+                     font=\sffamily\tiny, minimum width=2.1cm,
+                     minimum height=0.42cm, align=center},
+        ar/.style={->, >=Stealth, very thick, draw=black!45}
+    ]
+        % --- Input ---
+        \node[data, fill=yellow!15, draw=yellow!50!black] (sc)
+            {$\mathcal{S}^*$, $\mathcal{D}^*$};
+
+        % --- Renderer ---
+        \node[bx, fill=red!65, right=1.1cm of sc,
+              minimum width=2.5cm, minimum height=1.05cm] (rend)
+            {\textbf{Multi-View Render}\\{\tiny 3DGS rasterize}\\{\tiny $I_t, D_t, E_t$}};
+
+        % --- Render products stack on rend's right ---
+        \node[data, right=1.2cm of rend, minimum width=1.8cm] (fr) {RGB $I_t$};
+        \node[data, below=0.45cm of fr,   minimum width=1.8cm] (df) {Depth $D_t$};
+        \node[data, below=0.45cm of df,   minimum width=1.8cm] (ef) {Edge $E_t$};
+
+        % --- ControlNet sits a FULL row below rend, x-aligned. ---
+        \node[bx, fill=red!45, below=2.2cm of rend,
+              minimum width=2.5cm, minimum height=1.05cm] (cn)
+            {\textbf{Dual ControlNet}\\{\tiny Depth $s_d=0.85$}\\{\tiny HED $s_e=0.6$}};
+
+        % --- Video DiT on the top row (right of fr), same baseline as rend. ---
+        \node[bx, fill=purple!60, right=1.2cm of fr,
+              minimum width=2.6cm, minimum height=1.05cm] (vd)
+            {\textbf{Video DiT}\\{\tiny Wan2.2 / LTX2.3}\\{\tiny temp.\ attention}};
+
+        % --- Final output below vd, but first we place an invisible anchor
+        %     half a row down so `out` sits clearly under vd. ---
+        \node[data, below=2.2cm of vd, minimum width=2.3cm] (out)
+            {Output Video $V$};
+
+        % ================= EDGES =================
+        % Top row: straight east-west arrows.
+        \draw[ar] (sc.east)   -- (rend.west);
+        \draw[ar] (rend.east) -- (fr.west);
+        \draw[ar] (rend.east) to[out=0,in=180,looseness=1.0] (df.west);
+        \draw[ar] (rend.east) to[out=0,in=180,looseness=1.2] (ef.west);
+        \draw[ar] (fr.east)   -- (vd.west);
+
+        % Straight vertical drop from rend to cn: nothing sits in between.
+        \draw[ar] (rend.south) -- (cn.north);
+
+        % df -> cn: down-left diagonal inside the empty gutter between the
+        % rend column and the df column.
+        \draw[ar] (df.west) to[out=180,in=60,looseness=1.0] (cn.north east);
+
+        % ef -> cn: drop down in the gutter to the level of cn and come in
+        % from the EAST, so it never crosses vd (vd is on the top row).
+        \draw[ar] (ef.west) to[out=180,in=15,looseness=1.0] (cn.east);
+
+        % cn -> vd: gentle rising diagonal into vd.south, through the empty
+        % space between the cn row and the df/ef stack.
+        \draw[ar] (cn.east) to[out=0,in=-90,looseness=1.0] (vd.south);
+
+        % vd -> out : straight vertical drop (out is directly below vd).
+        \draw[ar] (vd.south) -- (out.north);
+    \end{tikzpicture}}
+    \caption{\textbf{ArtiFlow (Variant A).} Flat style with red for rendering,
+    darker red for ControlNet, purple for the diffusion model.}
+    \label{fig:artiflow_A}
+\end{figure}
+
+% ============================ VARIANT B ==============================
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\sffamily,
+        bx/.style={draw=black!80, rounded corners=1pt, minimum width=2.5cm,
+                   minimum height=0.72cm, align=center,
+                   font=\sffamily\scriptsize, thick},
+        data/.style={draw=black!40, rounded corners=1pt, fill=white,
+                     font=\sffamily\tiny, minimum width=2.1cm,
+                     minimum height=0.42cm, align=center},
+        ar/.style={->, >=Stealth, thick, draw=black!70}
+    ]
+        \node[data] (sc) {$\mathcal{S}^*$, $\mathcal{D}^*$};
+
+        \node[bx, right=1.1cm of sc, minimum width=2.6cm,
+              minimum height=1.05cm] (rend)
+            {Multi-View Render\\{\tiny 3DGS rasterize}\\{\tiny $I_t, D_t, E_t$}};
+
+        \node[data, right=1.2cm of rend, minimum width=1.9cm] (fr) {RGB $I_t$};
+        \node[data, below=0.45cm of fr,   minimum width=1.9cm] (df) {Depth $D_t$};
+        \node[data, below=0.45cm of df,   minimum width=1.9cm] (ef) {Edge $E_t$};
+
+        \node[bx, below=2.2cm of rend, minimum width=2.6cm,
+              minimum height=1.05cm] (cn)
+            {Dual ControlNet\\{\tiny Depth + HED}\\{\tiny $s_d=0.85$, $s_e=0.6$}};
+
+        \node[bx, right=1.2cm of fr, minimum width=2.7cm,
+              minimum height=1.05cm] (vd)
+            {Video DiT\\{\tiny Wan2.2 / LTX2.3}\\{\tiny temporal attention}};
+
+        \node[data, below=2.2cm of vd, minimum width=2.4cm] (out)
+            {Output Video $V$};
+
+        \draw[ar] (sc.east)   -- (rend.west);
+        \draw[ar] (rend.east) -- (fr.west);
+        \draw[ar] (rend.east) to[out=0,in=180,looseness=1.0] (df.west);
+        \draw[ar] (rend.east) to[out=0,in=180,looseness=1.2] (ef.west);
+        \draw[ar] (fr.east)   -- (vd.west);
+
+        \draw[ar] (rend.south) -- (cn.north);
+        \draw[ar] (df.west) to[out=180,in=60,looseness=1.0] (cn.north east);
+        \draw[ar] (ef.west) to[out=180,in=15,looseness=1.0] (cn.east);
+
+        \draw[ar] (cn.east) to[out=0,in=-90,looseness=1.0] (vd.south);
+        \draw[ar] (vd.south) -- (out.north);
+    \end{tikzpicture}}
+    \caption{\textbf{ArtiFlow (Variant B).} Monochrome line style, no fills,
+    maximum clarity.}
+    \label{fig:artiflow_B}
+\end{figure}
+
+% ============================ VARIANT C ==============================
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\sffamily,
+        bx/.style={draw=black!60, fill=black!8, rounded corners=2pt,
+                   minimum width=2.5cm, minimum height=0.72cm, align=center,
+                   font=\sffamily\scriptsize, thick},
+        acc/.style={draw=blue!60!black, fill=blue!12, rounded corners=2pt,
+                    minimum width=2.5cm, minimum height=0.72cm, align=center,
+                    font=\sffamily\scriptsize, thick},
+        data/.style={draw=black!35, fill=white, rounded corners=1pt,
+                     font=\sffamily\tiny, minimum width=2.1cm,
+                     minimum height=0.42cm, align=center},
+        ar/.style={->, >=Stealth, thick, draw=black!55}
+    ]
+        \node[data] (sc) {$\mathcal{S}^*$, $\mathcal{D}^*$};
+
+        \node[bx, right=1.1cm of sc, minimum width=2.6cm,
+              minimum height=1.05cm] (rend)
+            {Multi-View Render\\{\tiny 3DGS rasterize}\\{\tiny $I_t, D_t, E_t$}};
+
+        \node[data, right=1.2cm of rend, minimum width=1.9cm] (fr) {RGB $I_t$};
+        \node[data, below=0.45cm of fr,   minimum width=1.9cm] (df) {Depth $D_t$};
+        \node[data, below=0.45cm of df,   minimum width=1.9cm] (ef) {Edge $E_t$};
+
+        \node[acc, below=2.2cm of rend, minimum width=2.6cm,
+              minimum height=1.05cm] (cn)
+            {\textbf{Dual ControlNet}\\{\tiny Depth + HED}\\{\tiny $s_d=0.85$, $s_e=0.6$}};
+
+        \node[bx, right=1.2cm of fr, minimum width=2.7cm,
+              minimum height=1.05cm] (vd)
+            {Video DiT\\{\tiny Wan2.2 / LTX2.3}\\{\tiny temporal attention}};
+
+        \node[data, below=2.2cm of vd, minimum width=2.4cm] (out)
+            {Output Video $V$};
+
+        \draw[ar] (sc.east)   -- (rend.west);
+        \draw[ar] (rend.east) -- (fr.west);
+        \draw[ar] (rend.east) to[out=0,in=180,looseness=1.0] (df.west);
+        \draw[ar] (rend.east) to[out=0,in=180,looseness=1.2] (ef.west);
+        \draw[ar] (fr.east)   -- (vd.west);
+
+        \draw[ar] (rend.south) -- (cn.north);
+        \draw[ar] (df.west) to[out=180,in=60,looseness=1.0] (cn.north east);
+        \draw[ar] (ef.west) to[out=180,in=15,looseness=1.0] (cn.east);
+
+        \draw[ar] (cn.east) to[out=0,in=-90,looseness=1.0] (vd.south);
+        \draw[ar] (vd.south) -- (out.north);
+    \end{tikzpicture}}
+    \caption{\textbf{ArtiFlow (Variant C).} Grayscale with blue accent on the
+    dual-ControlNet conditioning, highlighting the control mechanism.}
+    \label{fig:artiflow_C}
+\end{figure}

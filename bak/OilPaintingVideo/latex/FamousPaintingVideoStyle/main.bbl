@@ -1,0 +1,330 @@
+\begin{thebibliography}{}
+
+\bibitem[\protect\citeauthoryear{Anonymous}{2026}]{oilpaintingrevive2026}
+Anonymous.
+\newblock {OilPaintingRevive}: Canvas in motion --- {3D}-aware stylized video
+  synthesis via {2D} {G}aussian {S}platting and latent diffusion refinement.
+\newblock In {\em Under review at IJCAI}, 2026.
+\newblock Predecessor framework; baseline in our experiments.
+
+\bibitem[\protect\citeauthoryear{Balaji \bgroup \em et al.\egroup
+  }{2019}]{balaji2019fvd}
+Yogesh Balaji, Martin~Renqiang Min, Bing Bai, Junyoung Gwak, and Manmohan
+  Chandraker.
+\newblock Conditional generation with a question-answering blueprint, 2019.
+\newblock Introduces Fr\'echet Video Distance (FVD) metric.
+
+\bibitem[\protect\citeauthoryear{Blattmann \bgroup \em et al.\egroup
+  }{2023}]{blattmann2023svd}
+Andreas Blattmann, Robin Rombach, Huan Ling, Tim Dockhorn, Karsten Kreis, Sanja
+  Fidler, and Patrick Esser.
+\newblock Align your latents: High-resolution video synthesis with latent
+  diffusion models.
+\newblock {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, pages 22563--22575, 2023.
+
+\bibitem[\protect\citeauthoryear{Charatan \bgroup \em et al.\egroup
+  }{2024}]{charatan2024pixelsplat}
+David Charatan, Sizhe~Lester Li, Andrea Tagliasacchi, and Vincent Sitzmann.
+\newblock {pixelSplat}: {3D} {G}aussian {S}plats from image pairs for scalable
+  generalizable {3D} reconstruction.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, 2024.
+
+\bibitem[\protect\citeauthoryear{Chen \bgroup \em et al.\egroup
+  }{2025}]{chen2025pldsyolo}
+Yunsheng Chen, Aiwu Zhang, Jiancong Shi, Feng Gao, Juwen Guo, and Ruizhe Wang.
+\newblock Paint loss detection and segmentation based on {YOLO}: An improved
+  model for ancient murals and color paintings.
+\newblock {\em Heritage}, 8(4):136, 2025.
+
+\bibitem[\protect\citeauthoryear{Dong}{2024}]{dong2024enhancingpainting}
+Yuexi Dong.
+\newblock Enhancing painting exhibition experiences with the application of
+  augmented reality-based {AI} video generation technology.
+\newblock In {\em HCI International 2024 -- Late Breaking Papers}, pages
+  256--262. Springer, 2024.
+
+\bibitem[\protect\citeauthoryear{Fox-Gieg}{2024}]{foxgieg2024lightning}
+Nick Fox-Gieg.
+\newblock Lightning {A}rtist {T}oolkit: A hand-drawn volumetric animation
+  pipeline.
+\newblock In {\em Proceedings of the ACM on Computer Graphics and Interactive
+  Techniques}, 2024.
+
+\bibitem[\protect\citeauthoryear{Guo \bgroup \em et al.\egroup
+  }{2024}]{guo2024liveportrait}
+Jianzhu Guo, Ding-Yun Zhang, Yuan Liu, Zhizhou Zhong, Yuan Zhang, Pengfei Wan,
+  and Di~Zhang.
+\newblock {LivePortrait}: Efficient portrait animation with stitching and
+  retargeting control.
+\newblock {\em arXiv preprint arXiv:2407.03168}, 2024.
+
+\bibitem[\protect\citeauthoryear{Ho \bgroup \em et al.\egroup
+  }{2022}]{ho2022vdm}
+Jonathan Ho, Tim Salimans, Alexey Gritsenko, William Chan, Mohammad Norouzi,
+  and David~J. Fleet.
+\newblock Video diffusion models.
+\newblock {\em arXiv preprint arXiv:2204.03458}, 2022.
+
+\bibitem[\protect\citeauthoryear{Hu \bgroup \em et al.\egroup
+  }{2022}]{hu2022lora}
+Edward~J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean
+  Wang, Lu~Wang, and Weizhu Chen.
+\newblock {LoRA}: Low-rank adaptation of large language models.
+\newblock In {\em Proceedings of the International Conference on Learning
+  Representations (ICLR)}, 2022.
+
+\bibitem[\protect\citeauthoryear{Huang \bgroup \em et al.\egroup
+  }{2024}]{huang20242dgs}
+Binbin Huang, Zehao Yu, Anpei Chen, Andreas Geiger, and Shenghua Gao.
+\newblock 2d gaussian splatting for geometrically accurate radiance fields.
+\newblock {\em ACM Transactions on Graphics (SIGGRAPH)}, 43(4):1--11, 2024.
+
+\bibitem[\protect\citeauthoryear{Jiang \bgroup \em et al.\egroup
+  }{2025}]{jiang2025anysplat}
+Lihan Jiang, Yu-Cheng Mao, et~al.
+\newblock {AnySplat}: Feed-forward {3D} {G}aussian {S}platting from
+  unconstrained views.
+\newblock In {\em ACM Transactions on Graphics (SIGGRAPH Asia)}, 2025.
+
+\bibitem[\protect\citeauthoryear{Jocher \bgroup \em et al.\egroup
+  }{2023}]{jocher2023yolov8}
+Glenn Jocher, Ayush Chaurasia, and Jing Qiu.
+\newblock {Ultralytics YOLOv8}.
+\newblock \url{https://github.com/ultralytics/ultralytics}, 2023.
+
+\bibitem[\protect\citeauthoryear{Kerbl \bgroup \em et al.\egroup
+  }{2023}]{kerbl20233dgs}
+Bernhard Kerbl, Georgios Kopanas, Thomas Leimk{\"u}hler, and George Drettakis.
+\newblock 3d gaussian splatting for real-time radiance field rendering.
+\newblock {\em ACM Transactions on Graphics (SIGGRAPH)}, 42(4):1--14, 2023.
+
+\bibitem[\protect\citeauthoryear{Kirillov \bgroup \em et al.\egroup
+  }{2023}]{kirillov2023sam}
+Alexander Kirillov, Eric Mintun, Nikhila Ravi, Hanzi Mao, Chloe Rolland, Laura
+  Gustafson, Tete Xiao, Spencer Whitehead, Alexander~C. Berg, Wan-Yen Lo, Piotr
+  Doll{\'a}r, and Ross Girshick.
+\newblock Segment anything.
+\newblock In {\em Proceedings of the IEEE/CVF International Conference on
+  Computer Vision (ICCV)}, 2023.
+
+\bibitem[\protect\citeauthoryear{{Lightricks Team}}{2025}]{ltxvideo2024}
+{Lightricks Team}.
+\newblock {LTX-Video}: Real-time latent diffusion video generation model.
+\newblock {\em arXiv preprint arXiv:2501.00103}, 2025.
+
+\bibitem[\protect\citeauthoryear{Liu \bgroup \em et al.\egroup
+  }{2021}]{liu2021neuralstrokes}
+Difan Liu, Matthew Fisher, Aaron Hertzmann, and Evangelos Kalogerakis.
+\newblock Neural strokes: Stylized line drawing of {3D} shapes.
+\newblock In {\em Proceedings of the IEEE/CVF International Conference on
+  Computer Vision (ICCV)}, pages 14204--14213, 2021.
+
+\bibitem[\protect\citeauthoryear{Lowenthal}{2015}]{lowenthal2015heritage}
+David Lowenthal.
+\newblock The past is a foreign country -- revisited.
+\newblock {\em Cambridge University Press}, 2015.
+
+\bibitem[\protect\citeauthoryear{Luo \bgroup \em et al.\egroup
+  }{2026}]{luo2026shadowdraw}
+Rundong Luo, Noah Snavely, and Wei-Chiu Ma.
+\newblock {ShadowDraw}: From any object to shadow-drawing compositional art.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, 2026.
+
+\bibitem[\protect\citeauthoryear{Mildenhall \bgroup \em et al.\egroup
+  }{2020}]{mildenhall2020nerf}
+Ben Mildenhall, Pratul~P. Srinivasan, Matthew Tancik, Jonathan~T. Barron, Ravi
+  Ramamoorthi, and Ren Ng.
+\newblock {NeRF}: Representing scenes as neural radiance fields for view
+  synthesis.
+\newblock In {\em Proceedings of the European Conference on Computer Vision
+  (ECCV)}, pages 405--421, 2020.
+
+\bibitem[\protect\citeauthoryear{Ming \bgroup \em et al.\egroup
+  }{2026}]{ming2026printing}
+Yutao Ming, Teng Xu, Youjia Wang, et~al.
+\newblock Printing the underdetermined: Materializing multi-solutionness in
+  figurative paintings.
+\newblock In {\em Proceedings of the ACM on Computer Graphics and Interactive
+  Techniques}, 2026.
+
+\bibitem[\protect\citeauthoryear{Nguyen \bgroup \em et al.\egroup
+  }{2024}]{nguyen2024region}
+Vivien Nguyen, Matthew Fisher, Aaron Hertzmann, and Szymon Rusinkiewicz.
+\newblock Region-aware simplification and stylization of {3D} line drawings.
+\newblock In {\em Computer Graphics Forum}, 2024.
+
+\bibitem[\protect\citeauthoryear{Olsen \bgroup \em et al.\egroup
+  }{2009}]{olson2011sketch}
+Luke Olsen, Faramarz~F. Samavati, Mario~Costa Sousa, and Joaquim~A. Jorge.
+\newblock Sketch-based modeling: A survey.
+\newblock In {\em Computers \& Graphics}, pages 85--103, 2009.
+
+\bibitem[\protect\citeauthoryear{Peebles and Xie}{2023}]{peebles2023dit}
+William Peebles and Saining Xie.
+\newblock Scalable diffusion models with transformers.
+\newblock In {\em Proceedings of the IEEE/CVF International Conference on
+  Computer Vision (ICCV)}, 2023.
+
+\bibitem[\protect\citeauthoryear{Peng \bgroup \em et al.\egroup
+  }{2024}]{peng2024controlnext}
+Bohao Peng, Jian Wang, Yuechen Zhang, Wenbo Li, Ming-Chang Yang, and Jiaya Jia.
+\newblock {ControlNeXt}: Powerful and efficient control for image and video
+  generation.
+\newblock {\em arXiv preprint arXiv:2408.06070}, 2024.
+
+\bibitem[\protect\citeauthoryear{Ravi \bgroup \em et al.\egroup
+  }{2024}]{ravi2024sam2}
+Nikhila Ravi, Valentin Gabeur, Yuan-Ting Hu, Ronghang Hu, Chaitanya Ryali,
+  Tengyu Ma, Haitham Khedr, Roman R{\"a}dle, Chloe Rolland, Laura Gustafson,
+  Eric Mintun, Junting Pan, Kalyan~Vasudev Alwala, Nicolas Carion, Chao-Yuan
+  Wu, Ross Girshick, Piotr Doll{\'a}r, and Christoph Feichtenhofer.
+\newblock {SAM 2}: Segment anything in images and videos.
+\newblock In {\em arXiv preprint arXiv:2408.00714}, 2024.
+
+\bibitem[\protect\citeauthoryear{Rombach \bgroup \em et al.\egroup
+  }{2022}]{rombach2022ldm}
+Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Bj{\"o}rn
+  Ommer.
+\newblock High-resolution image synthesis with latent diffusion models.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, pages 10684--10695, 2022.
+
+\bibitem[\protect\citeauthoryear{Saleh and Elgammal}{2016}]{saleh2016metric}
+Babak Saleh and Ahmed Elgammal.
+\newblock Large-scale classification of fine-art paintings: Learning the right
+  metric on the right feature.
+\newblock In {\em International Journal for Digital Art History}, 2016.
+
+\bibitem[\protect\citeauthoryear{Tan \bgroup \em et al.\egroup
+  }{2024}]{tan2024edtalk}
+Shuai Tan, Bin Ji, Mengxiao Bi, and Ye~Pan.
+\newblock {EDTalk}: Efficient disentanglement for emotional talking head
+  synthesis.
+\newblock In {\em Proceedings of the European Conference on Computer Vision
+  (ECCV)}, 2024.
+
+\bibitem[\protect\citeauthoryear{Tang \bgroup \em et al.\egroup
+  }{2024}]{tang2024dreamgaussian}
+Jiaxiang Tang, Jiawei Ren, Hang Zhou, Ziwei Liu, and Gang Zeng.
+\newblock {DreamGaussian}: Generative {G}aussian {S}platting for efficient {3D}
+  content creation.
+\newblock In {\em International Conference on Learning Representations (ICLR)},
+  2024.
+
+\bibitem[\protect\citeauthoryear{Tian \bgroup \em et al.\egroup
+  }{2025}]{tian2025yolov12}
+Yunjie Tian, Qixiang Ye, and David Doermann.
+\newblock {YOLOv12}: Attention-centric real-time object detectors.
+\newblock {\em arXiv preprint arXiv:2502.12524}, 2025.
+
+\bibitem[\protect\citeauthoryear{{Wan Team}}{2025}]{wan2025}
+{Wan Team}.
+\newblock {Wan}: Open and advanced large-scale video generative models.
+\newblock {\em arXiv preprint arXiv:2503.20314}, 2025.
+
+\bibitem[\protect\citeauthoryear{Wang \bgroup \em et al.\egroup
+  }{2024a}]{wang2024yolov10}
+Ao~Wang, Hui Chen, Lihao Liu, Kai Chen, Zijia Lin, Jungong Han, and Guiguang
+  Ding.
+\newblock {YOLOv10}: Real-time end-to-end object detection.
+\newblock In {\em Advances in Neural Information Processing Systems (NeurIPS)},
+  2024.
+
+\bibitem[\protect\citeauthoryear{Wang \bgroup \em et al.\egroup
+  }{2024b}]{wang2024yolov9}
+Chien-Yao Wang, I-Hau Yeh, and Hong-Yuan~Mark Liao.
+\newblock {YOLOv9}: Learning what you want to learn using programmable gradient
+  information.
+\newblock {\em arXiv preprint arXiv:2402.13616}, 2024.
+
+\bibitem[\protect\citeauthoryear{Wang \bgroup \em et al.\egroup
+  }{2024c}]{wang2024easycontrol}
+Cong Wang, Jiaxi Gu, Panwen Hu, Haoyu Zhao, Yuanfan Guo, Jianhua Han, Hang Xu,
+  and Xiaodan Liang.
+\newblock {EasyControl}: Transfer {ControlNet} to video diffusion for
+  controllable generation and interpolation.
+\newblock {\em arXiv preprint arXiv:2408.13005}, 2024.
+
+\bibitem[\protect\citeauthoryear{Wang \bgroup \em et al.\egroup
+  }{2024d}]{wang2024lineart}
+Xi~Wang, Hongzhen Li, Heng Fang, Yichen Peng, Haoran Xie, Xi~Yang, and Chuntao
+  Li.
+\newblock {LineArt}: A knowledge-guided training-free high-quality appearance
+  transfer for design drawing with diffusion model.
+\newblock {\em arXiv preprint arXiv:2412.11519}, 2024.
+
+\bibitem[\protect\citeauthoryear{Wang \bgroup \em et al.\egroup
+  }{2024e}]{wang2024triposplat}
+Zhiwen Wang, Jianfei Kang, Wan Zhang, Junyi Yan, Diogo Luvizon, Dan Xu, Ping
+  Tan, and Mingming Gong.
+\newblock {TripoSplat}: Fast 3d object generation from single images.
+\newblock In {\em arXiv preprint arXiv:2410.02064}, 2024.
+
+\bibitem[\protect\citeauthoryear{Wu \bgroup \em et al.\egroup
+  }{2025}]{wu2025aniclipart}
+Ronghuan Wu, Wanchao Su, Kede Ma, and Jing Liao.
+\newblock {AniClipart}: Clipart animation with text-to-video priors.
+\newblock {\em International Journal of Computer Vision (IJCV)},
+  133:3149--3165, 2025.
+
+\bibitem[\protect\citeauthoryear{Xie and Tu}{2015}]{xie2015hed}
+Saining Xie and Zhuowen Tu.
+\newblock Holistically-nested edge detection.
+\newblock In {\em Proceedings of the IEEE International Conference on Computer
+  Vision (ICCV)}, pages 1395--1403, 2015.
+
+\bibitem[\protect\citeauthoryear{Xing \bgroup \em et al.\egroup
+  }{2025}]{xing2025motioncanvas}
+Jinbo Xing, Long Mai, Cusuh Ham, Aniruddha Mahapatra, Chi-Wing Fu, Tien-Tsin
+  Wong, and Feng Liu.
+\newblock {MotionCanvas}: Cinematic shot design with controllable
+  image-to-video generation.
+\newblock In {\em ACM SIGGRAPH}, 2025.
+
+\bibitem[\protect\citeauthoryear{Yang \bgroup \em et al.\egroup
+  }{2024}]{yang2024depthanything}
+Lihe Yang, Bingyi Kang, Zilong Huang, Xiaogang Xu, Jiashi Feng, and Hengshuang
+  Zhao.
+\newblock Depth anything {V2}.
+\newblock In {\em arXiv preprint arXiv:2406.09414}, 2024.
+
+\bibitem[\protect\citeauthoryear{Yang \bgroup \em et al.\egroup
+  }{2025}]{yang2025cogvideox}
+Zhuoyi Yang, Jiayan Teng, Wendi Zheng, Ming Ding, et~al.
+\newblock {CogVideoX}: Text-to-video diffusion models with an expert
+  transformer.
+\newblock In {\em International Conference on Learning Representations (ICLR)},
+  2025.
+
+\bibitem[\protect\citeauthoryear{Zhang \bgroup \em et al.\egroup
+  }{2018}]{zhang2018lpips}
+Richard Zhang, Phillip Isola, Alexei~A. Efros, Eli Shechtman, and Oliver Wang.
+\newblock The unreasonable effectiveness of deep features as a perceptual
+  metric.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, pages 586--595, 2018.
+
+\bibitem[\protect\citeauthoryear{Zhang \bgroup \em et al.\egroup
+  }{2023}]{zhang2023controlnet}
+Lvmin Zhang, Anyi Rao, and Maneesh Agrawala.
+\newblock Adding conditional control to text-to-image diffusion models.
+\newblock In {\em Proceedings of the IEEE/CVF International Conference on
+  Computer Vision (ICCV)}, pages 3836--3847, 2023.
+
+\bibitem[\protect\citeauthoryear{Zhang \bgroup \em et al.\egroup
+  }{2024}]{zhang2024artgallery}
+Min Zhang, Shuo Wang, and Li~Chen.
+\newblock Deep learning for cultural heritage digitization: A survey.
+\newblock In {\em ACM Computing Surveys}, pages 1--38, 2024.
+
+\bibitem[\protect\citeauthoryear{Zou \bgroup \em et al.\egroup
+  }{2021}]{zou2021stylized}
+Zhengxia Zou, Tianyang Shi, Shuang Qiu, Yi~Yuan, and Zhenwei Shi.
+\newblock Stylized neural painting.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, pages 15689--15698, 2021.
+
+\end{thebibliography}

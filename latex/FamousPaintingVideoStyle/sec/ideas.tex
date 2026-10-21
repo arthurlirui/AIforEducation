@@ -1,0 +1,187 @@
+% =====================================================================
+%  Section: Proposed Research Ideas (Innovative Directions)
+% =====================================================================
+\section{Proposed Research Ideas}
+\label{sec:ideas}
+
+Building on the survey above and the open challenges identified in
+Section~\ref{sec:discussion}, we propose four research directions for famous-painting
+dynamic video-style generation. All four ideas share a common practical stance: they
+build on \textbf{open-source, locally-deployable video diffusion backbones} such as
+LTX-Video~2.x and Wan2.1/2.2-I2V, embed \textbf{human artistic guidance} through
+hand-drawn drafts (sketches, line drawings, color blocks), provide \textbf{multi-granular
+control} over color and stroke distributions, and introduce \textbf{art-creation-domain
+innovations} drawn from classical painting theory.
+
+% ---------------------------------------------------------------------
+\subsection{Idea 1: Stroke-Anchored Co-Painting Video Generation with Local Video Diffusion}
+\label{sec:idea1}
+
+\paragraph{Motivation.} Professional painters do not think in pixels or text prompts;
+they think in \emph{strokes}---their direction, pressure, color, and ordering. Current
+I2V pipelines accept an image and a prompt, leaving the artist outside the loop.
+
+\paragraph{Core idea.} Build a human-in-the-loop video generation pipeline on top of
+Wan2.1-I2V (or LTX-Video) where the artist provides:
+(i)~a reference painting (e.g., a Van Gogh canvas) as the style anchor, and
+(ii)~a sequence of \emph{hand-drawn stroke drafts}---rough sketches and color blocks
+indicating where motion should occur (a swaying cypress, a flowing river). These drafts
+act as \emph{spatial--temporal anchors}: a ControlNet-style adapter converts the
+stroke drafts into per-frame conditioning, while a stroke-order predictor determines the
+temporal evolution of the color blocks.
+
+\paragraph{Control granularity.} The system supports both \textbf{precise} control
+(tight line constraints via canny/HED adapters, exact color palette matching via a
+histogram-conditional adapter) and \textbf{fuzzy} control (loose color-block regions,
+soft attention masks that allow the model to invent texture within a region).
+
+\paragraph{Art-domain innovation.} Inspired by the classical \emph{fat-over-lean}
+principle of oil painting, we design a \emph{stroke-temporal curriculum} that schedules
+the diffusion denoising steps to first establish broad color composition (lean
+underpainting) and then refine high-frequency brush texture (fat impasto layers). This
+mirrors how painters physically layer paint, and serves as a domain-informed prior that
+improves both temporal coherence and artistic fidelity.
+
+\paragraph{Why it works.} StyleMaster~\cite{ye2025stylemaster} shows that motion adapters
+and patch-level style filtering substantially improve stylized video quality; combining
+this with stroke-level ControlNet conditioning~\cite{zhang2023controlnet} and a
+painting-theoretic curriculum provides a principled way to inject human artistic intent
+into a local open-source backbone.
+
+% ---------------------------------------------------------------------
+\subsection{Idea 2: Palette-and-Line Dual-Conditioned Ink-Wash Video Synthesis}
+\label{sec:idea2}
+
+\paragraph{Motivation.} Chinese ink wash (Shanshui) painting is governed by the
+classical \emph{five-level ink theory} (焦、浓、重、淡、清) and deliberate \emph{negative
+space} (留白). Existing ink-style methods~\cite{he2023bitgan,liu2026chipdiff,zhang2025inkspirit}
+focus on single images and do not expose these art-specific axes as controllable
+parameters.
+
+\paragraph{Core idea.} Fine-tune Wan2.1-I2V with a dual-conditional adapter that
+accepts:
+(i)~a \emph{line-distribution map} (the artist's line draft of mountains, rivers,
+pavilions) as a structural prior, and
+(ii)~a \emph{color/ink-density distribution map} (hand-painted color blocks specifying
+the five-level ink tones and blank-space regions). The two conditions are injected at
+different stages of the denoising process: line distribution governs structural
+composition in early steps, while ink-density distribution governs tonal rendering in
+later steps.
+
+\paragraph{Control granularity.} \textbf{Precise} mode enforces exact ink-density
+histogram matching (a five-bin histogram aligned to the five ink levels) for strict
+aesthetic adherence; \textbf{fuzzy} mode allows the model to interpolate freely within
+each tonal band, producing variations suitable for creative exploration.
+
+\paragraph{Art-domain innovation.} We introduce a \emph{blank-space loss} that explicitly
+penalizes texture generation inside user-designated negative-space regions, formalizing
+the aesthetic principle of \emph{计白当黑} (treating white as black). Combined with a
+\emph{rhythm-of-strokes} prior derived from calligraphic timing, the model is encouraged
+to produce temporally coherent ``breathing'' motion (drifting mist, flowing water) that
+respects the compositional voids---an effect difficult to achieve with generic video
+diffusion priors.
+
+\paragraph{Why it works.} ChipDiff~\cite{liu2026chipdiff} already demonstrates that
+loss-gradient guidance on a diffusion model can capture ink aesthetics; extending this
+to a video backbone with explicit dual conditioning turns art-theoretic principles into
+controllable, locally-runnable tools.
+
+% ---------------------------------------------------------------------
+\subsection{Idea 3: Sketch-to-Painting-Video with Hierarchical Fuzzy-to-Precise Control}
+\label{sec:idea3}
+
+\paragraph{Motivation.} Artists iterate: a sketch becomes a color study, then a
+detailed painting, then an animation. Single-shot I2V generation collapses this
+hierarchy into one step, denying the artist intermediate control.
+
+\paragraph{Core idea.} A multi-stage pipeline on LTX-Video where the user supplies a
+\emph{progressive sequence of drafts}:
+(1)~a rough sketch (line draft),
+(2)~a color-block draft (flat regions of color), and
+(3)~a detailed reference painting. Each draft activates a different conditional branch:
+sketch $\rightarrow$ structure ControlNet, color blocks $\rightarrow$ palette adapter,
+reference $\rightarrow$ style LoRA + IP-Adapter. The pipeline generates a short video
+clip at each stage, allowing the artist to refine the next draft based on the previous
+output---a true \emph{fuzzy-to-precise} co-creation loop.
+
+\paragraph{Control granularity.} A single \emph{control-precision knob} $\lambda \in [0,1]$
+interpolates between fuzzy guidance (low $\lambda$, the model freely interprets the
+drafts) and precise guidance (high $\lambda$, the output must closely match the
+drafts). This is implemented as a learned weighting of conditional features, giving the
+artist a continuous dial between creative surprise and faithful execution.
+
+\paragraph{Art-domain innovation.} The staged control mirrors the classical
+\emph{sketch $\rightarrow$ underpainting $\rightarrow$ glazing} workflow of Western
+atelier practice. We further introduce a \emph{compositional-balance loss} based on the
+golden ratio and rule-of-thirds, encouraging drafts and outputs to maintain classical
+compositional harmony---a domain prior rarely used in video generation.
+
+\paragraph{Why it works.} Painting Many Pasts~\cite{zhao2020painting} and Stylized Neural
+Painting~\cite{zou2021stylized} show that stroke-by-stroke generation is feasible; our
+idea lifts this to the video level using a modern open-source diffusion backbone, while
+the fuzzy-to-precise dial addresses the controllability gap identified in
+StyleMaster~\cite{ye2025stylemaster} and EchoStyle~\cite{li2026echostyle}.
+
+% ---------------------------------------------------------------------
+\subsection{Idea 4: Living-Canvas---Collaborative Multi-Region Animation with Artist-Defined Motion Scripts}
+\label{sec:idea4}
+
+\paragraph{Motivation.} ``Talking painting'' demonstrations~\cite{zakharov2019fewshot,guo2024liveportrait}
+animate a single portrait. But famous paintings are often \emph{canvases with multiple
+regions}---a sky, a river, a crowd, a central figure---each of which the artist may want
+to animate differently.
+
+\paragraph{Core idea.} A region-aware video generation framework built on
+Wan2.1-I2V (multi-region) or LTX-Video. The artist segments the reference painting into
+regions and assigns each a \emph{motion script} via hand-drawn arrows, color-flow
+blocks, or text. Each region is conditioned independently: a sky region may receive a
+soft color-flow block (fuzzy control over cloud drift), while a central portrait region
+receives a precise line-drawing of facial motion (precise control for a ``talking
+Mona Lisa''). A cross-region consistency module, built on CoDeF-style content
+deformation fields~\cite{ouyang2024codef}, ensures seams between regions remain
+temporally coherent.
+
+\paragraph{Control granularity.} Per-region $\lambda$ values allow mixed precision: a
+precise portrait next to a fuzzy impressionist background. This compositional control is
+not possible with monolithic I2V models.
+
+\paragraph{Art-domain innovation.} We introduce the concept of \emph{focal-point
+choreography} from classical painting composition: the artist designates a primary
+focal region (high precision, strong motion) and supporting regions (low precision,
+ambient motion), echoing the artistic principle of \emph{主从虚实} (primary--secondary,
+solid--void). The model's attention budget is biased toward focal regions, producing
+videos with deliberate artistic hierarchy rather than uniform motion.
+
+\paragraph{Why it works.} RefVFX~\cite{jones2026refvfx} demonstrates reference-guided
+temporal effect transfer, and LivePortrait~\cite{guo2024liveportrait} shows efficient
+portrait animation; combining region-level conditioning with a local video diffusion
+backbone and focal-point choreography yields a system that respects the multi-region
+nature of famous paintings while keeping artists in control.
+
+% ---------------------------------------------------------------------
+\subsection{Summary of Innovations}
+
+Table~\ref{tab:ideas} summarizes how each idea maps to the four requirements.
+
+\begin{table}[t]
+    \centering
+    \small
+    \begin{tabular}{p{0.20\linewidth} p{0.20\linewidth} p{0.20\linewidth} p{0.20\linewidth} p{0.13\linewidth}}
+        \toprule
+        Idea & Open Backbone & Human Draft & Control Granularity & Art Innovation \\
+        \midrule
+        I1: Stroke-Anchored   & Wan2.1 / LTX & Stroke drafts + color blocks & Precise \& fuzzy & Fat-over-lean curriculum \\
+        I2: Palette-and-Line  & Wan2.1       & Line + ink-density maps       & Precise \& fuzzy & Five-ink theory, blank-space loss \\
+        I3: Sketch-to-Painting-Video & LTX  & Sketch $\rightarrow$ color $\rightarrow$ detail & Fuzzy-to-precise dial & Atelier workflow, golden-ratio loss \\
+        I4: Living-Canvas     & Wan2.1 / LTX & Per-region scripts + arrows   & Per-region mixed & Focal-point choreography \\
+        \bottomrule
+    \end{tabular}
+    \caption{Mapping of the four proposed ideas to the design requirements.}
+    \label{tab:ideas}
+\end{table}
+
+All four ideas are designed to run on a single local GPU using open-weights models,
+keep the artist in the loop through hand-drawn drafts at multiple abstraction levels,
+offer a continuous spectrum from precise to fuzzy control, and embed principles drawn
+from classical painting theory---together forming a coherent research agenda for
+famous-painting dynamic video-style generation.

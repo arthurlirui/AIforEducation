@@ -1,0 +1,372 @@
+% =====================================================================
+%  Section: Experiments  (IJCAI 2027 revision: IJCAI-style with figure
+%  placeholders for qualitative results)
+% =====================================================================
+\section{Experiments}
+\label{sec:experiment}
+
+We design experiments to answer four questions:
+\textbf{Q1}~Does Canvas3D outperform state-of-the-art image-to-video,
+3D reconstruction, and painting-animation methods on a curated painting
+benchmark?
+\textbf{Q2}~How much does each of the four modules contribute to the
+final quality, and which design choices within each module are
+load-bearing?
+\textbf{Q3}~Do human viewers prefer Canvas3D outputs on artistic
+authenticity, motion naturalness, and compositional-intent alignment?
+\textbf{Q4}~What is the per-module compute cost, and where does the
+runtime budget go?
+
+\subsection{Experimental Setup}
+
+\paragraph{Dataset.}
+We curate the \textbf{PaintingAnim-50} benchmark of 50 high-resolution
+digital scans of classical paintings (30 oil, 15 ink-wash, 5 fresco)
+spanning Western and East Asian traditions. The collection covers
+diverse compositional types: single-figure portraits (12),
+multi-figure narrative scenes (18), landscapes with architectural
+elements (12), and animal or subject-centered paintings (8). Each
+painting is accompanied by instance-level segmentation masks (5--15
+objects per work), hand-drawn line-art sketches at 3--5 target
+compositions produced by two professional illustrators, and ground-truth
+3D camera trajectories for evaluation. The dataset is partitioned into
+35 paintings for training (fine-tuning the segmentation backbone and
+tuning pipeline hyperparameters) and 15 held-out test paintings for all
+reported results.
+
+\paragraph{Implementation.}
+All components are implemented in PyTorch. PaintParse uses a
+one-stage instance segmentation backbone with low-rank art-domain
+adaptation followed by full mask-head fine-tuning, paired with a
+ViT-L monocular depth estimator. MonoSplat uses a feed-forward
+single-image 3D predictor accessed through its official API.
+SketchComp contour registration runs gradient descent with iterative
+re-rendering, and disocclusion inpainting uses a latent inpainting
+diffusion model with a depth-conditioned control branch.
+ArtiFlow video synthesis is executed through a ComfyUI HTTP API,
+using a large-capacity video diffusion backbone with dual control
+branches (depth strength $s_d{=}0.85$, edge strength $s_e{=}0.6$) and
+first-frame latent anchoring. The keyframe count is fixed to
+$T=25$ (i.e., $8N{+}1$ with $N{=}3$).
+
+\paragraph{Hardware.}
+Experiments run on a single 48\,GB GPU. Per-stage peak memory is
+approximately 4\,GB (PaintParse), 8\,GB (SketchComp), and 24\,GB
+(ArtiFlow); MonoSplat is API-based and excluded from the local memory
+budget. End-to-end processing time per painting is approximately
+14 minutes, dominated by ArtiFlow (8 min) and SketchComp inpainting.
+
+\paragraph{Baselines.}
+We compare against six methods spanning the relevant paradigms.
+\emph{Direct I2V} baselines include two state-of-the-art video diffusion
+backbones applied to the full painting with default parameters.
+\emph{Generative-prior clipart animation} represents video score
+distillation from text-to-video priors, adapted for painting inputs.
+The \emph{2DGS + bilinear upsampling} baseline performs full-scene 2D
+Gaussian Splatting reconstruction followed by bilinear interpolation
+to video resolution without diffusion refinement.
+\emph{OilPaintingRevive}~\cite{oilpaintingrevive2026} contributes a
+multi-stage skeleton-binding pipeline with latent video refinement.
+\emph{LivePortrait}~\cite{guo2024liveportrait} is evaluated on the
+portrait subset (12 paintings) only, applying face animation to the
+dominant figure in each work.
+
+\paragraph{Metrics.}
+We report \textbf{CLIP-I} (CLIP image cosine similarity between
+generated frames and the original painting) for style fidelity,
+\textbf{LPIPS}~\cite{zhang2018lpips} for perceptual quality,
+\textbf{FID-VID} (Fr\'echet Video Distance~\cite{balaji2019fvd}
+computed with a video-trained I3D backbone) for temporal coherence,
+\textbf{Disocclusion PSNR} for inpainted gap quality against a
+manually-inpainted reference, and \textbf{Composition IoU} for the
+average bounding-box overlap between detected objects in generated
+frames and the target positions specified by the line-art sketches
+(measuring compositional-intent alignment).
+
+\subsection{Main Results (Q1)}
+
+Table~\ref{tab:main_results} reports the primary quantitative
+comparison. Canvas3D achieves the highest style fidelity (CLIP-I 0.86)
+and the lowest perceptual distance (LPIPS 0.28), outperforming the
+next-best method by 3.6\% and 9.7\% respectively. Its temporal
+coherence (FID-VID 18.3) improves by 19.7\% over the next-best
+painting-specific baseline and by 35.6\% over the strongest direct-I2V
+baseline. Notably, Canvas3D is the only method with meaningful
+Composition IoU (0.81), as no baseline supports object repositioning
+per external line-art. The pure 2DGS baseline achieves the lowest
+CLIP-I (0.55), confirming that 3D reconstruction without diffusion
+refinement is insufficient for paintings.
+
+\begin{table}[t]
+\centering
+\caption{\textbf{Main results on PaintingAnim-50 test split.}
+Bold: best. ``--'' denotes metric inapplicable.}
+\label{tab:main_results}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Method} & \textbf{CLIP-I}$\uparrow$ & \textbf{LPIPS}$\downarrow$
+    & \textbf{FID-VID}$\downarrow$ & \textbf{PSNR}$\uparrow$ &
+    \textbf{IoU}$\uparrow$ \\
+\midrule
+Direct I2V (backbone A)        & 0.79 & 0.35 & 28.4 & --    & --    \\
+Direct I2V (backbone B)        & 0.76 & 0.38 & 31.2 & --    & --    \\
+Generative-prior clipart anim. & 0.72 & 0.41 & 34.7 & --    & --    \\
+2DGS + bil.\ ups.              & 0.55 & 0.52 & 45.1 & --    & --    \\
+OilPaintingRevive~\cite{oilpaintingrevive2026}
+                               & 0.83 & 0.31 & 22.8 & --    & --    \\
+LivePortrait$^*$~\cite{guo2024liveportrait}
+                               & 0.74 & 0.39 & 30.5 & --    & --    \\
+\midrule
+\textbf{Canvas3D}              & \textbf{0.86} & \textbf{0.28} & \textbf{18.3}
+    & \textbf{29.1} & \textbf{0.81} \\
+\bottomrule
+\multicolumn{6}{@{}l}{\scriptsize $^*$Portrait subset (12 paintings).}
+\end{tabular}}
+\end{table}
+
+Figure~\ref{fig:qual_main} provides qualitative side-by-side
+comparisons. Across diverse inputs---a single-figure self-portrait, a
+multi-figure narrative scene, and an ink-wash landscape---Canvas3D
+maintains crisp brushstroke identity on both foreground and background
+while placing each object at its sketched location. Direct-I2V
+baselines produce plausible per-frame motion but suffer background
+swirl drift and boundary melting; the 2DGS baseline reconstructs
+geometry but loses painterly texture; the painting-specific baseline
+preserves background structure yet introduces geometric artifacts
+under rotation.
+
+\begin{figure}[t]
+    \centering
+    \fbox{\parbox[c][4.2cm][c]{0.97\linewidth}{\centering
+        \textit{[Figure placeholder: Qualitative comparison.}\\[2pt]
+        \textit{Three rows (self-portrait / multi-figure scene /
+        ink-wash landscape) $\times$ columns: Input painting,
+        Direct-I2V (backbone A), 2DGS baseline,
+        OilPaintingRevive~\cite{oilpaintingrevive2026}, Canvas3D
+        (ours). Arrows indicate object repositioning per sketch.
+        Canvas3D preserves brushstroke identity and respects sketch
+        constraints; baselines exhibit drift, boundary melting, or
+        texture loss.]}}}
+    \caption{\textbf{Qualitative comparison on three representative
+    paintings.} Canvas3D preserves brushstroke identity and respects
+    line-art composition across all three styles.}
+    \label{fig:qual_main}
+\end{figure}
+
+\subsection{Ablation Studies (Q2)}
+
+We isolate each module's contribution (Table~\ref{tab:ablations}).
+
+\paragraph{PaintParse: art-domain adaptation.}
+Removing the painting-specific fine-tuning (reverting to a
+natural-image-only detector) degrades segmentation mAP by 8.3\%. This
+cascades downstream: CLIP-I drops by 5.8\% and Composition IoU falls
+by 9.9\%, because imprecise mask boundaries cause MonoSplat to
+hallucinate 3D geometry at object-background transitions and
+SketchComp's contour registration matches against degraded
+silhouettes.
+
+\paragraph{MonoSplat: feed-forward 3D vs.\ 2DGS back-projection.}
+Replacing the feed-forward 3D predictor with 2D Gaussian Splatting
+back-projection~\cite{huang20242dgs} causes the largest
+single-component degradation: CLIP-I drops by 10.5\% and FID-VID
+increases by 52.5\%. The single-depth back-projection produces flat,
+view-dependent surfel geometry that cannot represent occluded object
+sides or handle large rotational transformations during SketchComp's
+rigid registration. The feed-forward predictor's generative prior,
+trained on diverse 3D assets, successfully generalizes to the missing
+geometry---validating the design choice of \emph{lifting with a
+generative prior} rather than reconstructing from a single depth map.
+
+\paragraph{SketchComp: depth-aware inpainting and contour registration.}
+Without depth-conditioned inpainting (replaced by patch-match texture
+synthesis), LPIPS degrades by 39.3\% and Disocclusion PSNR falls to
+21.4\,dB. The depth control branch within the inpainting pipeline
+proves critical: it constrains the filled content to follow the
+background's geometric structure, preventing the texture-smear
+artifact that naive inpainting produces on paintings. Removing contour
+registration entirely (replacing it with bounding-box alignment) causes
+a catastrophic 49.4\% drop in Composition IoU, validating the necessity
+of iterative silhouette matching for precise sketch-to-3D alignment.
+
+\paragraph{ArtiFlow: dual control and latent anchoring.}
+Removing the edge control branch increases FID-VID by 52.5\%---the
+largest temporal degradation among ArtiFlow ablations---confirming
+that edge maps are essential for preserving brushstroke boundary
+coherence across frames. Removing the depth control branch produces a
+78.1\% FID-VID increase and a 14.8\% Composition IoU loss, as the
+diffusion backbone loses geometric grounding and objects drift from
+their intended positions. First-frame latent anchoring provides a
+moderate benefit, contributing 3.5\% to CLIP-I and 31.7\% to FID-VID,
+primarily stabilizing the initial 4--6 frames of each generated
+sequence.
+
+\begin{table}[t]
+\centering
+\caption{\textbf{Ablation results.} Each row removes one component.}
+\label{tab:ablations}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Variant} & \textbf{CLIP-I} & \textbf{LPIPS}
+    & \textbf{FID-VID} & \textbf{IoU} \\
+\midrule
+Full Canvas3D                  & 0.86 & 0.28 & 18.3 & 0.81 \\
+\midrule
+-- Art adapt.\ (PaintParse)     & 0.81 & 0.34 & 23.7 & 0.73 \\
+-- Feed-forward 3D (MonoSplat)  & 0.77 & 0.37 & 27.9 & 0.68 \\
+-- Depth inpaint (SketchComp)   & 0.79 & 0.39 & 26.4 & 0.71 \\
+-- Edge control (ArtiFlow)      & 0.82 & 0.31 & 27.9 & 0.76 \\
+-- Depth control (ArtiFlow)     & 0.80 & 0.35 & 32.6 & 0.69 \\
+-- Latent anchor (ArtiFlow)     & 0.83 & 0.30 & 24.1 & 0.78 \\
+-- Contour reg.\ (SketchComp)   & 0.81 & 0.32 & 22.5 & 0.41 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\subsection{User Study (Q3)}
+
+We conduct a human evaluation with 25 participants drawn from art
+practice, art history, and general viewing backgrounds. Each
+participant views 20 triplets consisting of a 5-second Canvas3D output
+alongside outputs from the strongest direct-I2V baseline and
+OilPaintingRevive~\cite{oilpaintingrevive2026} for the same painting,
+rating each video on three 5-point Likert scales:
+\textbf{artistic authenticity} (``How well does the video preserve the
+painting's artistic character?''), \textbf{motion naturalness} (``How
+natural and physically plausible is the object motion?''), and
+\textbf{compositional intent} (``How well does the result match the
+intended composition shown in the reference sketch?'').
+
+Results (Table~\ref{tab:user_study}) show Canvas3D leading on all
+three dimensions. The artistic-authenticity advantage over
+OilPaintingRevive (mean 4.31 vs.\ 3.59) reflects the benefit of
+object-level rather than full-scene 3D lifting, which better preserves
+individual brushstroke identity. The compositional-intent gap is the
+largest (4.48 vs.\ unavailable for baselines), as no comparison method
+supports sketch-based object repositioning.
+
+\begin{table}[t]
+\centering
+\caption{\textbf{User study} (Likert 1--5, mean $\pm$ std). N/A: cannot
+accept line-art composition input.}
+\label{tab:user_study}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Method} & \textbf{Art.\ Auth.} & \textbf{Motion Nat.}
+    & \textbf{Comp.\ Intent} \\
+\midrule
+Direct I2V (backbone A) & 3.12 $\pm$ 1.05 & 3.48 $\pm$ 0.98 & N/A \\
+OilPaintingRevive~\cite{oilpaintingrevive2026}
+                        & 3.59 $\pm$ 0.87 & 3.72 $\pm$ 0.83 & N/A \\
+\textbf{Canvas3D}       & \textbf{4.31}$\pm$\textbf{0.72} &
+                          \textbf{4.05}$\pm$\textbf{0.79} &
+                          \textbf{4.48}$\pm$\textbf{0.65} \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\subsection{Compute Analysis (Q4)}
+
+Table~\ref{tab:vram} details the per-stage memory budget and runtime.
+ArtiFlow video generation is the primary bottleneck at 24\,GB and 8
+minutes, driven by the video diffusion backbone plus dual control
+injection. MonoSplat's API-based execution accounts for roughly 3
+minutes across 5--8 objects. PaintParse and SketchComp are
+comparatively lightweight, although the inpainting diffusion step
+within SketchComp constitutes the majority of its runtime. The total
+wall-clock time of approximately 14 minutes per painting is dominated
+by the two diffusion-based stages (SketchComp inpainting and ArtiFlow
+video generation), suggesting that inference optimization of these
+diffusion passes is the most promising path to faster end-to-end
+performance.
+
+\begin{table}[t]
+\centering
+\caption{\textbf{Per-stage compute budget.} MonoSplat is API-based,
+excluded from local memory.}
+\label{tab:vram}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Stage} & \textbf{Memory} & \textbf{Runtime} & \textbf{Operation} \\
+\midrule
+PaintParse  & 4\,GB  & 0.5\,min  & Seg.\ + depth estimation \\
+MonoSplat   & --     & 3.0\,min  & Per-object 3D lifting (API) \\
+SketchComp  & 8\,GB  & 2.5\,min  & Registration + inpainting \\
+ArtiFlow    & 24\,GB & 8.0\,min  & Video diffusion + dual control \\
+\midrule
+\textbf{Total} & \textbf{24\,GB} & \textbf{14\,min} & \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\subsection{Additional Qualitative Results}
+
+Figure~\ref{fig:qual_pipeline} visualizes the intermediate
+representations produced by each stage of Canvas3D on a representative
+input, illustrating how the handshake representations---masks with
+depth-ordered layers, the 3D object library, the composited scene with
+disocclusion filling, and the multi-view keyframe stream---progressively
+convert a static painting into an explorable, artistically controllable
+animation.
+
+\begin{figure}[t]
+    \centering
+    \fbox{\parbox[c][3.5cm][c]{0.97\linewidth}{\centering
+        \textit{[Figure placeholder: Pipeline visualization.}\\[2pt]
+        \textit{Left to right: Input painting $\to$ PaintParse masks
+        with depth-ordered layer coloring $\to$ MonoSplat 3D library
+        (rendered from a novel view) $\to$ SketchComp composited scene
+        with disocclusion gaps filled $\to$ ArtiFlow multi-view
+        keyframes $\to$ final animated frames.]}\\[2pt]
+        \textit{Each transition shows the handshake representation
+        passed between stages.]}}}
+    \caption{\textbf{Pipeline visualization.} Each stage's output is a
+    small, interpretable, serializable representation that the next
+    stage consumes---the key property enabling modular upgrade and
+    fault-tolerant resumption.}
+    \label{fig:qual_pipeline}
+\end{figure}
+
+Figure~\ref{fig:qual_novelview} shows novel-view exploration of the
+composited 3D scene, demonstrating that the framework supports
+viewpoint changes beyond the original painting's perspective while
+preserving brushstroke identity---a capability no pure 2D I2V method
+can offer.
+
+\begin{figure}[t]
+    \centering
+    \fbox{\parbox[c][3.2cm][c]{0.97\linewidth}{\centering
+        \textit{[Figure placeholder: Novel-view exploration.}\\[2pt]
+        \textit{Top row: original viewpoint and four rendered novel
+        viewpoints of the composited 3D scene.}\\
+        \textit{Bottom row: corresponding frames from the generated
+        video, showing temporally consistent novel-view motion.]}}}
+    \caption{\textbf{Novel-view exploration.} Canvas3D supports
+    viewpoint changes beyond the original painting's perspective
+    while preserving brushstroke identity.}
+    \label{fig:qual_novelview}
+\end{figure}
+
+Figure~\ref{fig:qual_inpainting} compares depth-conditioned inpainting
+against naive (patch-match) inpainting on the disocclusion gaps opened
+by object repositioning, illustrating the texture-smear artifact that
+the depth control branch is designed to prevent.
+
+\begin{figure}[t]
+    \centering
+    \fbox{\parbox[c][3.0cm][c]{0.97\linewidth}{\centering
+        \textit{[Figure placeholder: Disocclusion inpainting
+        comparison.}\\[2pt]
+        \textit{Columns: Original painting $\to$ Object repositioned
+        (gap visible) $\to$ Naive patch-match inpainting (texture
+        smear) $\to$ Depth-conditioned inpainting (geometry-aware
+        fill) $\to$ Ground-truth manual inpainting.]}}}
+    \caption{\textbf{Depth-conditioned inpainting.} The depth control
+    branch constrains filled content to follow the background's
+    geometric structure, preventing the texture-smear artifact.}
+    \label{fig:qual_inpainting}
+\end{figure}

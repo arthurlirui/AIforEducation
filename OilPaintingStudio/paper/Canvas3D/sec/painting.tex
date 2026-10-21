@@ -1,0 +1,25 @@
+% =====================================================================
+%  Section: Painting Synthesis and Stroke Rendering
+% =====================================================================
+\section{Painting Synthesis and Stroke Rendering}
+\label{sec:painting}
+
+Beyond pixel-level stylization, a complementary line of work models the physical creation
+process of paintings.
+
+\subsection{Time-Lapse and Stroke-Level Synthesis}
+
+\citet{zhao2020painting} introduced the task of synthesizing time-lapse videos of
+paintings (CVPR~2020), recurrently predicting painting steps from a single completed
+artwork. Stylized Neural Painting~\cite{zou2021stylized} (CVPR~2021) formulates
+image-to-painting translation as a search for physically meaningful stroke parameters
+through a differentiable neural renderer, producing stroke-by-stroke animations.
+Neural Strokes~\cite{liu2021neuralstrokes} extends the idea to line drawing of 3D shapes.
+
+\subsection{Data-Driven Brushstroke Rendering}
+
+\citet{madono2023data} proposed a data-driven ink painting brushstroke renderer trained
+on a robotically captured dataset of real ink paintings, faithfully reproducing complex
+effects such as bleeding and color mixing. Interactive video stylization via few-shot
+patch-based training~\cite{texler2020interactive} supports user-guided stylization while
+preserving temporal coherence.

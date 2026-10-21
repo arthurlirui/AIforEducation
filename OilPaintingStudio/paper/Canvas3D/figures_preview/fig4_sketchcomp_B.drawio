@@ -1,0 +1,72 @@
+<mxfile host="app.diagrams.net" modified="2026-10-13T00:00:00.000Z" agent="ZCode" version="24.0.0" type="device">
+  <diagram id="fig4_sketchcomp_B" name="SketchComp_B_Mono">
+    <mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="la" value="Line-art L" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;strokeWidth=1.5;fontSize=10;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="20" y="40" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lib" value="3DGS Library" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;strokeWidth=1.5;fontSize=10;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="20" y="90" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="match" value="Contour Register&#10;IoU + Chamfer loss&#10;rigid (theta, t, s)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#333333;strokeWidth=1.5;fontSize=10;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="170" y="30" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="plc" value="Placed {Gi'}" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;strokeWidth=1;fontSize=9;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="350" y="45" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="comp" value="Scene Assembly&#10;depth-sorted render&#10;2DGS background" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#333333;strokeWidth=1.5;fontSize=9;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="170" y="120" width="140" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="gap" value="Gaps Omega_gap" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;strokeWidth=1;fontSize=9;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="350" y="130" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="inp" value="Depth Inpaint&#10;SD + Depth ControlNet&#10;fill disocclusions" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#333333;strokeWidth=1.5;fontSize=9;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="170" y="200" width="140" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="fin" value="Scene S*, Depth D*" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#333333;strokeWidth=1;fontSize=9;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="170" y="280" width="140" height="30" as="geometry" />
+        </mxCell>
+        <!-- Edges -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=open;endFill=0;" edge="1" parent="1" source="la" target="match">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=open;endFill=0;" edge="1" parent="1" source="lib" target="match">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="120" y="105" />
+              <mxPoint x="120" y="90" />
+              <mxPoint x="170" y="90" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=open;endFill=0;" edge="1" parent="1" source="match" target="plc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=open;endFill=0;" edge="1" parent="1" source="plc" target="comp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=open;endFill=0;" edge="1" parent="1" source="comp" target="gap">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=open;endFill=0;" edge="1" parent="1" source="gap" target="inp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=open;endFill=0;" edge="1" parent="1" source="inp" target="fin">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=open;endFill=0;" edge="1" parent="1" source="comp" target="fin">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="147" />
+              <mxPoint x="400" y="147" />
+              <mxPoint x="400" y="295" />
+              <mxPoint x="310" y="295" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

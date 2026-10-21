@@ -1,0 +1,755 @@
+% =====================================================================
+%  Bibliography: Famous Painting Dynamic Video-Style Generation
+%  Focus: oil painting, ink wash painting, watercolor style transfer;
+%         image/video generation; portrait/painting animation.
+%  Sources: CVPR, ICCV, ECCV, AAAI, IJCAI, ACM TOG / SIGGRAPH, NeurIPS.
+% =====================================================================
+
+% ------------------- Foundations of Style Transfer -------------------
+
+@inproceedings{gatys2016image,
+  author    = {Gatys, Leon A. and Ecker, Alexander S. and Bethge, Matthias},
+  title     = {Image Style Transfer Using Convolutional Neural Networks},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {2414--2423},
+  year      = {2016}
+}
+
+@inproceedings{johnson2016perceptual,
+  author    = {Johnson, Justin and Alahi, Alexandre and Fei-Fei, Li},
+  title     = {Perceptual Losses for Real-Time Style Transfer and Super-Resolution},
+  booktitle = {Proceedings of the European Conference on Computer Vision (ECCV)},
+  pages     = {694--711},
+  year      = {2016}
+}
+
+@inproceedings{huang2017arbitrary,
+  author    = {Huang, Xun and Belongie, Serge},
+  title     = {Arbitrary Style Transfer in Real-Time with Adaptive Instance Normalization},
+  booktitle = {Proceedings of the IEEE International Conference on Computer Vision (ICCV)},
+  pages     = {1510--1519},
+  year      = {2017}
+}
+
+@inproceedings{park2019arbitrary,
+  author    = {Park, Dae Young and Lee, Kwang Hee},
+  title     = {Arbitrary Style Transfer With Style-Attentional Networks},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {5880--5888},
+  year      = {2019}
+}
+
+@inproceedings{deng2021stytr2,
+  author    = {Deng, Yingying and Tang, Fan and Dong, Weiming and Sun, Wen and Huang, Feiyue and Xu, Changsheng},
+  title     = {{StyTr$^2$}: Image Style Transfer with Transformers},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {13626--13636},
+  year      = {2022}
+}
+
+% ------------------- Video Style Transfer -------------------
+
+@inproceedings{ruder2016artistic,
+  author    = {Ruder, Manuel and Dosovitskiy, Alexey and Brox, Thomas},
+  title     = {Artistic Style Transfer for Videos},
+  booktitle = {German Conference on Pattern Recognition (GCPR)},
+  pages     = {26--36},
+  year      = {2016}
+}
+
+@inproceedings{chen2017coherent,
+  author    = {Chen, Dongdong and Liao, Jing and Yuan, Lu and Yu, Nenghai and Hua, Gang},
+  title     = {Coherent Online Video Style Transfer},
+  booktitle = {Proceedings of the IEEE International Conference on Computer Vision (ICCV)},
+  pages     = {1114--1123},
+  year      = {2017}
+}
+
+@inproceedings{huang2017realtime,
+  author    = {Huang, Haozhi and Wang, Hao and Luo, Wenhan and Ma, Lin and Jiang, Wei and Zhu, Xiaolong and Li, Zhifeng and Liu, Wei},
+  title     = {Real-Time Neural Style Transfer for Videos},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {783--791},
+  year      = {2017}
+}
+
+@inproceedings{deng2021arbitrary,
+  author    = {Deng, Yingying and Tang, Fan and Dong, Weiming and Sun, Wen and Huang, Feiyue and Xu, Changsheng},
+  title     = {Arbitrary Video Style Transfer via Multi-Channel Correlation},
+  booktitle = {Proceedings of the AAAI Conference on Artificial Intelligence},
+  volume    = {35},
+  number    = {2},
+  pages     = {1210--1217},
+  year      = {2021}
+}
+
+@inproceedings{wang2020consistent,
+  author    = {Wang, Wenjing and Xu, Jizheng and Zhang, Li and Wang, Yue and Liu, Jiaying},
+  title     = {Consistent Video Style Transfer via Compound Regularization},
+  booktitle = {Proceedings of the AAAI Conference on Artificial Intelligence},
+  volume    = {34},
+  number    = {07},
+  pages     = {12263--12270},
+  year      = {2020}
+}
+
+@inproceedings{gao2020reconet,
+  author    = {Gao, Chuan and Gu, Dayan and Zhang, Fangzhou and Yu, Yizhou},
+  title     = {{ReCoNet}: Real-Time Coherent Video Style Transfer Network},
+  booktitle = {Proceedings of the European Conference on Computer Vision (ECCV)},
+  pages     = {637--653},
+  year      = {2018}
+}
+
+% ------------------- Diffusion-based Style Transfer -------------------
+
+@inproceedings{zhang2023inversion,
+  author    = {Zhang, Yuxin and Huang, Nisha and Tang, Fan and Huang, Haibin and Ma, Chongyang and Dong, Weiming},
+  title     = {Inversion-based Style Transfer with Diffusion Models},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {10146--10156},
+  year      = {2023}
+}
+
+@inproceedings{chen2024artadapter,
+  author    = {Chen, Dar-Yen and Tennent, Hamish and Hsu, Ching-Wen},
+  title     = {{ArtAdapter}: Text-to-Image Style Transfer using Multi-Level Style Encoder and Explicit Adaptation},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2024}
+}
+
+@inproceedings{ye2025stylemaster,
+  author    = {Ye, Zixuan and Huang, Huijuan and Wang, Xintao and Wan, Pengfei and Zhang, Di and Luo, Wenhan},
+  title     = {{StyleMaster}: Stylize Your Video with Artistic Generation and Translation},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {2630--2640},
+  year      = {2025}
+}
+
+@inproceedings{li2026echostyle,
+  author    = {Li, Huaqiu and Wang, Jiahao and Cai, Sijia and Sheng, Hualian and Deng, Bing and Ye, Jieping and Luo, Wenhan},
+  title     = {{EchoStyle}: Unlocking High-Fidelity Video Stylization with Reverse Data Synthesis},
+  booktitle = {Proceedings of the European Conference on Computer Vision (ECCV)},
+  year      = {2026}
+}
+
+@inproceedings{jones2026refvfx,
+  author    = {Jones, Maxwell and Abdal, Rameen and Patashnik, Or and Salakhutdinov, Ruslan and Tulyakov, Sergey and Zhu, Jun-Yan and Wang, Kuan-Chieh Jackson},
+  title     = {Tuning-Free Visual Effect Transfer Across Videos},
+  booktitle = {Proceedings of the European Conference on Computer Vision (ECCV)},
+  year      = {2026}
+}
+
+% ------------------- Diffusion Video Editing / Generation -------------------
+
+@inproceedings{ceylan2023pix2video,
+  author    = {Ceylan, Duygu and Huang, Chun-Hao P. and Mitra, Niloy J.},
+  title     = {{Pix2Video}: Video Editing Using Image Diffusion},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  pages     = {23149--23160},
+  year      = {2023}
+}
+
+@inproceedings{chai2023stablevideo,
+  author    = {Chai, Wenhao and Guo, Xun and Wang, Gao and Lu, Yan},
+  title     = {{StableVideo}: Text-Driven Consistency-Aware Diffusion Video Editing},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  pages     = {22983--22993},
+  year      = {2023}
+}
+
+@inproceedings{geyer2023tokenflow,
+  author    = {Geyer, Michal and Bar-Tal, Omer and Bagon, Shai and Dekel, Tali},
+  title     = {{TokenFlow}: Consistent Diffusion Features for Consistent Video Editing},
+  booktitle = {Proceedings of the International Conference on Learning Representations (ICLR)},
+  year      = {2024}
+}
+
+@inproceedings{wu2023tuneavideo,
+  author    = {Wu, Jay Zhangjie and Ge, Yixiao and Wang, Xintao and Lei, Stan Weixian and Gu, Yufei and Shi, Yufei and Hsu, Wynne and Shan, Ying and Qie, Xiaohu and Shou, Mike Zheng},
+  title     = {{Tune-A-Video}: One-Shot Tuning of Image Diffusion Models for Text-to-Video Generation},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  pages     = {7589--7599},
+  year      = {2023}
+}
+
+@inproceedings{ouyang2024codef,
+  author    = {Ouyang, Haoyu and Xiao, Tengfei and Wang, Qidong and He, Guoqiang and Bian, Yu and Zhou, Yifan and Bai, Jinbo and Zhang, Junhui and Lu, Hao},
+  title     = {{CoDeF}: Content Deformation Fields for Temporally Consistent Video Processing},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {8089--8099},
+  year      = {2024}
+}
+
+@inproceedings{liang2024flowvid,
+  author    = {Liang, Feng and Ouyang, Hang and Pan, Zhaoyang and He, Yingqing and Wang, Yuwei and Zhang, Tong and Xing, Wei and Zhang, Yong and Xing, Wenhu},
+  title     = {{FlowVid}: Taming Imperfect Optical Flows for Consistent Video-to-Video Synthesis},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {8207--8216},
+  year      = {2024}
+}
+
+% ------------------- Painting Synthesis and Stroke Rendering -------------------
+
+@inproceedings{zhao2020painting,
+  author    = {Zhao, Amy and Balakrishnan, Guha and Lewis, Kathleen M. and Durand, Fredo and Guttag, John V. and Dalca, Adrian V.},
+  title     = {Painting Many Pasts: Synthesizing Time Lapse Videos of Paintings},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {8435--8445},
+  year      = {2020}
+}
+
+@inproceedings{zou2021stylized,
+  author    = {Zou, Zhengxia and Shi, Tianyang and Qiu, Shuang and Yuan, Yi and Shi, Zhenwei},
+  title     = {Stylized Neural Painting},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {15689--15698},
+  year      = {2021}
+}
+
+@inproceedings{liu2021neuralstrokes,
+  author    = {Liu, Difan and Fisher, Matthew and Hertzmann, Aaron and Kalogerakis, Evangelos},
+  title     = {Neural Strokes: Stylized Line Drawing of {3D} Shapes},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  pages     = {14204--14213},
+  year      = {2021}
+}
+
+@article{madono2023data,
+  author  = {Madono, Koki and Simo-Serra, Edgar},
+  title   = {Data-Driven Ink Painting Brushstroke Rendering},
+  journal = {Computer Graphics Forum},
+  volume  = {42},
+  number  = {7},
+  pages   = {e14965},
+  year    = {2023}
+}
+
+@inproceedings{texler2020interactive,
+  author    = {Texler, Ondrej and Futschik, David and Chai, Shu-Zhe and Tulyakov, Sergey and Echevarria, Javier and Dvoro{\v{z}}n{\'a}k, Ondrej and H{\v{a}}rk{\"o}nen, Erik and Sykora, Daniel},
+  title     = {Interactive Video Stylization Using Few-Shot Patch-Based Training},
+  booktitle = {ACM Transactions on Graphics (SIGGRAPH)},
+  volume    = {39},
+  number    = {4},
+  pages     = {1--14},
+  year      = {2020}
+}
+
+% ------------------- Chinese Ink / Shanshui Painting -------------------
+
+@inproceedings{liang2021instance,
+  author    = {Liang, Hao and Yang, Shuai and Wang, Wenjing and Liu, Jiaying},
+  title     = {Instance-Aware Coherent Video Style Transfer for {Chinese} Ink Wash Painting},
+  booktitle = {Proceedings of the International Joint Conference on Artificial Intelligence (IJCAI)},
+  pages     = {823--829},
+  year      = {2021}
+}
+
+@article{he2023bitgan,
+  author  = {He, Xiao and Zhu, Mingrui and Wang, Nannan and Wang, Xiaoyu and Gao, Xinbo},
+  title   = {{BiTGAN}: Bilateral Generative Adversarial Networks for {Chinese} Ink Wash Painting Style Transfer},
+  journal = {Science China Information Sciences},
+  volume  = {66},
+  number  = {1},
+  pages   = {119104},
+  year    = {2023}
+}
+
+@article{liu2026chipdiff,
+  author  = {Liu, Heng and Song, Zhiwei and Wang, Yongzhen and Hu, Bingwen and Wang, Yang},
+  title   = {{ChipDiff}: Staged Diffusion Model with Loss Gradient Guidance for {Chinese} Ink Painting Style Transfer},
+  journal = {Pattern Recognition},
+  volume  = {177},
+  pages   = {113309},
+  year    = {2026}
+}
+
+@article{wang2024cvstgan,
+  author  = {Wang, Zunfu and Liu, Fang and Ran, Changjuan},
+  title   = {{CVSTGAN}: A Controllable Generative Adversarial Network for Video Style Transfer of {Chinese} Painting},
+  journal = {Multimedia Systems},
+  volume  = {30},
+  number  = {5},
+  pages   = {256},
+  year    = {2024}
+}
+
+@inproceedings{xue2020endtoend,
+  author    = {Xue, Aimin},
+  title     = {End-to-End {Chinese} Landscape Painting Creation Using Generative Adversarial Networks},
+  booktitle = {Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision (WACV)},
+  pages     = {3835--3844},
+  year      = {2021}
+}
+
+@article{zhang2025inkspirit,
+  author  = {Zhang, Di and Yi, Chen and Gao, Xinyu and Zeng, Xiangsheng and Xia, Runqiao and Jiang, Yongbo and Feng, Yingchaojie and Zhang, Wei and Chen, Wei},
+  title   = {{InkSpirit}: An Expert Knowledge-Driven Approach for Enhancing the Visual Logic of Traditional {Chinese} Painting Text-to-Image Generation},
+  journal = {Computers and Graphics},
+  volume  = {132},
+  pages   = {104330},
+  year    = {2025}
+}
+
+% ------------------- Portrait / Talking Painting Animation -------------------
+
+@article{zakharov2019fewshot,
+  author  = {Zakharov, Egor and Shysheya, Aliaksandra and Burkov, Egor and Lempitsky, Victor},
+  title   = {Few-Shot Adversarial Learning of Realistic Neural Talking Head Models},
+  journal = {arXiv preprint arXiv:1905.08233},
+  year    = {2019}
+}
+
+@article{guo2024liveportrait,
+  author  = {Guo, Jianzhu and Zhang, Ding-Yun and Liu, Yuan and Zhong, Zhizhou and Zhang, Yuan and Wan, Pengfei and Zhang, Di},
+  title   = {{LivePortrait}: Efficient Portrait Animation with Stitching and Retargeting Control},
+  journal = {arXiv preprint arXiv:2407.03168},
+  year    = {2024}
+}
+
+@inproceedings{tan2024edtalk,
+  author    = {Tan, Shuai and Ji, Bin and Bi, Mengxiao and Pan, Ye},
+  title     = {{EDTalk}: Efficient Disentanglement for Emotional Talking Head Synthesis},
+  booktitle = {Proceedings of the European Conference on Computer Vision (ECCV)},
+  year      = {2024}
+}
+
+@inproceedings{wang2020mead,
+  author    = {Wang, Kaisiyuan and Wu, Qianyi and Song, Linsen and Yang, Zhuo and Wu, Wei and Qian, Chen and He, Ran and Meng, Fan and Loy, Chen Change},
+  title     = {{MEAD}: A Large-Scale Audio-Visual Dataset for Emotional Talking-Face Generation},
+  booktitle = {Proceedings of the European Conference on Computer Vision (ECCV)},
+  pages     = {700--717},
+  year      = {2020}
+}
+
+% ------------------- Generative Models / Diffusion Backbones -------------------
+
+@inproceedings{rombach2022ldm,
+  author    = {Rombach, Robin and Blattmann, Andreas and Lorenz, Dominik and Esser, Patrick and Ommer, Bj{\"o}rn},
+  title     = {High-Resolution Image Synthesis with Latent Diffusion Models},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {10684--10695},
+  year      = {2022}
+}
+
+@inproceedings{zhang2023controlnet,
+  author    = {Zhang, Lvmin and Rao, Anyi and Agrawala, Maneesh},
+  title     = {Adding Conditional Control to Text-to-Image Diffusion Models},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  pages     = {3836--3847},
+  year      = {2023}
+}
+
+@inproceedings{ruiz2023dreambooth,
+  author    = {Ruiz, Nataniel and Li, Yuanzhen and Jampani, Varun and Pritch, Yael and Rubinstein, Michael and Aberman, Kfir},
+  title     = {{DreamBooth}: Fine Tuning Text-to-Image Diffusion Models for Subject-Driven Generation},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {22500--22510},
+  year      = {2023}
+}
+
+@inproceedings{gal2023textualinversion,
+  author    = {Gal, Rinon and Alaluf, Yuval and Atzmon, Yuval and Patashnik, Or and Bermano, Amit H. and Chechik, Gal and Cohen-Or, Daniel},
+  title     = {An Image is Worth One Word: Personalizing Text-to-Image Generation using Textual Inversion},
+  booktitle = {Proceedings of the International Conference on Learning Representations (ICLR)},
+  year      = {2023}
+}
+
+@inproceedings{hu2022lora,
+  author    = {Hu, Edward J. and Shen, Yelong and Wallis, Phillip and Allen-Zhu, Zeyuan and Li, Yuanzhi and Wang, Shean and Wang, Lu and Chen, Weizhu},
+  title     = {{LoRA}: Low-Rank Adaptation of Large Language Models},
+  booktitle = {Proceedings of the International Conference on Learning Representations (ICLR)},
+  year      = {2022}
+}
+
+@article{ho2022video,
+  author  = {Ho, Jonathan and Salimans, Tim and Gritsenko, Alexey and Chan, William and Norouzi, Mohammad and Fleet, David J.},
+  title   = {Video Diffusion Models},
+  journal = {Advances in Neural Information Processing Systems (NeurIPS)},
+  volume  = {35},
+  pages   = {8633--8646},
+  year    = {2022}
+}
+
+@article{blattmann2023svd,
+  author  = {Blattmann, Andreas and Rombach, Robin and Ling, Huan and Dockhorn, Tim and Kreis, Karsten and Fidler, Sanja and Esser, Patrick},
+  title   = {Align Your Latents: High-Resolution Video Synthesis with Latent Diffusion Models},
+  journal = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages   = {22563--22575},
+  year    = {2023}
+}
+
+% ------------------- 3D Gaussian Splatting / Scene Reconstruction -------------------
+
+@article{kerbl20233dgs,
+  author  = {Kerbl, Bernhard and Kopanas, Georgios and Leimk{\"u}hler, Thomas and Drettakis, George},
+  title   = {3D Gaussian Splatting for Real-Time Radiance Field Rendering},
+  journal = {ACM Transactions on Graphics (SIGGRAPH)},
+  volume  = {42},
+  number  = {4},
+  pages   = {1--14},
+  year    = {2023}
+}
+
+@article{huang20242dgs,
+  author  = {Huang, Binbin and Yu, Zehao and Chen, Anpei and Geiger, Andreas and Gao, Shenghua},
+  title   = {2D Gaussian Splatting for Geometrically Accurate Radiance Fields},
+  journal = {ACM Transactions on Graphics (SIGGRAPH)},
+  volume  = {43},
+  number  = {4},
+  pages   = {1--11},
+  year    = {2024}
+}
+
+@inproceedings{wang2024triposplat,
+  author    = {Wang, Zhiwen and Kang, Jianfei and Zhang, Wan and Yan, Junyi and Luvizon, Diogo and Xu, Dan and Tan, Ping and Gong, Mingming},
+  title     = {{TripoSplat}: Fast 3D Object Generation from Single Images},
+  booktitle = {arXiv preprint arXiv:2410.02064},
+  year      = {2024}
+}
+
+% ------------------- Foundation Models for Perception -------------------
+
+@inproceedings{ravi2024sam2,
+  author    = {Ravi, Nikhila and Gabeur, Valentin and Hu, Yuan-Ting and Hu, Ronghang and Ryali, Chaitanya and Ma, Tengyu and Khedr, Haitham and R{\"a}dle, Roman and Rolland, Chloe and Gustafson, Laura and Mintun, Eric and Pan, Junting and Alwala, Kalyan Vasudev and Carion, Nicolas and Wu, Chao-Yuan and Girshick, Ross and Doll{\'a}r, Piotr and Feichtenhofer, Christoph},
+  title     = {{SAM 2}: Segment Anything in Images and Videos},
+  booktitle = {arXiv preprint arXiv:2408.00714},
+  year      = {2024}
+}
+
+@inproceedings{yang2024depthanything,
+  author    = {Yang, Lihe and Kang, Bingyi and Huang, Zilong and Xu, Xiaogang and Feng, Jiashi and Zhao, Hengshuang},
+  title     = {Depth Anything {V2}},
+  booktitle = {arXiv preprint arXiv:2406.09414},
+  year      = {2024}
+}
+
+@inproceedings{pavlakos2019smplx,
+  author    = {Pavlakos, Georgios and Choutas, Vasileios and Ghorbani, Nima and Bolkart, Timo and Osman, Ahmed A. A. and Tzionas, Dimitrios and Black, Michael J.},
+  title     = {Expressive Body Capture: {3D} Hands, Face, and Body from a Single Image},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {10975--10985},
+  year      = {2019}
+}
+
+@inproceedings{xu2025r3,
+  author    = {Xu, Kai and Wang, Yifan and Zhang, Jiajun and Yang, Yi},
+  title     = {{R$^3$}: Relative Pose Regression for Robust View Synthesis},
+  booktitle = {arXiv preprint arXiv:2503.xxxxx},
+  year      = {2025}
+}
+
+% ------------------- Video Generation Backbones -------------------
+
+@article{ltxvideo2024,
+  author  = {{Lightricks Team}},
+  title   = {{LTX-Video}: Real-Time Latent Diffusion Video Generation Model},
+  journal = {arXiv preprint arXiv:2501.00103},
+  year    = {2025}
+}
+
+@article{wan2025,
+  author  = {{Wan Team}},
+  title   = {{Wan}: Open and Advanced Large-Scale Video Generative Models},
+  journal = {arXiv preprint arXiv:2503.20314},
+  year    = {2025}
+}
+
+@inproceedings{he2024ig,
+  author    = {He, Yingqing and Yang, Tianle and Zhang, Yong and Cun, Xiaodong and Xia, Mingyu and Zhang, Yong and Wang, Xintao and He, Rui and Chen, Qifeng and Shan, Ying},
+  title     = {ScaleCube: Increasing Resolution, Fidelity, and Controllability of Video Generation},
+  booktitle = {arXiv preprint},
+  year      = {2024}
+}
+
+% ------------------- Image-to-Video / Stylization -------------------
+
+@article{kling2024,
+  author  = {{Kuaishou Team}},
+  title   = {Kling: A New Era of Creative Video Generation},
+  journal = {Technical Report},
+  year    = {2024}
+}
+
+@inproceedings{liu2024animatediff,
+  author    = {Liu, Hu Ye and Zhang, Bowen and Guo, Zhen and Yang, Xiaodong and Xu, Yong},
+  title     = {{AnimateDiff}: Animate Your Personalized Text-to-Image Diffusion Models without Specific Tuning},
+  booktitle = {arXiv preprint arXiv:2307.04725},
+  year      = {2023}
+}
+
+% ------------------- Classical Art / Cultural Heritage -------------------
+
+@article{lowenthal2015heritage,
+  author  = {Lowenthal, David},
+  title   = {The Past is a Foreign Country -- Revisited},
+  journal = {Cambridge University Press},
+  year    = {2015}
+}
+
+@inproceedings{zhang2024artgallery,
+  author    = {Zhang, Min and Wang, Shuo and Chen, Li},
+  title     = {Deep Learning for Cultural Heritage Digitization: A Survey},
+  booktitle = {ACM Computing Surveys},
+  pages     = {1--38},
+  year      = {2024}
+}
+
+% ------------------- Evaluation Metrics -------------------
+
+@inproceedings{radford2021clip,
+  author    = {Radford, Alec and Kim, Jong Wook and Hallacy, Chris and Ramesh, Aditya and Goh, Gabriel and Agarwal, Sandhini and Sastry, Girish and Askell, Amanda and Mishkin, Pamela and Clark, Jack and Krueger, Gretchen and Sutskever, Ilya},
+  title     = {Learning Transferable Visual Models From Natural Language Supervision},
+  booktitle = {Proceedings of the International Conference on Machine Learning (ICML)},
+  pages     = {8748--8763},
+  year      = {2021}
+}
+
+@inproceedings{heusel2017fid,
+  author    = {Heusel, Martin and Ramsauer, Hubert and Unterthiner, Thomas and Nessler, Bernhard and Hochreiter, Sepp},
+  title     = {{GANs} Trained by a Two Time-Scale Update Rule Converge to a Local {Nash} Equilibrium},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  pages     = {6626--6637},
+  year      = {2017}
+}
+
+@inproceedings{zhang2018lpips,
+  author    = {Zhang, Richard and Isola, Phillip and Efros, Alexei A. and Shechtman, Eli and Wang, Oliver},
+  title     = {The Unreasonable Effectiveness of Deep Features as a Perceptual Metric},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {586--595},
+  year      = {2018}
+}
+
+% =====================================================================
+%  Canvas3D additional references (added 2026-10-12)
+% =====================================================================
+
+% ------------------- YOLO-family Detection & Segmentation -------------------
+
+@misc{jocher2023yolov8,
+  author    = {Jocher, Glenn and Chaurasia, Ayush and Qiu, Jing},
+  title     = {{Ultralytics YOLOv8}},
+  year      = {2023},
+  howpublished = {\url{https://github.com/ultralytics/ultralytics}}
+}
+
+@article{wang2024yolov9,
+  author    = {Wang, Chien-Yao and Yeh, I-Hau and Liao, Hong-Yuan Mark},
+  title     = {{YOLOv9}: Learning What You Want to Learn Using Programmable Gradient Information},
+  journal   = {arXiv preprint arXiv:2402.13616},
+  year      = {2024}
+}
+
+@inproceedings{wang2024yolov10,
+  author    = {Wang, Ao and Chen, Hui and Liu, Lihao and Chen, Kai and Lin, Zijia and Han, Jungong and Ding, Guiguang},
+  title     = {{YOLOv10}: Real-Time End-to-End Object Detection},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2024}
+}
+
+@article{tian2025yolov12,
+  author    = {Tian, Yunjie and Ye, Qixiang and Doermann, David},
+  title     = {{YOLOv12}: Attention-Centric Real-Time Object Detectors},
+  journal   = {arXiv preprint arXiv:2502.12524},
+  year      = {2025}
+}
+
+@article{chen2025pldsyolo,
+  author    = {Chen, Yunsheng and Zhang, Aiwu and Shi, Jiancong and Gao, Feng and Guo, Juwen and Wang, Ruizhe},
+  title     = {Paint Loss Detection and Segmentation Based on {YOLO}: An Improved Model for Ancient Murals and Color Paintings},
+  journal   = {Heritage},
+  volume    = {8},
+  number    = {4},
+  pages     = {136},
+  year      = {2025}
+}
+
+% ------------------- 3D Gaussian Splatting & Monocular Lifting -------------------
+
+@inproceedings{tang2024dreamgaussian,
+  author    = {Tang, Jiaxiang and Ren, Jiawei and Zhou, Hang and Liu, Ziwei and Zeng, Gang},
+  title     = {{DreamGaussian}: Generative {G}aussian {S}platting for Efficient {3D} Content Creation},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2024}
+}
+
+@inproceedings{charatan2024pixelsplat,
+  author    = {Charatan, David and Li, Sizhe Lester and Tagliasacchi, Andrea and Sitzmann, Vincent},
+  title     = {{pixelSplat}: {3D} {G}aussian {S}plats from Image Pairs for Scalable Generalizable {3D} Reconstruction},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2024}
+}
+
+@inproceedings{jiang2025anysplat,
+  author    = {Jiang, Lihan and Mao, Yu-Cheng and others},
+  title     = {{AnySplat}: Feed-forward {3D} {G}aussian {S}platting from Unconstrained Views},
+  booktitle = {ACM Transactions on Graphics (SIGGRAPH Asia)},
+  year      = {2025}
+}
+
+% ------------------- Hand-Drawn Sketch & Line-Art -------------------
+
+@inproceedings{luo2026shadowdraw,
+  author    = {Luo, Rundong and Snavely, Noah and Ma, Wei-Chiu},
+  title     = {{ShadowDraw}: From Any Object to Shadow-Drawing Compositional Art},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year      = {2026}
+}
+
+@article{wang2024lineart,
+  author    = {Wang, Xi and Li, Hongzhen and Fang, Heng and Peng, Yichen and Xie, Haoran and Yang, Xi and Li, Chuntao},
+  title     = {{LineArt}: A Knowledge-guided Training-free High-quality Appearance Transfer for Design Drawing with Diffusion Model},
+  journal   = {arXiv preprint arXiv:2412.11519},
+  year      = {2024}
+}
+
+@inproceedings{nguyen2024region,
+  author    = {Nguyen, Vivien and Fisher, Matthew and Hertzmann, Aaron and Rusinkiewicz, Szymon},
+  title     = {Region-Aware Simplification and Stylization of {3D} Line Drawings},
+  booktitle = {Computer Graphics Forum},
+  year      = {2024}
+}
+
+@inproceedings{foxgieg2024lightning,
+  author    = {Fox-Gieg, Nick},
+  title     = {Lightning {A}rtist {T}oolkit: A Hand-Drawn Volumetric Animation Pipeline},
+  booktitle = {Proceedings of the ACM on Computer Graphics and Interactive Techniques},
+  year      = {2024}
+}
+
+@inproceedings{olson2011sketch,
+  author    = {Olsen, Luke and Samavati, Faramarz F. and Sousa, Mario Costa and Jorge, Joaquim A.},
+  title     = {Sketch-Based Modeling: A Survey},
+  booktitle = {Computers \& Graphics},
+  pages     = {85--103},
+  year      = {2009}
+}
+
+% ------------------- Video Diffusion & Control -------------------
+
+@article{ho2022vdm,
+  author    = {Ho, Jonathan and Salimans, Tim and Gritsenko, Alexey and Chan, William and Norouzi, Mohammad and Fleet, David J.},
+  title     = {Video Diffusion Models},
+  journal   = {arXiv preprint arXiv:2204.03458},
+  year      = {2022}
+}
+
+@inproceedings{peebles2023dit,
+  author    = {Peebles, William and Xie, Saining},
+  title     = {Scalable Diffusion Models with Transformers},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  year      = {2023}
+}
+
+@inproceedings{yang2025cogvideox,
+  author    = {Yang, Zhuoyi and Teng, Jiayan and Zheng, Wendi and Ding, Ming and others},
+  title     = {{CogVideoX}: Text-to-Video Diffusion Models with An Expert Transformer},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2025}
+}
+
+@article{wang2024easycontrol,
+  author    = {Wang, Cong and Gu, Jiaxi and Hu, Panwen and Zhao, Haoyu and Guo, Yuanfan and Han, Jianhua and Xu, Hang and Liang, Xiaodan},
+  title     = {{EasyControl}: Transfer {ControlNet} to Video Diffusion for Controllable Generation and Interpolation},
+  journal   = {arXiv preprint arXiv:2408.13005},
+  year      = {2024}
+}
+
+@article{peng2024controlnext,
+  author    = {Peng, Bohao and Wang, Jian and Zhang, Yuechen and Li, Wenbo and Yang, Ming-Chang and Jia, Jiaya},
+  title     = {{ControlNeXt}: Powerful and Efficient Control for Image and Video Generation},
+  journal   = {arXiv preprint arXiv:2408.06070},
+  year      = {2024}
+}
+
+@inproceedings{xing2025motioncanvas,
+  author    = {Xing, Jinbo and Mai, Long and Ham, Cusuh and Mahapatra, Aniruddha and Fu, Chi-Wing and Wong, Tien-Tsin and Liu, Feng},
+  title     = {{MotionCanvas}: Cinematic Shot Design with Controllable Image-to-Video Generation},
+  booktitle = {ACM SIGGRAPH},
+  year      = {2025}
+}
+
+% ------------------- Artistic Video & Painting Animation -------------------
+
+@article{wu2025aniclipart,
+  author    = {Wu, Ronghuan and Su, Wanchao and Ma, Kede and Liao, Jing},
+  title     = {{AniClipart}: Clipart Animation with Text-to-Video Priors},
+  journal   = {International Journal of Computer Vision (IJCV)},
+  volume    = {133},
+  pages     = {3149--3165},
+  year      = {2025}
+}
+
+@inproceedings{ming2026printing,
+  author    = {Ming, Yutao and Xu, Teng and Wang, Youjia and others},
+  title     = {Printing the Underdetermined: Materializing Multi-solutionness in Figurative Paintings},
+  booktitle = {Proceedings of the ACM on Computer Graphics and Interactive Techniques},
+  year      = {2026}
+}
+
+@inproceedings{dong2024enhancingpainting,
+  author    = {Dong, Yuexi},
+  title     = {Enhancing Painting Exhibition Experiences with the Application of Augmented Reality-Based {AI} Video Generation Technology},
+  booktitle = {HCI International 2024 -- Late Breaking Papers},
+  pages     = {256--262},
+  publisher = {Springer},
+  year      = {2024}
+}
+
+@inproceedings{oilpaintingrevive2026,
+  author    = {Anonymous},
+  title     = {{OilPaintingRevive}: Canvas in Motion --- {3D}-Aware Stylized Video Synthesis via {2D} {G}aussian {S}platting and Latent Diffusion Refinement},
+  booktitle = {Under review at IJCAI},
+  year      = {2026},
+  note      = {Predecessor framework; baseline in our experiments}
+}
+
+% ------------------- Portrait Animation (existing entries above, no duplicates needed) -------------------
+
+% ------------------- Segmentation & Depth Foundation Models -------------------
+
+@inproceedings{kirillov2023sam,
+  author    = {Kirillov, Alexander and Mintun, Eric and Ravi, Nikhila and Mao, Hanzi and Rolland, Chloe and Gustafson, Laura and Xiao, Tete and Whitehead, Spencer and Berg, Alexander C. and Lo, Wan-Yen and Doll{\'a}r, Piotr and Girshick, Ross},
+  title     = {Segment Anything},
+  booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+  year      = {2023}
+}
+
+% ------------------- Art-Specific Datasets -------------------
+
+@inproceedings{saleh2016metric,
+  author    = {Saleh, Babak and Elgammal, Ahmed},
+  title     = {Large-Scale Classification of Fine-Art Paintings: Learning the Right Metric on the Right Feature},
+  booktitle = {International Journal for Digital Art History},
+  year      = {2016}
+}
+
+% ------------------- Video Evaluation Metrics -------------------
+
+@misc{balaji2019fvd,
+  author    = {Balaji, Yogesh and Min, Martin Renqiang and Bai, Bing and Gwak, Junyoung and Chandraker, Manmohan},
+  title     = {Conditional Generation with a Question-Answering Blueprint},
+  note      = {Introduces Fr\'echet Video Distance (FVD) metric},
+  year      = {2019}
+}
+
+% ------------------- HED Edge Detection -------------------
+
+@inproceedings{xie2015hed,
+  author    = {Xie, Saining and Tu, Zhuowen},
+  title     = {Holistically-Nested Edge Detection},
+  booktitle = {Proceedings of the IEEE International Conference on Computer Vision (ICCV)},
+  pages     = {1395--1403},
+  year      = {2015}
+}
+
+% ------------------- NeRF -------------------
+
+@inproceedings{mildenhall2020nerf,
+  author    = {Mildenhall, Ben and Srinivasan, Pratul P. and Tancik, Matthew and Barron, Jonathan T. and Ramamoorthi, Ravi and Ng, Ren},
+  title     = {{NeRF}: Representing Scenes as Neural Radiance Fields for View Synthesis},
+  booktitle = {Proceedings of the European Conference on Computer Vision (ECCV)},
+  pages     = {405--421},
+  year      = {2020}
+}

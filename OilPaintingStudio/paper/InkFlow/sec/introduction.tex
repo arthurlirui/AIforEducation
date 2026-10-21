@@ -1,0 +1,76 @@
+\section{Introduction}
+\label{sec:intro}
+
+Chinese ink-wash painting (\emph{Shanshui}, 山水画) is one of the
+oldest continuous artistic traditions in the world, governed by
+a sophisticated aesthetic theory that is foreign to Western
+painting and to the natural-image datasets on which modern
+generative models are trained. Two principles are central:
+the \emph{five-level ink theory}
+(焦、浓、重、淡、清---scorched, thick, heavy, light, clear)
+which defines a discrete palette of ink densities, and
+\emph{negative space} (留白)---the deliberate use of unpainted
+areas as compositional elements, encapsulated in the principle
+of \emph{treating white as black} (计白当黑).
+
+Recent advances in image-to-video (I2V) diffusion models such as
+Wan2.1-I2V and LTX-Video offer powerful, locally-deployable
+backbones for animating static content. However, these models are
+trained predominantly on natural imagery and struggle to preserve
+the art-specific features of ink-wash paintings: ink-density
+distributions are blurred, negative-space regions are filled with
+spurious texture, and the temporal motion lacks the gentle
+``breathing'' quality of drifting mist or flowing water that
+characterizes Shanshui aesthetics.
+
+We propose \textbf{InkFlow}, a dual-conditioned video diffusion
+framework that addresses these challenges. The key ideas are:
+\begin{enumerate}
+    \item \textbf{Dual-stage conditioning}: a line-distribution map
+    (the artist's structural draft) is injected during early
+    denoising steps to govern composition, while an ink-density
+    distribution map (specifying the five ink levels) is injected
+    during later steps to govern tonal rendering. This temporal
+    separation mirrors the physical ink-wash workflow where
+    structure is laid down before tonal detail.
+    \item \textbf{Blank-space loss}: a training objective that
+    explicitly penalizes texture generation inside user-designated
+    negative-space regions, formalizing the
+    \emph{treating-white-as-black} principle.
+    \item \textbf{Rhythm-of-strokes prior}: a temporal regularizer
+    derived from calligraphic timing that encourages smooth,
+    breathing-like motion patterns consistent with Shanshui
+    aesthetics.
+\end{enumerate}
+
+We summarize our contributions as follows:
+\begin{enumerate}
+    \item A dual-conditioned I2V framework with stage-separated
+    injection of line-structure and ink-density conditions, enabling
+    art-theoretically grounded control over video generation.
+    \item A blank-space loss that preserves negative-space regions
+    in generated videos---the first formalization of this
+    aesthetic principle as a training objective.
+    \item A rhythm-of-strokes temporal prior that produces
+    aesthetically appropriate motion patterns for ink-wash
+    paintings.
+    \item Comprehensive experiments on 30 Shanshui paintings with
+    quantitative metrics (ink-density histogram matching,
+    blank-space texture ratio, temporal consistency) and a
+    perceptual user study.
+\end{enumerate}
+
+This work is part of a broader research program on \emph{AI for Art
+Process}---using AI to understand and extend the creative
+\emph{process} of art-making. Together with work on spatially-aware
+stippling and real-time painting coaching, InkFlow contributes to
+building AI systems that engage with the \emph{how} of art, not just
+the \emph{what}.
+
+The remainder of the paper is organized as follows.
+Section~\ref{sec:related} reviews related work in I2V generation,
+ink-wash stylization, and controllable diffusion.
+Section~\ref{sec:method} presents the InkFlow framework.
+Section~\ref{sec:experiments} reports experimental results.
+Section~\ref{sec:discussion} discusses limitations and future
+directions. Section~\ref{sec:conclusion} concludes.

@@ -1,0 +1,144 @@
+\section{Method}
+\label{sec:method}
+
+InkFlow fine-tunes an open-source I2V backbone (Wan2.1-I2V) with
+dual-stage conditioning and art-specific training objectives.
+Figure~\ref{fig:pipeline} illustrates the overall framework.
+
+\begin{figure}[t]
+\centering
+\fbox{\parbox{0.95\columnwidth}{\small
+\textbf{[Figure placeholder: InkFlow pipeline diagram. Left: input
+painting + user-provided line map and ink-density map. Center:
+Wan2.1-I2V denoising process with stage-separated conditioning
+(line map at steps $0$--$T/2$, ink-density map at steps
+$T/2$--$T$). Right: generated video with blank-space preservation
+and breathing motion.]}}}
+\caption{InkFlow pipeline. The line-distribution map governs
+structural composition during early denoising; the ink-density
+distribution map governs tonal rendering during later denoising.
+The blank-space loss prevents texture generation in
+user-designated negative-space regions.}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Preliminaries: I2V Diffusion}
+
+Given an input image $I_0$ and a text prompt $c$, an I2V diffusion
+model generates a video $\{x_0, x_1, \ldots, x_L\}$ by iteratively
+denoising from Gaussian noise. At each denoising step $t$, the
+model predicts $\hat{x}_0$ from the noisy latent $x_t$:
+\begin{equation}
+\hat{x}_0 = f_\theta(x_t, t, I_0, c),
+\end{equation}
+where $f_\theta$ is the denoising network. We adopt Wan2.1-I2V as
+the backbone and fine-tune it with additional conditioning and
+loss terms.
+
+\subsection{Dual-Stage Conditioning}
+\label{sec:dual_condition}
+
+\subsubsection{Line-Distribution Map}
+
+The user provides a \emph{line-distribution map} $C_{\text{line}}$:
+a binary or soft mask indicating the structural lines of the
+composition (mountains, rivers, pavilions). This map is encoded
+via a ControlNet-style adapter
+$E_{\text{line}}$ and injected as additive conditioning during the
+first half of denoising steps ($t \in [T/2, T]$):
+\begin{equation}
+\hat{x}_0 = f_\theta(x_t, t, I_0, c + E_{\text{line}}(C_{\text{line}})),
+\quad t \geq T/2.
+\end{equation}
+This ensures that the structural composition is established before
+tonal detail is rendered, mirroring the physical ink-wash workflow
+where the artist first lays down the structural skeleton
+(勾皴) before applying ink washes (渲染).
+
+\subsubsection{Ink-Density Distribution Map}
+
+The user provides an \emph{ink-density distribution map}
+$C_{\text{ink}}$: a 5-channel map where each channel corresponds to
+one of the five ink levels
+(焦、浓、重、淡、清), with pixel values indicating the local density
+of that ink level. This map is encoded via a separate adapter
+$E_{\text{ink}}$ and injected during the second half of denoising
+steps ($t \in [0, T/2)$):
+\begin{equation}
+\hat{x}_0 = f_\theta(x_t, t, I_0, c + E_{\text{ink}}(C_{\text{ink}})),
+\quad t < T/2.
+\end{equation}
+
+\subsubsection{Five-Level Ink Histogram Matching}
+
+For precise control mode, we enforce that the generated video
+frames match a target 5-bin ink-density histogram $H^*$ derived
+from the ink-density map. At each training step, we compute the
+histogram $H(\hat{x}_0)$ of the predicted frame and minimize:
+\begin{equation}
+\mathcal{L}_{\text{ink}} = \text{EMD}(H(\hat{x}_0), H^*),
+\end{equation}
+where EMD is the Earth Mover's Distance between the predicted and
+target ink-level histograms. This provides a differentiable
+measure of ink-density fidelity.
+
+\subsection{Blank-Space Loss}
+\label{sec:blank_space}
+
+We formalize the aesthetic principle of \emph{treating white as
+black} (计白当黑) as a training objective. The user designates
+negative-space regions via a binary mask $M_{\text{blank}}$. The
+blank-space loss penalizes any generated texture inside these
+regions:
+\begin{equation}
+\mathcal{L}_{\text{blank}} = \frac{1}{|M_{\text{blank}}|}
+\sum_{(x,y) \in M_{\text{blank}}} \text{Var}_{\text{local}}(\hat{x}_0(x,y)),
+\end{equation}
+where $\text{Var}_{\text{local}}$ measures the local pixel-variance
+in a $5 \times 5$ window. This encourages the model to keep
+negative-space regions flat and texture-free, preserving the
+compositional voids that are essential to Shanshui aesthetics.
+
+\subsection{Rhythm-of-Strokes Temporal Prior}
+\label{sec:rhythm}
+
+Ink-wash animation is characterized by gentle, breathing-like
+motion---drifting mist, slowly flowing water---rather than abrupt
+movement. We encourage this quality via a temporal smoothness
+prior inspired by calligraphic timing:
+\begin{equation}
+\mathcal{L}_{\text{rhythm}} = \sum_{l=1}^{L-1}
+\| x_l - x_{l-1} - \mu_{\text{flow}} \|^2,
+\end{equation}
+where $\mu_{\text{flow}}$ is a slowly varying optical-flow
+estimate between consecutive frames. This penalizes high-frequency
+temporal jitter while allowing smooth, low-frequency motion.
+
+\subsection{Training Objective}
+
+The total training objective combines the standard I2V diffusion
+loss with our art-specific terms:
+\begin{equation}
+\mathcal{L} = \mathcal{L}_{\text{diff}} + \lambda_{\text{ink}}
+\mathcal{L}_{\text{ink}} + \lambda_{\text{blank}}
+\mathcal{L}_{\text{blank}} + \lambda_{\text{rhythm}}
+\mathcal{L}_{\text{rhythm}},
+\end{equation}
+where $\lambda_{\text{ink}} = 0.5$, $\lambda_{\text{blank}} = 0.3$,
+and $\lambda_{\text{rhythm}} = 0.2$ by default. The model is
+fine-tuned on a dataset of 30 Shanshui paintings with
+user-annotated line maps, ink-density maps, and blank-space masks.
+
+\subsection{Implementation Details}
+
+We build on the existing OilPaintingVideo project's ComfyUI
+pipeline for the base I2V infrastructure. The dual-condition
+adapters are implemented as lightweight ControlNet branches
+(${\sim}5$\,M parameters each) attached to the Wan2.1-I2V U-Net.
+Training uses AdamW with learning rate $1 \times 10^{-5}$, batch
+size 1, and 4-frame video clips on a single NVIDIA RTX A4500 GPU.
+The blank-space mask and ink-density map are extracted
+semi-automatically: a U-Net segmenter identifies candidate
+blank-space regions, which the user can refine; the ink-density
+map is computed from the input painting's luminance histogram
+quantized into 5 bins aligned to the five ink levels.

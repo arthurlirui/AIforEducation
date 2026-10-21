@@ -1,0 +1,176 @@
+% =====================================================================
+% Canvas3D Figure 4: SketchComp - Variants A/B/C
+% LAYOUT (new, collision-free, clean):
+%   Row 0 (top):    [la]        [lib]
+%   Row 1:                       [match]        [plc]
+%   Row 2:                       [comp]         [gap]
+%   Row 3:                       [inp]          [fin]
+%
+%   Straight vertical column match -> comp -> inp (the pipeline),
+%   Inputs la (to match) and lib (to match) enter from the west.
+%   plc / gap / fin are output chips, sitting to the right of their producer.
+%   Right-side route: plc -> comp (down), comp -> gap, gap -> inp, inp -> fin.
+% =====================================================================
+
+% ============================ VARIANT A ==============================
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\sffamily,
+        bx/.style={draw=none, rounded corners=3pt, minimum width=2.5cm,
+                   minimum height=0.72cm, align=center,
+                   font=\sffamily\scriptsize, thick, text=white},
+        data/.style={draw=black!25, rounded corners=2pt, fill=white,
+                     font=\sffamily\tiny, minimum width=2.1cm,
+                     minimum height=0.42cm, align=center},
+        ar/.style={->, >=Stealth, very thick, draw=black!45}
+    ]
+        % --- Inputs ---
+        \node[data, fill=yellow!15, draw=yellow!50!black] (la) {Line-art $L$};
+        \node[data, fill=yellow!15, draw=yellow!50!black, below=0.7cm of la] (lib)
+            {3DGS Library $\{\mathcal{G}_i\}$};
+
+        % --- Center pipeline column ---
+        \node[bx, fill=orange!80, right=1.1cm of lib,
+              minimum width=2.6cm, minimum height=1.05cm] (match)
+            {\textbf{Contour Register}\\{\tiny IoU + Chamfer loss}\\{\tiny rigid $(\theta, \mathbf{t}, s)$}};
+        \node[bx, fill=orange!55, below=0.7cm of match,
+              minimum width=2.6cm, minimum height=1.05cm] (comp)
+            {\textbf{Scene Assembly}\\{\tiny depth-sorted render}\\{\tiny 2DGS background}};
+        \node[bx, fill=purple!60, below=0.7cm of comp,
+              minimum width=2.6cm, minimum height=1.05cm] (inp)
+            {\textbf{Depth Inpaint}\\{\tiny SD + Depth ControlNet}\\{\tiny fill disocclusions}};
+
+        % --- Right-side outputs, aligned with their producing module ---
+        \node[data, right=1.1cm of match] (plc) {Placed $\{\mathcal{G}'_i\}$};
+        \node[data, right=1.1cm of comp]  (gap) {Gaps $\Omega_\text{gap}$};
+        \node[data, right=1.1cm of inp, minimum width=2.6cm] (fin)
+            {Scene $\mathcal{S}^*$, Depth $\mathcal{D}^*$};
+
+        % --- Input arrows ---
+        \draw[ar] (la.east)  to[out=0,in=90,looseness=1.2] (match.north);
+        \draw[ar] (lib.east) -- (match.west);
+
+        % --- Vertical pipeline ---
+        \draw[ar] (match.south) -- (comp.north);
+        \draw[ar] (comp.south)   -- (inp.north);
+
+        % --- Output taps ---
+        \draw[ar] (match.east) -- (plc.west);
+        \draw[ar] (comp.east)  -- (gap.west);
+        \draw[ar] (inp.east)   -- (fin.west);
+
+        % --- plc -> comp (placed gaussians feed into scene assembly) ---
+        \draw[ar] (plc.south) to[out=-90,in=20,looseness=1.1] (comp.north east);
+
+        % --- gap -> inp (detected gaps drive inpainting) ---
+        \draw[ar] (gap.south) to[out=-90,in=90,looseness=1.0] (fin.north);
+
+        % --- comp -> fin (assembled scene bypass), a small right-side curve ---
+        \draw[ar] (comp.south east) to[out=-50,in=160,looseness=1.0] (fin.north west);
+    \end{tikzpicture}}
+    \caption{\textbf{SketchComp (Variant A).} Flat colors: orange for
+    registration/assembly, purple for inpainting, emphasizing the two-stage
+    compose-then-fill process.}
+    \label{fig:sketchcomp_A}
+\end{figure}
+
+% ============================ VARIANT B ==============================
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\sffamily,
+        bx/.style={draw=black!80, rounded corners=1pt, minimum width=2.6cm,
+                   minimum height=0.72cm, align=center,
+                   font=\sffamily\scriptsize, thick},
+        data/.style={draw=black!40, rounded corners=1pt, fill=white,
+                     font=\sffamily\tiny, minimum width=2.1cm,
+                     minimum height=0.42cm, align=center},
+        ar/.style={->, >=Stealth, thick, draw=black!70}
+    ]
+        \node[data] (la) {Line-art $L$};
+        \node[data, below=0.7cm of la] (lib) {3DGS Library};
+
+        \node[bx, right=1.1cm of lib, minimum width=2.6cm,
+              minimum height=1.05cm] (match)
+            {Contour Register\\{\tiny IoU + Chamfer}\\{\tiny rigid $(\theta, \mathbf{t}, s)$}};
+        \node[bx, below=0.7cm of match, minimum width=2.6cm,
+              minimum height=1.05cm] (comp)
+            {Scene Assembly\\{\tiny depth-sorted}\\{\tiny 2DGS background}};
+        \node[bx, below=0.7cm of comp, minimum width=2.6cm,
+              minimum height=1.05cm] (inp)
+            {Depth Inpaint\\{\tiny SD + Depth CN}\\{\tiny fill disocclusions}};
+
+        \node[data, right=1.1cm of match] (plc) {Placed $\{\mathcal{G}'_i\}$};
+        \node[data, right=1.1cm of comp]  (gap) {Gaps $\Omega_\text{gap}$};
+        \node[data, right=1.1cm of inp, minimum width=2.6cm] (fin)
+            {$\mathcal{S}^*$, $\mathcal{D}^*$};
+
+        \draw[ar] (la.east)  to[out=0,in=90,looseness=1.2] (match.north);
+        \draw[ar] (lib.east) -- (match.west);
+        \draw[ar] (match.south) -- (comp.north);
+        \draw[ar] (comp.south)   -- (inp.north);
+        \draw[ar] (match.east) -- (plc.west);
+        \draw[ar] (comp.east)  -- (gap.west);
+        \draw[ar] (inp.east)   -- (fin.west);
+        \draw[ar] (plc.south) to[out=-90,in=20,looseness=1.1] (comp.north east);
+        \draw[ar] (gap.south) to[out=-90,in=90,looseness=1.0] (fin.north);
+        \draw[ar] (comp.south east) to[out=-50,in=160,looseness=1.0] (fin.north west);
+    \end{tikzpicture}}
+    \caption{\textbf{SketchComp (Variant B).} Monochrome line style, no fills,
+    maximum clarity.}
+    \label{fig:sketchcomp_B}
+\end{figure}
+
+% ============================ VARIANT C ==============================
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\sffamily,
+        bx/.style={draw=black!60, fill=black!8, rounded corners=2pt,
+                   minimum width=2.6cm, minimum height=0.72cm, align=center,
+                   font=\sffamily\scriptsize, thick},
+        acc/.style={draw=blue!60!black, fill=blue!12, rounded corners=2pt,
+                    minimum width=2.6cm, minimum height=0.72cm, align=center,
+                    font=\sffamily\scriptsize, thick},
+        data/.style={draw=black!35, fill=white, rounded corners=1pt,
+                     font=\sffamily\tiny, minimum width=2.1cm,
+                     minimum height=0.42cm, align=center},
+        ar/.style={->, >=Stealth, thick, draw=black!55}
+    ]
+        \node[data] (la) {Line-art $L$};
+        \node[data, below=0.7cm of la] (lib) {3DGS Library};
+
+        \node[acc, right=1.1cm of lib, minimum width=2.6cm,
+              minimum height=1.05cm] (match)
+            {\textbf{Contour Register}\\{\tiny IoU + Chamfer}\\{\tiny rigid $(\theta, \mathbf{t}, s)$}};
+        \node[bx, below=0.7cm of match, minimum width=2.6cm,
+              minimum height=1.05cm] (comp)
+            {Scene Assembly\\{\tiny depth-sorted}\\{\tiny 2DGS background}};
+        \node[bx, below=0.7cm of comp, minimum width=2.6cm,
+              minimum height=1.05cm] (inp)
+            {\textbf{Depth Inpaint}\\{\tiny SD + Depth CN}\\{\tiny fill disocclusions}};
+
+        \node[data, right=1.1cm of match] (plc) {Placed $\{\mathcal{G}'_i\}$};
+        \node[data, right=1.1cm of comp]  (gap) {Gaps $\Omega_\text{gap}$};
+        \node[data, right=1.1cm of inp, minimum width=2.6cm] (fin)
+            {$\mathcal{S}^*$, $\mathcal{D}^*$};
+
+        \draw[ar] (la.east)  to[out=0,in=90,looseness=1.2] (match.north);
+        \draw[ar] (lib.east) -- (match.west);
+        \draw[ar] (match.south) -- (comp.north);
+        \draw[ar] (comp.south)   -- (inp.north);
+        \draw[ar] (match.east) -- (plc.west);
+        \draw[ar] (comp.east)  -- (gap.west);
+        \draw[ar] (inp.east)   -- (fin.west);
+        \draw[ar] (plc.south) to[out=-90,in=20,looseness=1.1] (comp.north east);
+        \draw[ar] (gap.south) to[out=-90,in=90,looseness=1.0] (fin.north);
+        \draw[ar] (comp.south east) to[out=-50,in=160,looseness=1.0] (fin.north west);
+    \end{tikzpicture}}
+    \caption{\textbf{SketchComp (Variant C).} Grayscale with blue accent on
+    the novel contour-registration module, highlighting the contribution.}
+    \label{fig:sketchcomp_C}
+\end{figure}

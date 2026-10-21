@@ -1,0 +1,62 @@
+{
+  "_comment": "LTX-Video 图生视频工作流（API 格式）。节点 id 约定：ltx_model(LTXVLoader)、ltx_pos(CLIPTextEncode正)、ltx_neg(CLIPTextEncode负)、ltx_sampler(LTXVSampler)、ltx_decode(LTXVDecode)、ltx_save(VHS_VideoCombine)、input_image(LoadImage)。注入字段见 workflows.apply_params。需要 ComfyUI 已安装 ltxv 节点与权重。",
+  "input_image": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "input.png"
+    }
+  },
+  "ltx_model": {
+    "class_type": "LTXVLoader",
+    "inputs": {
+      "model": "ltx-video-2b-v0.9.5.safetensors"
+    }
+  },
+  "ltx_pos": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "subtle motion, cinematic",
+      "clip": ["ltx_model", 1]
+    }
+  },
+  "ltx_neg": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "static, no motion, distorted, lowres, watermark, text",
+      "clip": ["ltx_model", 1]
+    }
+  },
+  "ltx_sampler": {
+    "class_type": "LTXVSampler",
+    "inputs": {
+      "model": ["ltx_model", 0],
+      "positive": ["ltx_pos", 0],
+      "negative": ["ltx_neg", 0],
+      "image": ["input_image", 0],
+      "seed": 0,
+      "steps": 30,
+      "cfg": 1.0,
+      "width": 768,
+      "height": 1280,
+      "num_frames": 49,
+      "sampler_name": "euler"
+    }
+  },
+  "ltx_decode": {
+    "class_type": "LTXVDecode",
+    "inputs": {
+      "model": ["ltx_model", 0],
+      "latents": ["ltx_sampler", 0]
+    }
+  },
+  "ltx_save": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+      "images": ["ltx_decode", 0],
+      "filename_prefix": "oilpaint_clip_ltx",
+      "frame_rate": 24,
+      "format": "video/h264-mp4",
+      "save_metadata": false
+    }
+  }
+}

@@ -1,0 +1,25 @@
+# OilPaintingStudio 依赖
+# 核心 (两管线都需要)
+httpx>=0.27
+pyyaml>=6.0
+pillow>=10.0
+python-dotenv>=1.0
+click>=8.1
+pydantic>=2.6
+numpy>=1.24
+opencv-python-headless>=4.8
+
+# 可选: mesh2video (video 管线的风格×几何解耦)
+# trimesh>=4.0
+# imageio>=2.31
+# imageio-ffmpeg>=0.4
+
+# 可选: Revive 真实模型推理
+# torch>=2.1
+# torchvision
+# plyfile>=0.9
+# tqdm>=4.65
+
+# 开发 / 测试
+pytest>=8.0
+pytest-asyncio>=0.23

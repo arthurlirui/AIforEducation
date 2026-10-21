@@ -1,0 +1,79 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Artistic Implications}
+
+The depth-to-radius mapping (Eq.~\ref{eq:radius_mapping}) introduces a
+new dimension of artistic control that goes beyond traditional
+luminance-based stippling. By modulating dot size with scene depth, the
+pipeline creates a tactile sense of three-dimensional structure within
+the inherently flat polka dot medium---an effect that resonates with
+Kusama's own exploration of infinity nets and immersive environments
+where dots dissolve spatial boundaries. The Gaussian noise term
+$\varepsilon$ is not merely a technical addition but an artistic
+necessity: Kusama's dots, despite their geometric precision, are never
+mechanically uniform. The controlled randomness replicates the
+hand-painted quality that distinguishes her work from machine-generated
+patterns.
+
+The semantic-aware dual-color rendering introduces a computational
+analogue to Kusama's practice of assigning different colored dots to
+different surfaces within a single composition. In her installations,
+walls, floors, and objects each receive dots in distinct colors,
+creating a figure--ground dialogue. Our pipeline achieves a similar
+effect by leveraging semantic segmentation to distinguish foreground
+objects from background regions, assigning each a different dot color
+within a shared palette.
+
+\subsection{Limitations}
+
+\paragraph{Semantic Taxonomy Mismatch.}
+The YOLO26x-sem model is trained on the Cityscapes dataset, which was
+designed for autonomous driving scenarios. Its 19-class taxonomy does
+not include common artistic subjects such as animals, food, or
+flowers. For the cat image, only 7.1\% of pixels were classified as
+foreground (a small person region), and the pumpkin was classified as
+``car'' rather than as a botanical object. While the dual-color
+mechanism still functions---any non-background class triggers the
+foreground color---the semantic distinction may not align with the
+artistic intent. A model fine-tuned on a broader taxonomy (e.g.,
+ADE20K \citep{zhou2017scene}) or on art-specific segmentation tasks
+would improve semantic-aware rendering for general photographic
+content.
+
+\paragraph{Depth Estimation Accuracy.}
+Monocular depth estimation is an inherently ill-posed problem, and the
+estimated depth maps may contain errors, particularly for objects not
+well-represented in the training data. These errors propagate to the
+dot size assignment, potentially producing depth-inconsistent dot
+patterns. However, since the pipeline uses relative depth ordering
+rather than absolute metric values (the percentile clipping and
+normalization in Eq.~\ref{eq:depth_norm} make the mapping robust to
+scale errors), the visual impact of moderate depth estimation errors
+is limited.
+
+\paragraph{Computational Cost.}
+The Voronoi stippling stage dominates the runtime at approximately
+60\,s per image, primarily due to the iterative Lloyd relaxation. This
+is acceptable for offline art generation but precludes real-time
+interactive use. GPU-accelerated Voronoi computation
+\citep{ray2018codesign} or approximate relaxation methods could reduce
+this to interactive speeds.
+
+\paragraph{Single-Image Input.}
+The pipeline operates on single RGB images and does not exploit
+multi-view or video input. For video sequences, temporal consistency
+of dot placement and size would require additional mechanisms such as
+optical flow-guided dot tracking or per-frame depth consistency
+constraints.
+
+\subsection{Future Directions}
+
+We highlight two promising extensions.
+First, the output of our pipeline could serve as a conditioning
+image for a depth-aware ControlNet \citep{zhang2023adding} combined
+with a Kusama-style LoRA \citep{hu2022lora}, producing a hybrid
+result that combines algorithmic structural precision with learned
+textural richness. Second, extending to video sequences via
+optical flow-guided dot tracking and per-frame depth consistency
+would enable temporally stable polka dot animations.

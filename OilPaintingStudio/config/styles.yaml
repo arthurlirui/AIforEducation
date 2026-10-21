@@ -1,0 +1,60 @@
+# 油画风格预设库
+# 每个预设包含正向提示词前缀、负向词、推荐采样参数、匹配的 BGM 情绪。
+# 剧本生成时会读取这些预设，单镜头还可指定 painter 进一步聚焦风格。
+
+impressionism:
+  name: "印象派"
+  painters: ["Claude Monet", "Pierre-Auguste Renoir", "Edgar Degas", "Camille Pissarro"]
+  positive_prefix: >
+    classic oil painting, impressionism style, visible brushstrokes, vibrant broken color,
+    soft atmospheric light, plein air, emphasis on light and color over detail
+  negative: >
+    photorealistic, digital art, 3d render, anime, sharp edges, flat color, blurry, deformed,
+    lowres, watermark, text
+  sampler: "dpmpp_2m"
+  scheduler: "karras"
+  cfg: 7.0
+  steps: 30
+  bgm_mood: "gentle"
+
+baroque:
+  name: "巴洛克"
+  painters: ["Rembrandt van Rijn", "Caravaggio", "Peter Paul Rubens", "Johannes Vermeer"]
+  positive_prefix: >
+    classic oil painting, baroque style, dramatic chiaroscuro, deep shadows, rich warm tones,
+    theatrical lighting, dynamic composition, fine detail
+  negative: >
+    photorealistic, digital art, anime, flat lighting, oversaturated, lowres, watermark, text
+  sampler: "dpmpp_2m"
+  scheduler: "karras"
+  cfg: 7.5
+  steps: 32
+  bgm_mood: "solemn"
+
+realism:
+  name: "写实主义"
+  painters: ["Gustave Courbet", "Jean-François Millet", "Winslow Homer", "Ilya Repin"]
+  positive_prefix: >
+    classic oil painting, realism style, precise naturalistic detail, earthy palette,
+    honest depiction of everyday life, balanced lighting
+  negative: >
+    stylized, anime, digital art, exaggerated color, fantasy, lowres, watermark, text
+  sampler: "dpmpp_2m"
+  scheduler: "normal"
+  cfg: 7.0
+  steps: 30
+  bgm_mood: "calm"
+
+romanticism:
+  name: "浪漫主义"
+  painters: ["J.M.W. Turner", "Caspar David Friedrich", "Eugène Delacroix", "Francisco Goya"]
+  positive_prefix: >
+    classic oil painting, romanticism style, sublime dramatic landscapes, turbulent skies,
+    emotional intensity, rich color, glowing light
+  negative: >
+    photorealistic, digital art, anime, mundane composition, flat color, lowres, watermark, text
+  sampler: "dpmpp_2m"
+  scheduler: "karras"
+  cfg: 7.5
+  steps: 32
+  bgm_mood: "epic"

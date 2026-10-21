@@ -1,0 +1,319 @@
+\section{Method}
+\label{sec:method}
+
+Our pipeline transforms a single RGB input image into a Kusama-style
+polka dot rendering through five stages: (1) monocular depth
+estimation, (2) semantic segmentation, (3) depth-density field
+construction, (4) three-layer depth-aware stippling, and (5)
+semantic-aware rendering.
+
+\subsection{Monocular Depth Estimation}
+\label{sec:method:depth}
+
+We employ the YOLO26x-depth model, the largest scale (x) of the YOLO26
+depth estimation family, to obtain a dense per-pixel metric depth map.
+Given an input image $I \in \mathbb{R}^{H \times W \times 3}$, the
+model produces a depth map $D \in \mathbb{R}^{H' \times W'}$ where each
+value represents the estimated distance to the scene point in meters.
+We resize $D$ to the original image resolution via bicubic interpolation
+to obtain $D \in \mathbb{R}^{H \times W}$.
+
+\subsubsection{Depth Normalization}
+
+Raw metric depth values can span a wide range, with outlier pixels
+(e.g., sky at near-infinite distance) compressing the useful depth
+range. A naive global normalization over the entire image would map
+most of the $[0, 1]$ range to background depth variation (sky, distant
+buildings), leaving only a narrow band for the foreground objects that
+are the artistic focus. To ensure that the full normalized depth range
+captures depth variation \emph{within} foreground objects, we employ
+\emph{foreground-aware depth normalization}:
+
+\begin{equation}
+    \hat{d}(x,y) = \begin{cases}
+        \displaystyle\frac{D - d_{\min}^{\text{fg}}}{d_{\max}^{\text{fg}} - d_{\min}^{\text{fg}}} & \text{if } M_{\text{fg}} = 1 \\[6pt]
+        1.0 & \text{otherwise}
+    \end{cases}
+    \label{eq:depth_norm}
+\end{equation}
+
+\noindent where $D \equiv D(x,y)$, $d_{\min}^{\text{fg}}$ and $d_{\max}^{\text{fg}}$ are
+the $p$-th and $(100{-}p)$-th percentiles of the depth values within
+the foreground mask $M_{\text{fg}}$ (defined in
+Section~\ref{sec:method:seg}), with $p = 2$ by default. The result is
+clipped to $[0, 1]$. Background
+pixels are assigned $\hat{d} = 1.0$ (farthest), so they receive the
+smallest dots.
+
+This design amplifies subtle depth differences within foreground
+objects---e.g., the front versus the back of a pumpkin, or the nose
+versus the ears of a cat---into the full $[0, 1]$ normalized range,
+producing visible dot size variation that reflects the object's
+three-dimensional form. In our experiments, foreground-aware
+normalization increases the depth standard deviation within
+foreground regions by approximately 45\% compared to global
+normalization (from $\sigma_{\hat{d}} = 0.158$ to $0.229$), directly
+translating to richer dot size diversity on the main subject.
+
+\subsection{Semantic Segmentation}
+\label{sec:method:seg}
+
+We employ the YOLO26x-sem model to obtain a per-pixel semantic
+segmentation map $S \in \{0, 1, \ldots, 18\}^{H \times W}$, where each
+value is a Cityscapes class ID. We define a set of background classes
+$\mathcal{B} = \{\textit{road}, \textit{sidewalk}, \textit{building},
+\textit{wall}, \textit{sky}, \textit{vegetation}, \textit{terrain}\}$
+and compute a binary foreground mask:
+
+\begin{equation}
+    M_{\text{fg}}(x,y) = \begin{cases} 1 & \text{if } S(x,y) \notin \mathcal{B} \\ 0 & \text{otherwise} \end{cases}
+    \label{eq:fg_mask}
+\end{equation}
+
+Small connected components in $M_{\text{fg}}$ (area $< 2\%$ of canvas)
+are removed to eliminate noise fragments. This foreground mask enables
+dual-color rendering (Section~\ref{sec:method:rendering}).
+
+\subsection{Depth-Density Field Construction}
+\label{sec:method:density}
+
+The density field $\rho(x,y)$ drives Voronoi stippling point placement:
+regions with higher density receive more dots. We construct a composite
+density field that combines depth and luminance information:
+
+\begin{equation}
+    \rho(x,y) = \underbrace{(1 - \hat{d}(x,y))^\beta}_{\text{depth density}} \cdot \underbrace{\gamma(I_{\text{gray}}(x,y))}_{\text{luminance density}},
+    \label{eq:composite_density}
+\end{equation}
+
+\noindent where $\beta$ is the depth-density exponent (default 0.6),
+$\gamma(\cdot)$ is the gamma-corrected inverted luminance density from
+standard stippling \citep{secord2002weighted}, and $I_{\text{gray}}$ is
+the grayscale conversion of the input image. The depth density term
+$(1 - \hat{d})^\beta$ concentrates dots in near regions, while the
+luminance density $\gamma$ preserves the traditional dark-region
+emphasis. The exponent $\beta < 1$ ensures that far regions remain
+populated with sparse dots rather than being entirely empty, preserving
+the horror-vacui aesthetic.
+
+The composite density is normalized to $[0, 1]$ before use.
+
+\subsection{Depth-to-Radius Mapping}
+\label{sec:method:radius}
+
+The central mathematical component of this work is the
+depth-to-radius mapping function that assigns each dot a radius based
+on the local depth value:
+
+\begin{equation}
+    r(x,y) = \Bigl[\, r_{\min} + (r_{\max} - r_{\min}) \cdot (1 - \hat{d})^\alpha \,\Bigr] \cdot (1 + \varepsilon),
+    \label{eq:radius_mapping}
+\end{equation}
+
+\noindent where:
+\begin{itemize}
+    \item $r_{\min}$ and $r_{\max}$ are the minimum and maximum dot
+    radii (in pixels), defining the multi-scale range.
+    \item $\alpha > 0$ is the \emph{depth falloff exponent} controlling
+    the curvature of the depth-size relationship. When $\alpha < 1$,
+    the mapping is concave, producing gentle size variation where most
+    dots are medium-sized. When $\alpha = 1$, the mapping is linear.
+    When $\alpha > 1$, the mapping is convex, producing dramatic size
+    variation with strong depth emphasis---large dots in near regions,
+    rapidly diminishing to small dots in mid-depth.
+    \item $\varepsilon \sim \mathcal{N}(0, \sigma^2)$ is a
+    \emph{multiplicative} Gaussian jitter with standard deviation
+    $\sigma$ (default 0.15) that injects organic variation. Unlike an
+    additive noise term, the multiplicative form scales the absolute
+    jitter with the nominal radius, so small dots remain small and
+    large dots exhibit proportionally larger irregularities---matching
+    the statistics of hand-painted marks. The clipped output keeps
+    radii within $[\,0.3\,\mathrm{px},\; 1.1\, r_{\max}\,]$.
+\end{itemize}
+
+This formulation has several desirable properties:
+\begin{proposition}[Monotonicity]
+The expected dot radius $\mathbb{E}[r]$ is a monotonically decreasing
+function of depth $\hat{d}$ for all $\alpha > 0$, ensuring that near
+objects always receive larger dots on average.
+\end{proposition}
+
+\begin{proposition}[Boundedness]
+The dot radius is bounded with high probability:
+$\Pr\!\bigl[\, r \in [\,r_{\min}(1 - 3\sigma),\; r_{\max}(1 + 3\sigma)\,] \,\bigr] > 99.7\%$,
+so no dot exceeds a predictable maximum size.
+\end{proposition}
+
+The parameter $\alpha$ provides intuitive artistic control: higher
+values produce more dramatic depth emphasis (a few very large dots in
+near regions, many tiny dots elsewhere), while lower values produce a
+more uniform, gentle gradient of sizes. The noise parameter $\sigma$
+controls the degree of organic variation: $\sigma = 0$ yields perfectly
+deterministic size assignment (mechanical appearance), while $\sigma >
+0.2$ produces high variability (chaotic, expressionistic appearance).
+
+\subsection{Learnable Depth-to-Radius Mapping}
+\label{sec:method:learned}
+
+While the fixed power-law mapping (Eq.~\ref{eq:radius_mapping}) provides
+interpretable control, the optimal depth-to-size relationship may vary
+across scene types and artistic preferences. We introduce a
+\emph{learnable} alternative: a lightweight CNN
+(${\sim}47$\,K parameters, 4 conv layers) that takes per-pixel
+features---normalized depth $\hat{d}$, luminance $I_{\text{gray}}$,
+depth-gradient magnitude $|\nabla\hat{d}|$, and luminance-gradient
+magnitude $|\nabla I|$---and predicts both a radius map and a density
+weight map.
+
+The network is trained via a \emph{perceptual stippling loss}
+combining four terms: (i)~depth-gradient alignment (radius should
+correlate with $(1-\hat{d})$), (ii)~coverage matching (target
+${\sim}28\%$), (iii)~radius-histogram matching (target distribution
+skewed toward small dots with a long tail, matching Kusama's
+statistics), and (iv)~spatial smoothness (total-variation
+regularization). Training is self-supervised and requires no
+artist-annotated ground truth. The learned mapping can be
+seamlessly swapped into the pipeline as a drop-in replacement for
+Eq.~\ref{eq:radius_mapping}, with the same multiplicative Gaussian
+jitter for organic variation.
+
+This component addresses a limitation of purely algorithmic NPR
+methods: by learning the depth-size relationship from data, the
+pipeline adapts to diverse scene types without manual parameter
+tuning, providing the data-driven contribution that distinguishes
+our approach from classical stippling.
+
+\subsection{Three-Layer Stippling Architecture}
+\label{sec:method:stippling}
+
+A fundamental tension exists in depth-aware stippling: large dots
+(required for near-region emphasis) occupy significant canvas area and
+can merge with nearby dots if not adequately spaced. Single-layer
+approaches that assign a wide radius range ($r_{\min} = 1$\,px to
+$r_{\max} = 25$\,px) to all points suffer from blob formation, as the
+overlap-pruning step must choose between keeping large dots (which
+dominate the composition) or keeping small dots (which provide texture).
+
+We resolve this tension through a three-layer architecture, each layer
+operating in a distinct radius regime with independent overlap
+pruning:
+
+\subsubsection{Layer 1: Fine Stipple}
+
+The fine stipple layer provides the base texture: a dense field of
+small dots ($r \in [1, 5]$\,px) whose density follows the composite
+depth-luminance field (Eq.~\ref{eq:composite_density}). Points are
+initialized by rejection sampling, relaxed via Lloyd iteration
+(8 iterations with jitter to break hexagonal regularity), and
+assigned radii via the depth-to-radius mapping
+(Eq.~\ref{eq:radius_mapping}) with a reduced falloff exponent
+$\alpha' = 0.6\alpha$ for subtle size variation. Overlap pruning
+uses a tight gap of 1.0\,px, allowing dense packing of small dots.
+
+\subsubsection{Layer 2: Depth-Emphasis}
+
+The depth-emphasis layer carries the primary depth signal: large dots
+($r \in [7.5, r_{\max}]$\,px) placed exclusively in near foreground
+regions, gated by the condition
+$M_{\text{near}} = \mathbb{1}[\hat{d} < 0.55] \cdot M_{\text{fg}}$.
+Points are sampled from a near-weighted density field
+$\rho_{\text{near}} = M_{\text{near}} \cdot \rho$. Overlap pruning
+uses a larger gap of 4.0\,px to ensure adequate spacing between large
+dots.
+
+\paragraph{Cross-Layer Pruning.}
+After generating both layers, we perform cross-layer pruning: fine
+dots whose centers fall within the bounding circle of any
+depth-emphasis dot (plus a 1\,px margin) are removed. This prevents
+large dots from connecting to nearby fine dots and forming merged
+blobs. The pruning is implemented via a $k$-d tree for efficient
+neighbor queries:
+
+\begin{algorithm}
+\caption{Cross-Layer Overlap Pruning}
+\label{alg:cross_prune}
+\begin{algorithmic}[1]
+\REQUIRE Fine dots $\{(p_i, r_i)\}$, emphasis dots $\{(q_j, s_j)\}$
+\ENSURE Pruned fine dots $\{(p_i, r_i)\}$
+\STATE Build $k$-d tree $T$ on $\{q_j\}$
+\FOR{each fine dot $(p_i, r_i)$}
+    \STATE $R \leftarrow r_i + \max_j s_j + 2$ \COMMENT{search radius}
+    \STATE $\mathcal{N} \leftarrow T.\text{query}(p_i, R)$
+    \STATE $\text{keep}_i \leftarrow \text{true}$
+    \FOR{each $j \in \mathcal{N}$}
+        \IF{$\|p_i - q_j\| < r_i + s_j + 1$}
+            \STATE $\text{keep}_i \leftarrow \text{false}$;\; \textbf{break}
+        \ENDIF
+    \ENDFOR
+\ENDFOR
+\RETURN $\{(p_i, r_i) : \text{keep}_i = \text{true}\}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Layer 3: Edge and Background}
+
+The edge layer places small dots ($r = 1.3$\,px) at regular intervals
+along Canny edges \citep{canny1986computational} with Gaussian
+jitter, providing structural emphasis along object contours. The
+background layer applies a sparse jittered grid of tiny dots ($r \approx
+1$\,px) in low-density regions (composite density $< 0.25$), satisfying
+the horror-vacui requirement that no canvas region remains empty.
+
+\subsection{Semantic-Aware Rendering}
+\label{sec:method:rendering}
+
+The rendering stage draws all dots on a flat background canvas using
+hard-edged solid circles (\texttt{cv2.circle} with
+\texttt{LINE\_4} connectivity, no anti-aliasing). The hard-edge
+property is both stylistically correct---Kusama's dots have crisp,
+mechanical boundaries---and functionally necessary, as anti-aliasing
+would create intermediate-alpha bridge pixels between adjacent dots,
+causing them to visually merge.
+
+Each Kusama palette defines three colors: a background color
+$c_{\text{bg}}$, a foreground dot color $c_{\text{fg}}$, and a
+background dot color $c_{\text{bg-dot}}$. When semantic-aware mode is
+enabled, each dot's color is determined by its center pixel in the
+foreground mask:
+
+\begin{equation}
+    c_i = \begin{cases} c_{\text{fg}} & \text{if } M_{\text{fg}}(y_i, x_i) = 1 \\ c_{\text{bg-dot}} & \text{otherwise} \end{cases}
+    \label{eq:semantic_color}
+\end{equation}
+
+This creates a figure--ground color separation: foreground objects
+are rendered in one dot color while
+background regions use a contrasting dot color,
+both against a shared flat background. The five palettes are designed
+with Kusama's characteristic high chroma and flat application:
+
+\begin{itemize}
+    \item \textbf{black\_red}: black background, red foreground dots,
+    cyan background dots (classic Kusama)
+    \item \textbf{yellow\_black}: chrome yellow background, black
+    foreground dots, dark red background dots (pumpkin series)
+    \item \textbf{white\_red}: white background, scarlet foreground
+    dots, cyan-blue background dots (high contrast)
+    \item \textbf{magenta\_cyan}: near-black background, magenta
+    foreground dots, cyan background dots
+    \item \textbf{red\_yellow}: red background, yellow foreground dots,
+    white background dots (inverse configuration)
+\end{itemize}
+
+The drawing order ensures visual hierarchy: background fill dots are
+drawn first (underneath), followed by the fine stipple layer, edge
+dots, and finally the depth-emphasis layer on top (most prominent).
+
+\subsection{Implementation Details}
+
+The pipeline is implemented in Python using PyTorch for YOLO26
+inference, OpenCV for image processing, and SciPy for Voronoi
+computation. The YOLO26x-depth and YOLO26x-sem models run on an NVIDIA
+RTX A4500 GPU (20\,GB VRAM), with inference times of approximately
+2.2\,s and 0.4\,s respectively for a $1024 \times 1024$ image. The
+Voronoi stippling stage (rejection sampling, Lloyd relaxation, and
+overlap pruning) runs on CPU and takes approximately 60\,s for 25,000
+initial points with 8 relaxation iterations. The Lloyd relaxation uses
+the mirror-points trick to handle unbounded Voronoi cells and
+cumulative-sum acceleration for density-weighted centroid computation,
+following \citet{secord2002weighted}.

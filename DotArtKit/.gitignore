@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+build/
+dist/
+
+# Outputs (生成结果不进版本库)
+outputs/*
+!outputs/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# LaTeX 辅助
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out
+paper/*.fdb_latexmk
+paper/*.fls

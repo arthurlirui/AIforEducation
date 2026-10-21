@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# 环境与密钥
+.env
+
+# 输出产物
+output/*/keyframes/
+output/*/clips/
+output/*/final.mp4
+output/*/meta.json
+output/*/screenplay.json
+
+# 资源（按需添加）
+assets/bgm/*.mp3
+assets/bgm/*.wav
+assets/fonts/*.ttf
+assets/fonts/*.otf
+
+# IDE
+.idea/
+.vscode/

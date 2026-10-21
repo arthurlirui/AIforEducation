@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+build/
+dist/
+.pytest_cache/
+
+# 环境变量
+.env
+.env.revive
+
+# 输出
+output/*
+!output/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# LaTeX 辅助
+paper/*/main.aux
+paper/*/main.bbl
+paper/*/main.blg
+paper/*/main.log
+paper/*/main.out
+paper/*/paper.aux
+paper/*/paper.bbl
+paper/*/paper.blg
+paper/*/paper.log
+paper/*/paper.out

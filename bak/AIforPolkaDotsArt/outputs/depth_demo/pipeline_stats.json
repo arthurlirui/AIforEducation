@@ -1,0 +1,226 @@
+[
+  {
+    "output": "outputs/depth_demo\\demo_1_yellow_black_pumpkin.png",
+    "image_size": [
+      1024,
+      1024
+    ],
+    "depth_range_m": [
+      0.4646507799625397,
+      2.162083387374878
+    ],
+    "depth_norm_range": [
+      0.0,
+      1.0
+    ],
+    "n_fine_dots": 839,
+    "n_depth_emphasis_dots": 270,
+    "n_edge_dots": 3628,
+    "n_bg_dots": 1740,
+    "n_total_dots": 6477,
+    "radius_range": [
+      0.6137955188751221,
+      15.399999618530273
+    ],
+    "semantic_classes": [
+      2,
+      10,
+      13
+    ],
+    "fg_pixel_ratio": 0.6610355377197266,
+    "timing": {
+      "depth": 2.269575834274292,
+      "seg": 0.4796292781829834,
+      "stipple": 54.069432973861694,
+      "total": 57.10804271697998
+    }
+  },
+  {
+    "output": "outputs/depth_demo\\demo_2_black_red_pumpkin.png",
+    "image_size": [
+      1024,
+      1024
+    ],
+    "depth_range_m": [
+      0.4646507799625397,
+      2.162083387374878
+    ],
+    "depth_norm_range": [
+      0.0,
+      1.0
+    ],
+    "n_fine_dots": 839,
+    "n_depth_emphasis_dots": 270,
+    "n_edge_dots": 3628,
+    "n_bg_dots": 1740,
+    "n_total_dots": 6477,
+    "radius_range": [
+      0.6137955188751221,
+      15.399999618530273
+    ],
+    "semantic_classes": [
+      2,
+      10,
+      13
+    ],
+    "fg_pixel_ratio": 0.6610355377197266,
+    "timing": {
+      "depth": 0.7950530052185059,
+      "seg": 0.5508475303649902,
+      "stipple": 52.34480905532837,
+      "total": 53.87425708770752
+    }
+  },
+  {
+    "output": "outputs/depth_demo\\demo_3_black_red_cat.png",
+    "image_size": [
+      890,
+      790
+    ],
+    "depth_range_m": [
+      0.667924702167511,
+      0.8523989915847778
+    ],
+    "depth_norm_range": [
+      0.0,
+      1.0
+    ],
+    "n_fine_dots": 1357,
+    "n_depth_emphasis_dots": 119,
+    "n_edge_dots": 3302,
+    "n_bg_dots": 1681,
+    "n_total_dots": 6459,
+    "radius_range": [
+      0.5438300967216492,
+      15.399999618530273
+    ],
+    "semantic_classes": [
+      0,
+      1,
+      2,
+      11
+    ],
+    "fg_pixel_ratio": 0.06860617266391694,
+    "timing": {
+      "depth": 0.8701856136322021,
+      "seg": 0.47589921951293945,
+      "stipple": 37.914894104003906,
+      "total": 39.40240430831909
+    }
+  },
+  {
+    "output": "outputs/depth_demo\\demo_4_magenta_cyan_cat.png",
+    "image_size": [
+      890,
+      790
+    ],
+    "depth_range_m": [
+      0.667924702167511,
+      0.8523989915847778
+    ],
+    "depth_norm_range": [
+      0.0,
+      1.0
+    ],
+    "n_fine_dots": 1365,
+    "n_depth_emphasis_dots": 112,
+    "n_edge_dots": 3302,
+    "n_bg_dots": 1681,
+    "n_total_dots": 6460,
+    "radius_range": [
+      0.4525960683822632,
+      15.399999618530273
+    ],
+    "semantic_classes": [
+      0,
+      1,
+      2,
+      11
+    ],
+    "fg_pixel_ratio": 0.06860617266391694,
+    "timing": {
+      "depth": 0.6508610248565674,
+      "seg": 0.5493752956390381,
+      "stipple": 37.95912146568298,
+      "total": 39.29172658920288
+    }
+  },
+  {
+    "output": "outputs/depth_demo\\demo_5_white_red_pepper.png",
+    "image_size": [
+      600,
+      600
+    ],
+    "depth_range_m": [
+      0.4641028046607971,
+      0.7872800827026367
+    ],
+    "depth_norm_range": [
+      0.0,
+      1.0
+    ],
+    "n_fine_dots": 350,
+    "n_depth_emphasis_dots": 107,
+    "n_edge_dots": 1215,
+    "n_bg_dots": 675,
+    "n_total_dots": 2347,
+    "radius_range": [
+      0.6492109298706055,
+      13.199999809265137
+    ],
+    "semantic_classes": [
+      0,
+      2,
+      8,
+      10,
+      11,
+      13
+    ],
+    "fg_pixel_ratio": 0.5944361111111112,
+    "timing": {
+      "depth": 0.7633969783782959,
+      "seg": 0.39005255699157715,
+      "stipple": 31.759685754776,
+      "total": 32.96920132637024
+    }
+  },
+  {
+    "output": "outputs/depth_demo\\demo_6_red_yellow_pepper.png",
+    "image_size": [
+      600,
+      600
+    ],
+    "depth_range_m": [
+      0.4641028046607971,
+      0.7872800827026367
+    ],
+    "depth_norm_range": [
+      0.0,
+      1.0
+    ],
+    "n_fine_dots": 350,
+    "n_depth_emphasis_dots": 107,
+    "n_edge_dots": 1215,
+    "n_bg_dots": 675,
+    "n_total_dots": 2347,
+    "radius_range": [
+      0.6492109298706055,
+      13.199999809265137
+    ],
+    "semantic_classes": [
+      0,
+      2,
+      8,
+      10,
+      11,
+      13
+    ],
+    "fg_pixel_ratio": 0.5944361111111112,
+    "timing": {
+      "depth": 0.7356524467468262,
+      "seg": 0.3041963577270508,
+      "stipple": 25.09184765815735,
+      "total": 26.181915283203125
+    }
+  }
+]

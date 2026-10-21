@@ -1,0 +1,44 @@
+% =====================================================================
+% Canvas3D Figure Variants Preview Document
+% Compile with: xelatex preview_variants.tex
+% =====================================================================
+\documentclass[10pt,twocolumn]{article}
+
+\usepackage[margin=0.8in]{geometry}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,fit,calc}
+\usepackage{xcolor}
+\usepackage{amsmath,amssymb}
+\usepackage{microtype}
+\usepackage{caption}
+
+% Compact captions for preview
+\captionsetup{font={small},skip=4pt}
+
+\begin{document}
+
+\title{Canvas3D Figure Variants Preview}
+\author{Select your preferred variant for each figure}
+\date{\today}
+\maketitle
+
+\vspace{1em}
+\noindent\textbf{Instructions:} Each figure below is labeled
+\texttt{figX\_name\_V} where \texttt{X} is the figure number,
+\texttt{name} is the module, and \texttt{V} is the variant (A/B/C).
+After choosing, we will extract the corresponding code into the final
+\texttt{method.tex}.
+
+\clearpage
+\input{fig1_overview_variants}
+\clearpage
+\input{fig2_paintparse_variants}
+\clearpage
+\input{fig3_monosplat_variants}
+\clearpage
+\input{fig4_sketchcomp_variants}
+\clearpage
+\input{fig5_artiflow_variants}
+
+\end{document}

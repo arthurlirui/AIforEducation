@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+output/
+*.log
+.DS_Store
+node_modules/
+dist/
+.vite/
+*.local

@@ -1,0 +1,51 @@
+# OilPaintingVideo 主配置
+# .env 提供 LLM_API_KEY / COMFY_HOST 等敏感/环境相关值；
+# 本文件提供创作参数与模型名等可调项。
+
+# ── 画幅 ──
+# "9:16" → 1080x1920（竖屏，抖音/视频号/小红书）
+# "16:9" → 1920x1080（横屏，B 站/YouTube）
+aspect: "9:16"
+
+# ── 默认图生视频模型 ──
+# "ltx" → LTX-Video（快、显存友好）
+# "wan"  → Wan2.2-I2V（质量高、显存需求大）
+default_i2v_model: "ltx"
+
+# ── 视频参数 ──
+target_duration_sec: 30   # 目标总时长（秒），据此估算镜头数
+fps: 24                   # 输出帧率
+shot_duration_sec: 3      # 单镜头默认时长（秒），可在剧本中被覆盖
+concurrency: 2            # ComfyUI 并行排队数
+
+# ── 风格预设 ──
+default_style: "impressionism"   # 对应 styles.yaml 中的 key
+
+# ── ComfyUI 模型名（需与你 ComfyUI 实例中实际加载的一致）──
+# 关键帧油画化：SDXL 基模 + 风格 LoRA（可选）
+sdxl_checkpoint: "sd_xl_base_1.0.safetensors"
+oilpaint_lora: ""           # 留空则纯提示词驱动风格
+oilpaint_lora_strength: 0.8
+
+# LTX-Video
+ltx_model: "ltx-video-2b-v0.9.5.safetensors"
+ltx_steps: 30
+ltx_cfg: 1.0
+
+# Wan2.2-I2V
+wan_model: "wan2.2_i2v_720p_bf16.safetensors"
+wan_steps: 30
+wan_cfg: 6.0
+wan_guidance_scale: 5.0
+
+# ── 路径（留空使用项目内默认值）──
+output_dir: ""              # 默认 <项目>/output
+workflows_dir: ""           # 默认 <项目>/workflows（覆盖内置 templates）
+assets_dir: ""              # 默认 <项目>/assets
+ffmpeg_path: ""             # 留空用 PATH；FFMPEG_PATH env 优先
+
+# ── 剪辑 ──
+transition: "xfade"         # "xfade"（交叉淡化）或 "cut"（硬切）
+transition_duration_sec: 0.5
+burn_subtitle: true         # 烧录旁白/对白字幕
+subtitle_font: ""           # 留空用 assets/fonts 下默认字体

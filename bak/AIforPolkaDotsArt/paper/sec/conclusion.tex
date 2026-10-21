@@ -1,0 +1,41 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+We have presented a depth-aware polka dot art generation pipeline that
+integrates YOLO26 monocular depth estimation and semantic segmentation
+with Weighted Voronoi Stippling to produce Yayoi Kusama--style
+non-photorealistic renderings from single RGB images. The central
+contribution is a mathematically principled depth-to-radius mapping
+function that encodes scene depth into dot size---near objects receive
+large, prominent dots while far objects recede into fields of small,
+sparse dots---with controlled Gaussian randomization that replicates
+the organic variation of hand-painted dots. This mapping is governed
+by two intuitive parameters: a depth falloff exponent $\alpha$ that
+controls the strength of depth emphasis, and a noise standard
+deviation $\sigma$ that controls the degree of organic variation.
+
+The three-layer stippling architecture (fine stipple, depth-emphasis,
+and edge/background) with cross-layer overlap pruning resolves the
+fundamental tension between dot size variation and dot separation,
+maintaining maximum blob area below 0.65\% of the canvas while
+supporting a dot radius range of 0.5--15.4\,px. Semantic-aware dual-color
+rendering, enabled by YOLO26 semantic segmentation, assigns different
+dot colors to foreground and background regions, creating a
+figure--ground separation that echoes Kusama's compositional practice.
+
+Experiments on three natural images demonstrate that the pipeline achieves
+controllable depth encoding, maintains dot separation, and produces
+visually compelling results across five high-chroma Kusama palettes.
+The ablation study confirms that cross-layer pruning is the most
+critical component for preventing blob merging, and that each
+layer contributes distinct aesthetic qualities to the final rendering.
+
+This work demonstrates that modern pretrained vision models---originally
+developed for autonomous driving and scene understanding---can serve as
+artistic primitives for non-photorealistic rendering. The depth and
+semantic information they provide opens new dimensions of control
+beyond the traditional luminance-based paradigm, enabling computational
+approaches to art styles that have previously resisted algorithmic
+reproduction. We hope this work encourages further exploration at the
+intersection of computational aesthetics, depth estimation, and
+artistic style rendering.

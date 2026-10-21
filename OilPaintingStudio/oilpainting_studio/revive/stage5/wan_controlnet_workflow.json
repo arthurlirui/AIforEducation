@@ -1,0 +1,64 @@
+{
+  "_comment": "Wan2.2 I2V + ControlNet (depth + canny) 动画生成工作流（API 格式）。节点 id 约定：input_image(LoadImage)、input_depth(LoadImage)、input_edge(LoadImage)、wan_model(WanModelLoader)、controlnet_depth(ControlNetLoader)、controlnet_canny(ControlNetLoader)、sampler(WanVideoSampler)、save(VHS_VideoCombine)。注入字段见 stage5/workflow.py。",
+  "input_image": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "keyframe_0000.png"
+    }
+  },
+  "input_depth": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "depth_0000.png"
+    }
+  },
+  "input_edge": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "edge_0000.png"
+    }
+  },
+  "wan_model": {
+    "class_type": "WanModelLoader",
+    "inputs": {
+      "model": "wan2.2_i2v_14b_720p.safetensors"
+    }
+  },
+  "controlnet_depth": {
+    "class_type": "ControlNetLoader",
+    "inputs": {
+      "control_net_name": "control_v11f1p_sd15_depth",
+      "strength": 1.0
+    }
+  },
+  "controlnet_canny": {
+    "class_type": "ControlNetLoader",
+    "inputs": {
+      "control_net_name": "control_v11p_sd15_canny",
+      "strength": 0.8
+    }
+  },
+  "sampler": {
+    "class_type": "WanVideoSampler",
+    "inputs": {
+      "model": ["wan_model", 0],
+      "positive": ["controlnet_canny", 0],
+      "negative": ["wan_model", 1],
+      "seed": 0,
+      "steps": 30,
+      "cfg": 1.0,
+      "num_frames": 49,
+      "sampler_name": "euler"
+    }
+  },
+  "save": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+      "images": ["sampler", 0],
+      "filename_prefix": "oilrev_wan",
+      "frame_rate": 24,
+      "format": "video/h264-mp4",
+      "save_metadata": false
+    }
+  }
+}

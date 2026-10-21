@@ -1,0 +1,51 @@
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Image-to-Video Diffusion Models}
+
+I2V diffusion models animate a static image by generating
+temporally coherent video frames conditioned on the input image
+and a text prompt. Open-source backbones such as Wan2.1-I2V
+and LTX-Video provide controllable synthesis with manageable GPU
+footprints. StyleMaster \citep{ye2025stylemaster} improves
+stylized video quality through motion adapters and patch-level
+style filtering. EchoStyle \citep{li2026echostyle} uses
+sliding-window strategies for long-video temporal coherence.
+However, these methods are trained on natural imagery and do not
+account for art-specific aesthetic principles such as ink density
+or negative space.
+
+\subsection{Ink-Wash Painting Stylization}
+
+Computational ink-wash painting has focused primarily on
+\emph{single-image} generation. BitGAN \citep{he2023bitgan}
+generates ink-wash images via GANs with brush-texture loss.
+ChipDiff \citep{liu2026chipdiff} applies loss-gradient guidance on
+a diffusion model to capture ink aesthetics. InkSpirit
+\citep{zhang2025inkspirit} uses ControlNet conditioning for
+ink-style image transfer. These methods demonstrate that
+art-specific losses can guide diffusion models toward ink
+aesthetics, but they are limited to static images and do not
+address temporal coherence or the five-level ink theory as
+explicit controllable parameters.
+
+\subsection{Controllable Diffusion with Art-Specific Conditioning}
+
+ControlNet \citep{zhang2023controlnet} enables structural
+conditioning (Canny edges, depth maps, poses) in diffusion models.
+IP-Adapter and LoRA \citep{hu2022lora} provide style conditioning
+through reference images. However, existing control mechanisms do
+not expose art-specific axes such as ink-density levels or
+negative-space regions as controllable parameters. Our work fills
+this gap by introducing dual conditioning with explicit
+art-theoretic foundations and a blank-space loss that has no
+counterpart in general-purpose controllable diffusion.
+
+\subsection{Content Deformation Fields for Video Consistency}
+
+CoDeF \citep{ouyang2024codef} introduces content deformation fields
+for temporally consistent video-to-video translation. We adapt this
+concept for cross-region consistency in multi-region ink-wash
+animations, ensuring that motion in one region (e.g., drifting
+mist) does not introduce artifacts at boundaries with static
+regions (e.g., mountains).

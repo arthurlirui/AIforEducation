@@ -1,0 +1,202 @@
+\begin{thebibliography}{}
+
+\bibitem[\protect\citeauthoryear{{ArchDaily}}{2024}]{archdaily_kusama}
+{ArchDaily}.
+\newblock Yayoi kusama, artist of dots, repetition and infinity.
+\newblock \url{https://www.archdaily.com}, 2024.
+
+\bibitem[\protect\citeauthoryear{Arroyo \bgroup \em et al.\egroup
+  }{2021}]{arroyo2021interpolation}
+Jesus Arroyo, Mark Spicker, Hsuan-Tien Hsieh, Tobias Isenberg, Oliver Deussen,
+  and Enrico Bertini.
+\newblock Interpolation of point distributions for digital stippling.
+\newblock {\em ACM Transactions on Graphics}, 40(6):1--12, 2021.
+
+\bibitem[\protect\citeauthoryear{Balzer \bgroup \em et al.\egroup
+  }{2009}]{balzer2009capacity}
+Michael Balzer, Tobias Schlatter, and Oliver Deussen.
+\newblock Capacity-constrained point distributions: A variant of {Lloyd's}
+  method.
+\newblock {\em ACM Transactions on Graphics}, 28(3):1--8, 2009.
+
+\bibitem[\protect\citeauthoryear{Bridson}{2007}]{bridson2007fast}
+Robert Bridson.
+\newblock Fast poisson disk sampling in arbitrary dimensions.
+\newblock In {\em SIGGRAPH Sketches}, 2007.
+
+\bibitem[\protect\citeauthoryear{Canny}{1986}]{canny1986computational}
+John Canny.
+\newblock A computational approach to edge detection.
+\newblock {\em IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  8(6):679--698, 1986.
+
+\bibitem[\protect\citeauthoryear{Cordts \bgroup \em et al.\egroup
+  }{2016}]{cordts2016cityscapes}
+Marius Cordts, Mohamed Omran, Sebastian Ramos, Timo Rehfeld, Markus Enzweiler,
+  Uwe Franke, Stefan Roth, and Bernt Schiele.
+\newblock The {Cityscapes} dataset for semantic urban scene understanding.
+\newblock In {\em Proceedings of the IEEE Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, 2016.
+
+\bibitem[\protect\citeauthoryear{Curtis \bgroup \em et al.\egroup
+  }{1997}]{curtis1997computer}
+Cassidy~J. Curtis, Sean~E. Anderson, Joshua~E. Seims, Kurt Fleischer, and
+  David~H. Salesin.
+\newblock Computer-generated watercolor.
+\newblock In {\em Proceedings of SIGGRAPH}, 1997.
+
+\bibitem[\protect\citeauthoryear{Deussen \bgroup \em et al.\egroup
+  }{2000}]{deussen2000floating}
+Oliver Deussen, Stefan Hiller, Kees van Overveld, and Thomas Strothotte.
+\newblock Floating points: A method for computing stipple drawings.
+\newblock {\em Computer Graphics Forum}, 19(3):191--198, 2000.
+
+\bibitem[\protect\citeauthoryear{Eigen \bgroup \em et al.\egroup
+  }{2014}]{eigen2014depth}
+David Eigen, Christian Puhrsch, and Rob Fergus.
+\newblock Depth map prediction from a single image using a multi-scale deep
+  network.
+\newblock In {\em Advances in Neural Information Processing Systems (NeurIPS)},
+  2014.
+
+\bibitem[\protect\citeauthoryear{Floyd and
+  Steinberg}{1976}]{floyd_steinberg1976}
+Robert~W. Floyd and Louis Steinberg.
+\newblock An adaptive algorithm for spatial grey scale.
+\newblock {\em Proceedings of the Society for Information Display},
+  17(2):75--77, 1976.
+
+\bibitem[\protect\citeauthoryear{Fu \bgroup \em et al.\egroup
+  }{2018}]{fu2018deep}
+Huan Fu, Mingming Gong, Chaohui Wang, Kayhan Batmanghelich, and Dacheng Tao.
+\newblock Deep ordinal regression network for monocular depth estimation.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, 2018.
+
+\bibitem[\protect\citeauthoryear{Gatys \bgroup \em et al.\egroup
+  }{2015}]{gatys2015neural}
+Leon~A. Gatys, Alexander~S. Ecker, and Matthias Bethge.
+\newblock A neural algorithm of artistic style.
+\newblock {\em arXiv preprint arXiv:1508.06576}, 2015.
+
+\bibitem[\protect\citeauthoryear{Hertzmann}{1998}]{hertzmann1998painterly}
+Aaron Hertzmann.
+\newblock Painterly rendering for digital images.
+\newblock In {\em Proceedings of the 1st International Symposium on
+  Non-Photorealistic Animation and Rendering (NPAR)}, 1998.
+
+\bibitem[\protect\citeauthoryear{Hu \bgroup \em et al.\egroup
+  }{2022}]{hu2022lora}
+Edward~J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean
+  Wang, Lu~Wang, and Weizhu Chen.
+\newblock {LoRA}: Low-rank adaptation of large language models.
+\newblock In {\em International Conference on Learning Representations (ICLR)},
+  2022.
+
+\bibitem[\protect\citeauthoryear{Johnson \bgroup \em et al.\egroup
+  }{2016}]{johnson2016perceptual}
+Justin Johnson, Alexandre Alahi, and Li~Fei-Fei.
+\newblock Perceptual losses for real-time style transfer and super-resolution.
+\newblock {\em arXiv preprint arXiv:1603.08155}, 2016.
+
+\bibitem[\protect\citeauthoryear{Kim \bgroup \em et al.\egroup
+  }{2008}]{kim2008stippling}
+Dongyeon Kim, Minjung Son, Yunjin Lee, Hyeongwoo Kang, and Seungyong Lee.
+\newblock Stippling by example.
+\newblock {\em Computer Graphics Forum}, 27(2):465--474, 2008.
+
+\bibitem[\protect\citeauthoryear{Laina \bgroup \em et al.\egroup
+  }{2016}]{laina2016deeper}
+Iro Laina, Christian Rupprecht, Vasileios Belagiannis, Federico Tombari, and
+  Nassir Navab.
+\newblock Deeper depth prediction with fully convolutional residual networks.
+\newblock In {\em International Conference on 3D Vision (3DV)}, 2016.
+
+\bibitem[\protect\citeauthoryear{Litwinowicz}{1997}]{litwinowicz1997processing}
+Peter Litwinowicz.
+\newblock Processing images and video for an impressionist effect.
+\newblock In {\em Proceedings of SIGGRAPH}, 1997.
+
+\bibitem[\protect\citeauthoryear{Lloyd}{1982}]{lloyd1982least}
+Stuart~P. Lloyd.
+\newblock Least squares quantization in {PCM}.
+\newblock {\em IEEE Transactions on Information Theory}, 28(2):129--137, 1982.
+
+\bibitem[\protect\citeauthoryear{Mart{\'\i}n \bgroup \em et al.\egroup
+  }{2023}]{martin2023digital}
+Domingo Mart{\'\i}n, Jesus Arroyo, and Tobias Isenberg.
+\newblock Digital stippling: A survey.
+\newblock {\em arXiv preprint arXiv:2307.00938}, 2023.
+
+\bibitem[\protect\citeauthoryear{Ranftl \bgroup \em et al.\egroup
+  }{2021}]{ranftl2021vision}
+Ren{\'e} Ranftl, Alexey Bochkovskiy, and Vladlen Koltun.
+\newblock Vision transformers for dense prediction.
+\newblock In {\em International Conference on Learning Representations (ICLR)},
+  2021.
+
+\bibitem[\protect\citeauthoryear{Ray \bgroup \em et al.\egroup
+  }{2018}]{ray2018codesign}
+Nicholas Ray, Wan-Yu Li, Bruno L{\'e}on, and Bruno L{\'e}vy.
+\newblock A computational and perceptual assessment of {Voronoi} stippling.
+\newblock {\em ACM Transactions on Graphics}, 37(4):1--14, 2018.
+
+\bibitem[\protect\citeauthoryear{Rombach \bgroup \em et al.\egroup
+  }{2022}]{rombach2022high}
+Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Bj{\"o}rn
+  Ommer.
+\newblock High-resolution image synthesis with latent diffusion models.
+\newblock In {\em Proceedings of the IEEE/CVF Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, 2022.
+
+\bibitem[\protect\citeauthoryear{Secord}{2002}]{secord2002weighted}
+Adrian Secord.
+\newblock Weighted voronoi stippling.
+\newblock In {\em Proceedings of the 2nd International Symposium on
+  Non-Photorealistic Animation and Rendering (NPAR)}, pages 37--43, 2002.
+
+\bibitem[\protect\citeauthoryear{Spicker \bgroup \em et al.\egroup
+  }{2019}]{spicker2019quantifying}
+Mark Spicker, Hsuan-Tien Hsieh, Stefan Hiller, Oliver Deussen, and Tobias
+  Isenberg.
+\newblock Quantifying visual abstraction quality.
+\newblock {\em ACM Transactions on Applied Perception}, 16(2):1--15, 2019.
+
+\bibitem[\protect\citeauthoryear{{The Museum of Modern Art}}{}]{moma_kusama}
+{The Museum of Modern Art}.
+\newblock Yayoi kusama---{MoMA} artist page.
+\newblock \url{https://www.moma.org/artists/3315-yayoi-kusama}.
+
+\bibitem[\protect\citeauthoryear{{Ultralytics}}{2025}]{ultralytics2025yolo26}
+{Ultralytics}.
+\newblock {YOLO26}: Unified real-time vision models.
+\newblock \url{https://docs.ultralytics.com/models/yolo26}, 2025.
+
+\bibitem[\protect\citeauthoryear{Ulyanov \bgroup \em et al.\egroup
+  }{2016}]{ulyanov2016instance}
+Dmitry Ulyanov, Andrea Vedaldi, and Victor Lempitsky.
+\newblock Instance normalization: The missing ingredient for fast stylization.
+\newblock {\em arXiv preprint arXiv:1607.08022}, 2016.
+
+\bibitem[\protect\citeauthoryear{Winnem{\"o}ller \bgroup \em et al.\egroup
+  }{2006}]{winnemoller2006real}
+Holger Winnem{\"o}ller, Sven~C. Olsen, and Bruce Gooch.
+\newblock Real-time video abstraction.
+\newblock {\em ACM Transactions on Graphics}, 25(3):1221--1226, 2006.
+
+\bibitem[\protect\citeauthoryear{Zhang \bgroup \em et al.\egroup
+  }{2023}]{zhang2023adding}
+Lvmin Zhang, Anyi Rao, and Maneesh Agrawala.
+\newblock Adding conditional control to text-to-image diffusion models.
+\newblock In {\em Proceedings of the IEEE/CVF International Conference on
+  Computer Vision (ICCV)}, 2023.
+
+\bibitem[\protect\citeauthoryear{Zhou \bgroup \em et al.\egroup
+  }{2017}]{zhou2017scene}
+Bolei Zhou, Hang Zhao, Xavier Puig, Sanja Fidler, Adela Barriuso, and Antonio
+  Torralba.
+\newblock Scene parsing through {ADE20K} dataset.
+\newblock In {\em Proceedings of the IEEE Conference on Computer Vision and
+  Pattern Recognition (CVPR)}, 2017.
+
+\end{thebibliography}

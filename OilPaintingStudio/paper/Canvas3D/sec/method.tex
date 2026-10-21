@@ -1,0 +1,656 @@
+% =====================================================================
+%  Section: Method  (IJCAI 2027 revision: design-rationale centric)
+% =====================================================================
+\section{Method}
+\label{sec:method}
+
+\paragraph{Design philosophy.}
+A single painting-animation system must simultaneously satisfy four
+\emph{conflicting} objectives: perceptual grouping of artistically rendered
+content, geometric reconstruction of objects that have no real 3D extent,
+user-specifiable composition, and temporally coherent stylized rendering.
+Jointly optimizing a single network for all four is ill-posed because the
+gradients of style fidelity and 3D structure pull in opposite directions.
+Our central design principle is therefore \emph{modular separation of
+concerns with explicit handshakes}: each objective is addressed by an
+independently optimized specialist, and the four specialists communicate
+only through well-defined, interpretable intermediate
+representations---masks with depth-ordered layers, a metric-scaled
+object-level 3D library, a composited 3D scene with disocclusion-filled
+background, and finally a multi-view keyframe stream with paired
+geometry and edge cues. This decomposition converts a conflicting joint
+problem into four well-posed sub-problems, while the handshakes carry
+exactly the information each downstream stage needs and no more,
+preventing error compounding.
+
+\paragraph{Problem statement.}
+Given a painting scan $P \in \mathbb{R}^{H\times W \times 3}$ and a set of
+hand-drawn line-art sketches $L = \{\ell_1, \dots, \ell_K\}$ specifying
+target object positions, Canvas3D produces an animated video $V$ that
+(i) preserves the artistic style of $P$, (ii) supports viewpoint
+exploration of a 3D-composited scene, and (iii) places each foreground
+object at its sketched location with geometrically grounded, temporally
+coherent motion. The framework comprises four modules
+(Figure~\ref{fig:overview}): \textbf{PaintParse} (perceptual grouping and
+layer decomposition), \textbf{MonoSplat} (per-object 3D lifting and
+library assembly), \textbf{SketchComp} (line-art-guided scene composition
+with depth-aware inpainting), and \textbf{ArtiFlow} (geometry-grounded
+video synthesis).
+
+\paragraph{Notation.}
+$M_i \in \{0,1\}^{H\times W}$ denotes a binary mask for the $i$-th
+foreground object, $M_\text{bg}$ the residual background mask,
+$D_\text{mono}$ the monocular depth map, $\mathcal{G}_i$ the 3D
+representation of object $i$, $\mathcal{S}$ the composited scene,
+$\Omega_\text{gap}$ the disocclusion region, and $\{I_t, D_t, E_t\}$ the
+multi-view RGB, depth, and edge keyframes.
+
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\scriptsize,
+        stage/.style={draw=black!60, rounded corners=4pt, thick,
+            minimum width=2.7cm, minimum height=1.6cm, align=center},
+        inp/.style={draw=black!50, fill=yellow!10, rounded corners=3pt,
+            minimum width=1.8cm, minimum height=0.7cm, align=center,
+            font=\scriptsize},
+        outp/.style={draw=black!50, fill=gray!8, rounded corners=3pt,
+            minimum width=2.2cm, minimum height=0.7cm, align=center,
+            font=\scriptsize},
+        ar/.style={->, >=Stealth, thick, draw=black!55},
+        feedback/.style={->, >=Stealth, thick, draw=red!65, dashed}
+    ]
+        % Inputs (top row)
+        \node[inp] (pin) {Painting $P$};
+        \node[inp, right=0.7cm of pin] (lin) {Line-art $L$};
+
+        % Stage 1: PaintParse
+        \node[stage, fill=blue!8, below=0.45cm of pin] (pp)
+            {\textbf{PaintParse}\\[2pt]
+             \footnotesize perceptual grouping\\
+             \footnotesize + layer ordering};
+        \node[outp, below=0.18cm of pp] (ppo)
+            {$\{M_i\},\;M_\text{bg},\;\{d_i\}$};
+
+        % Stage 2: MonoSplat
+        \node[stage, fill=green!10, below=0.45cm of ppo] (ms)
+            {\textbf{MonoSplat}\\[2pt]
+             \footnotesize per-object 3D lifting\\
+             \footnotesize + metric rescaling};
+        \node[outp, below=0.18cm of ms] (mso)
+            {3D library $\{\mathcal{G}_i\}$};
+
+        % Stage 3: SketchComp
+        \node[stage, fill=orange!12, below=0.45cm of mso, xshift=1.4cm] (sc)
+            {\textbf{SketchComp}\\[2pt]
+             \footnotesize contour registration\\
+             \footnotesize + depth inpainting};
+        \node[outp, below=0.18cm of sc] (sco)
+            {Scene $\mathcal{S}^*,\,\mathcal{D}^*$};
+
+        % Stage 4: ArtiFlow
+        \node[stage, fill=red!10, below=0.45cm of sco] (af)
+            {\textbf{ArtiFlow}\\[2pt]
+             \footnotesize multi-view rendering\\
+             \footnotesize + dual-conditioned diffusion};
+        \node[outp, below=0.18cm of af] (afo)
+            {Video $V$};
+
+        % Arrows
+        \draw[ar] (pin) -- (pp);
+        \draw[ar] (pp) -- (ppo);
+        \draw[ar] (ppo) -- (ms);
+        \draw[ar] (ms) -- (mso);
+        \draw[ar] (mso) -- (sc);
+        \draw[ar] (lin) |- ++(0,-3.4) -| (sc);
+        \draw[ar] (sc) -- (sco);
+        \draw[ar] (sco) -- (af);
+        \draw[ar] (af) -- (afo);
+
+        % Feedback loop
+        \draw[feedback] (af.west) -- ++(-1.4,0)
+            node[midway, above, font=\tiny, text=red!75] {re-composition}
+            |- (sc.west);
+
+        % Stage labels on the right
+        \node[right=0.1cm of pp, font=\tiny, text=blue!60!black, align=left]
+            {concern:\\perception};
+        \node[right=0.1cm of ms, font=\tiny, text=green!60!black, align=left]
+            {concern:\\geometry};
+        \node[right=0.1cm of sc, font=\tiny, text=orange!70!black, align=left]
+            {concern:\\composition};
+        \node[right=0.1cm of af, font=\tiny, text=red!65!black, align=left]
+            {concern:\\temporal};
+    \end{tikzpicture}}
+    \caption{\textbf{Canvas3D overview.} A modular pipeline that factors
+    painting animation into four independently optimized specialists:
+    \emph{PaintParse} (perceptual grouping and depth-ordered layering),
+    \emph{MonoSplat} (per-object 3D lifting into a reusable library),
+    \emph{SketchComp} (line-art-guided scene composition with
+    depth-aware inpainting), and \emph{ArtiFlow} (geometry-grounded
+    video synthesis with dual control signals). A dashed feedback loop
+    re-composes the scene when per-object motion verification fails.}
+    \label{fig:overview}
+\end{figure}
+
+% =====================================================================
+\subsection{PaintParse: Art-Domain Perceptual Grouping and Layer Ordering}
+\label{sec:method:paintparse}
+
+\paragraph{Design rationale.}
+The downstream 3D and composition stages require two distinct outputs
+that no single head of an off-the-shelf detector provides:
+\emph{(i)} foreground masks whose boundaries respect artistic intent
+rather than photographic edges, and \emph{(ii)} a depth-consistent
+layer ordering that disambiguates which object lies in front of which.
+PaintParse therefore couples a domain-adapted instance segmentation
+backbone with a parallel monocular depth estimator and fuses their
+outputs through a percentile-based layer assignment. The key design
+choice is \emph{decoupling semantic grouping from depth ordering}: the
+segmentation network is responsible only for ``what is an object,''
+while the depth estimator is responsible only for ``how far away it
+is,'' and the layer-assignment logic simply reads both off. This
+avoids asking either network to solve a problem it was not trained
+for.
+
+\paragraph{Instance segmentation with art-domain adaptation.}
+We adopt a one-stage instance segmentation backbone pre-trained on
+natural-image data. Direct transfer to paintings yields poor mask
+quality because brushstroke textures produce spurious edge responses
+and depth-ambiguous compositions confound object-background separation.
+We mitigate this through a two-stage adaptation protocol: a
+\emph{low-rank adaptation} of the detection backbone to inject
+art-domain statistics without catastrophic forgetting, followed by
+\emph{full fine-tuning} of the mask-prediction head to align boundary
+prediction with painterly edges. Given input $P$, the adapted model
+outputs $K$ binary masks $\{M_i\}_{i=1}^{K}$. The residual background
+mask is computed by pixel-wise subtraction:
+\begin{equation}
+    M_\text{bg}(p) \;=\; 1 \,-\, \max_{i\in\{1,\dots,K\}} M_i(p),
+    \quad \forall p \in [1,H]\!\times\![1,W].
+    \label{eq:bg_mask}
+\end{equation}
+
+\paragraph{Monocular depth and layer assignment.}
+In parallel, a monocular depth estimator produces a relative depth map
+$D_\text{mono}$. For each detected object $i$, we summarize its depth
+by the 10th and 90th percentiles of $\{D_\text{mono}(p)\mid p\in\Omega_i\}$
+where $\Omega_i = \{p \mid M_i(p){=}1\}$, yielding a robust depth range
+$[d_i^\text{near}, d_i^\text{far}]$ that is insensitive to outlier
+pixels at mask boundaries. The layer index of each object is then
+determined by the depth percentile of its centroid, providing the
+depth-ordered layering that downstream composition requires. This
+percentile-based assignment is preferable to a per-pixel depth sort
+because it treats each object as an atomic unit, preserving its
+identity under subsequent rigid transformation.
+
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\scriptsize,
+        bx/.style={draw=black!55, rounded corners=3pt, thick,
+            minimum width=2.0cm, minimum height=0.8cm, align=center},
+        ar/.style={->, >=Stealth, thick, draw=black!55},
+        adapt/.style={->, >=Stealth, thick, draw=orange!75!black, dashed}
+    ]
+        \node[bx, fill=yellow!10] (pin) {Painting $P$};
+        \node[bx, fill=blue!12, right=0.6cm of pin, minimum width=2.3cm]
+            (backbone) {Seg.\ backbone};
+        \node[bx, fill=blue!8, below=0.25cm of backbone, minimum width=2.3cm]
+            (neck) {Feature pyramid};
+        \node[bx, fill=blue!8, below=0.25cm of neck, minimum width=2.3cm]
+            (head) {Detection + mask heads};
+        \node[bx, fill=gray!8, right=0.6cm of head, minimum width=2.0cm]
+            (out) {Masks $\{M_i\}$};
+
+        \node[bx, fill=green!10, right=0.5cm of backbone, minimum width=2.2cm]
+            (depth) {Monocular depth};
+        \node[bx, fill=gray!8, right=0.5cm of depth, minimum width=1.9cm]
+            (dm) {$D_\text{mono}$};
+
+        \node[bx, fill=orange!15, below=0.5cm of head, xshift=-1.2cm,
+              minimum width=2.3cm] (adapt)
+            {Art-domain\\adaptation};
+        \node[bx, fill=purple!10, below=0.5cm of out, xshift=-0.4cm,
+              minimum width=2.3cm] (layer)
+            {Percentile\\layer assignment};
+        \node[bx, fill=gray!8, below=0.25cm of layer, minimum width=2.6cm]
+            (final) {$\{M_i\},\,M_\text{bg},\,\{d_i\}$};
+
+        \draw[ar] (pin) -- (backbone);
+        \draw[ar] (backbone) -- (neck);
+        \draw[ar] (neck) -- (head);
+        \draw[ar] (head) -- (out);
+        \draw[ar] (pin) -- (depth);
+        \draw[ar] (depth) -- (dm);
+        \draw[adapt] (backbone.south west) to[bend right=20] (adapt.north);
+        \draw[adapt] (adapt) -- (neck);
+        \draw[ar] (out) -- (layer);
+        \draw[ar] (dm) |- (layer);
+        \draw[ar] (layer) -- (final);
+    \end{tikzpicture}}
+    \caption{\textbf{PaintParse.} A segmentation backbone and a monocular
+    depth estimator run in parallel; art-domain adaptation injects
+    painting-specific statistics into the backbone, and a percentile-based
+    layer assignment fuses masks with depth into a depth-ordered output.}
+    \label{fig:paintparse}
+\end{figure}
+
+% =====================================================================
+\subsection{MonoSplat: Per-Object 3D Lifting and Library Assembly}
+\label{sec:method:monosplat}
+
+\paragraph{Design rationale.}
+A whole-scene 3D reconstruction would entangle object geometry with
+background texture, making independent repositioning impossible. We
+therefore lift each foreground object \emph{separately} into a 3D
+representation and assemble a \emph{reusable library}, indexed by
+semantic label and original painting coordinates. Two design choices
+follow from this principle. First, we use a \emph{feed-forward
+single-image 3D predictor} rather than per-scene optimization, because
+per-object optimization would be prohibitively expensive and would
+overfit to a single viewpoint. Second, because feed-forward predictors
+operate in a normalized canonical space without metric scale, we
+\emph{recover metric dimensions from the PaintParse depth cue}, so that
+objects from different paintings can later be composed in a common
+metric frame.
+
+\paragraph{Feed-forward lifting.}
+For each foreground object $i$, we crop the painting to its bounding
+box, $P_i = P \odot M_i$, and feed the crop into a feed-forward
+single-image 3D predictor that regresses a set of $N_i$ 3D Gaussians
+directly from one image. Each Gaussian is parameterized by a center
+$\boldsymbol{\mu}_j \in \mathbb{R}^3$, axis-aligned scales
+$\mathbf{s}_j \in \mathbb{R}^3_+$, rotation quaternion
+$\mathbf{q}_j \in \mathbb{R}^4$, opacity $\alpha_j \in [0,1]$, and
+view-dependent color coefficients. The predictor's generative prior,
+trained on diverse 3D assets, generalizes to the missing side and back
+of objects that are not visible in the painting---a critical capability
+for downstream rotation during composition.
+
+\paragraph{Metric rescaling.}
+The predictor outputs in a normalized canonical space. We recover the
+metric scale using the depth cue from PaintParse:
+\begin{equation}
+    \lambda_i \;=\; \frac{d_i \cdot h_i^\text{px}}{f},
+    \label{eq:metric_scale}
+\end{equation}
+where $d_i$ is the median depth of object $i$, $h_i^\text{px}$ is its
+pixel height, and $f$ is the focal length in pixels. Each Gaussian
+center and scale is then rescaled by $\lambda_i$, producing a metric
+3D object. The resulting library
+$\{\mathcal{G}_1, \dots, \mathcal{G}_K\}$ is keyed by semantic label
+and original painting coordinates, enabling selective retrieval and
+cross-painting composition in future work.
+
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\scriptsize,
+        bx/.style={draw=black!55, rounded corners=3pt, thick,
+            minimum width=2.1cm, minimum height=0.85cm, align=center},
+        ar/.style={->, >=Stealth, thick, draw=black!55}
+    ]
+        \node[bx, fill=gray!8] (crop) {Crop $P \odot M_i$};
+        \node[bx, fill=green!12, right=0.5cm of crop, minimum width=2.7cm,
+              minimum height=1.4cm] (lift)
+            {\textbf{Feed-forward}\\
+             \textbf{single-image 3D}\\
+             \footnotesize generative prior};
+        \node[bx, fill=gray!8, right=0.5cm of lift, minimum width=2.0cm]
+            (raw) {Canonical 3D\\$\widetilde{\mathcal{G}}_i$};
+        \node[bx, fill=green!10, below=0.5cm of raw, minimum width=2.4cm]
+            (rescale) {Metric rescale\\$\lambda_i = d_i h_i^\text{px}/f$};
+        \node[bx, fill=gray!8, below=0.4cm of rescale, minimum width=2.6cm]
+            (lib) {Library\\$\{\mathcal{G}_1, \dots, \mathcal{G}_K\}$};
+        \node[bx, fill=blue!8, below=0.5cm of lift, minimum width=2.4cm]
+            (depth) {Depth cue $d_i$};
+
+        \draw[ar] (crop) -- (lift);
+        \draw[ar] (lift) -- (raw);
+        \draw[ar] (raw) -- (rescale);
+        \draw[ar] (rescale) -- (lib);
+        \draw[ar] (depth) -- (rescale);
+        \draw[ar] (lift) -- (depth);
+    \end{tikzpicture}}
+    \caption{\textbf{MonoSplat.} Each foreground crop is lifted into a
+    canonical 3D representation by a feed-forward predictor; the
+    PaintParse depth cue is used to recover metric scale, and the
+    resulting objects are stored in a reusable, retrievable library.}
+    \label{fig:monosplat}
+\end{figure}
+
+% =====================================================================
+\subsection{SketchComp: Line-Art-Guided 3D Scene Composition}
+\label{sec:method:sketchcomp}
+
+\paragraph{Design rationale.}
+The user's compositional intent---which object goes where---is most
+naturally expressed as a sketch, but existing diffusion-based sketch
+control treats sketches as appearance or boundary cues rather than
+spatial constraints. SketchComp inverts this convention: a sketch
+\emph{is} the target, and a 3D object is \emph{geometrically
+registered} to it. Two sub-problems must then be solved:
+\emph{(i)} finding the rigid transformation that aligns each 3D
+object's rendered silhouette with its sketched contour, and
+\emph{(ii)} filling the disocclusion gaps that open up when an object
+moves away from its original position, while preserving the
+background's artistic texture. We solve the first with a
+silhouette-overlap objective that combines region IoU with boundary
+Chamfer distance, and the second with a depth-conditioned inpainting
+module whose geometric conditioning prevents the texture-smear
+artifact that naive inpainting produces on paintings.
+
+\paragraph{Contour-based rigid registration.}
+Each sketch $\ell_i$ is converted to a binary edge map via Canny
+detection, and its external contour $\Gamma_i$ is extracted. For each
+3D object $\mathcal{G}_i$, we search for the rigid
+transformation---rotation $\theta$, 2D translation $\mathbf{t}$, and
+uniform scale $s$---that best aligns the rendered silhouette with
+$\Gamma_i$:
+\begin{align}
+    (\theta_i^*,\, \mathbf{t}_i^*,\, s_i^*) &=
+      \arg\min_{\theta,\mathbf{t},s}\;
+      \mathcal{L}_\text{cont}(\theta,\mathbf{t},s), \label{eq:contour_reg}\\
+    \mathcal{L}_\text{cont} &=
+      \underbrace{1 - \text{IoU}\bigl(\mathcal{R}_i,\,\Gamma_i\bigr)}_{\text{region}}
+      + \lambda_c \,
+      \underbrace{\text{Chamfer}\bigl(\partial\mathcal{R}_i,\,\Gamma_i\bigr)}_{\text{boundary}},
+      \nonumber
+\end{align}
+where $\mathcal{R}_i = \mathcal{R}(\mathcal{G}_i;\theta,\mathbf{t},s)$
+is the silhouette rendered from the canonical camera and $\lambda_c$
+balances the two terms. The IoU term rewards global region agreement,
+while the Chamfer term penalizes boundary misalignment---their
+combination avoids the degenerate solutions that either term alone
+admits (a small silhouette inside the contour maximizes IoU locally;
+boundary-only matching can produce topologically wrong regions).
+Optimization proceeds via gradient descent with iterative
+re-rendering, so that each step's gradient is computed against the
+current geometry rather than a stale approximation.
+
+\paragraph{Scene assembly and disocclusion inpainting.}
+Each registered object is placed at its PaintParse-derived depth
+$d_i$ and objects are rendered in depth-sorted order against a
+background layer reconstructed from the RGB-D map. Object
+displacement creates \emph{disocclusion gaps}---background pixels
+newly visible after objects move---which we detect as
+\begin{equation}
+    \Omega_\text{gap} \;=\;
+    \bigl\{\,p \in M_\text{bg}^\text{orig} \;\big|\;
+        \text{no 3D surface projects to } p\,\bigr\}.
+    \label{eq:gap}
+\end{equation}
+Filling $\Omega_\text{gap}$ while preserving artistic texture coherence
+is critical. We employ a depth-conditioned inpainting diffusion
+pipeline: a masked composite (with $\Omega_\text{gap}$ zeroed) is fed
+into a latent inpainting diffusion model with a depth-conditioned
+control branch conditioned on the composited depth map. The depth
+conditioning is the key design choice: it constrains the inpainted
+content to follow the background's geometric structure, preventing
+the texture-smear artifact that arises when an unconstrained
+inpainter fills a painting gap with semantically plausible but
+geometrically inconsistent content. A dilation radius expands the
+surrounding context to supply texture reference, ensuring the filled
+region blends with adjacent brushwork. The resulting scene
+$\mathcal{S}^*$ and its depth map $\mathcal{D}^*$ are forwarded to
+ArtiFlow.
+
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\scriptsize,
+        bx/.style={draw=black!55, rounded corners=3pt, thick,
+            minimum width=2.1cm, minimum height=0.85cm, align=center},
+        block/.style={draw=black!55, rounded corners=3pt, thick,
+            fill=orange!14, minimum width=2.4cm, minimum height=1.2cm,
+            align=center},
+        inpblock/.style={draw=black!55, rounded corners=3pt, thick,
+            fill=purple!14, minimum width=2.4cm, minimum height=1.2cm,
+            align=center},
+        ar/.style={->, >=Stealth, thick, draw=black!55}
+    ]
+        \node[bx, fill=yellow!10] (la) {Line-art $L$};
+        \node[bx, fill=green!10, below=0.3cm of la, minimum width=2.2cm]
+            (lib) {3D library $\{\mathcal{G}_i\}$};
+        \node[block, right=0.6cm of la] (canny)
+            {\textbf{Contour extraction}\\
+             \footnotesize Canny + external contour $\Gamma_i$};
+        \node[block, right=0.5cm of canny] (reg)
+            {\textbf{Rigid registration}\\
+             \footnotesize IoU + Chamfer\\
+             \footnotesize (Eq.~\ref{eq:contour_reg})};
+        \node[bx, fill=gray!8, right=0.5cm of reg, minimum width=2.1cm]
+            (placed) {Placed $\{\mathcal{G}'_i\}$};
+        \node[block, below=0.55cm of reg] (assemble)
+            {\textbf{Depth-sorted assembly}\\
+             \footnotesize render $\mathcal{S}$, $\mathcal{D}$};
+        \node[bx, fill=gray!8, right=0.5cm of assemble, minimum width=2.0cm]
+            (gap) {Gap $\Omega_\text{gap}$\\(Eq.~\ref{eq:gap})};
+        \node[inpblock, below=0.55cm of assemble] (inp)
+            {\textbf{Depth-conditioned inpainting}\\
+             \footnotesize inpaint diffusion + depth control};
+        \node[bx, fill=gray!8, right=0.5cm of inp, minimum width=2.1cm]
+            (fin) {$\mathcal{S}^*,\;\mathcal{D}^*$};
+
+        \draw[ar] (la) -- (canny);
+        \draw[ar] (canny) -- (reg);
+        \draw[ar] (lib) -| (reg);
+        \draw[ar] (reg) -- (placed);
+        \draw[ar] (placed) -- (assemble);
+        \draw[ar] (assemble) -- (gap);
+        \draw[ar] (gap) -- (inp);
+        \draw[ar] (inp) -- (fin);
+        \draw[ar] (assemble) |- (fin);
+    \end{tikzpicture}}
+    \caption{\textbf{SketchComp.} Hand-drawn contours are extracted and
+    matched to rendered 3D silhouettes via a rigid registration that
+    jointly optimizes region IoU and boundary Chamfer distance. After
+    depth-sorted scene assembly, disocclusion gaps are detected and
+    filled by a depth-conditioned inpainting diffusion module that
+    respects the background's geometric structure.}
+    \label{fig:sketchcomp}
+\end{figure}
+
+% =====================================================================
+\subsection{ArtiFlow: Geometry-Grounded Video Synthesis}
+\label{sec:method:artiflow}
+
+\paragraph{Design rationale.}
+Pure image-to-video diffusion applied to a painting produces
+plausible per-frame motion but suffers two failure modes: geometric
+drift (objects wander off their intended trajectories) and boundary
+melting (brushstroke edges blur across frames). ArtiFlow addresses
+both by \emph{grounding the diffusion in explicit 3D geometry}: the
+composited scene is rendered into a multi-view keyframe stream that
+provides three control signals---RGB appearance, depth geometry, and
+edge boundary---which are injected into a video diffusion backbone as
+dual control branches. The depth branch anchors each frame to the 3D
+structure of $\mathcal{S}^*$, suppressing geometric drift; the edge
+branch preserves brushstroke-level boundary detail, suppressing
+boundary melting. The combined conditioning converts the diffusion
+backbone from a free-form motion generator into a \emph{geometry-anchored
+refiner} whose temporal freedom is restricted to the residual motion
+that the 3D rendering does not already specify.
+
+\paragraph{Multi-view keyframe rendering.}
+Given $\mathcal{S}^*$, we define a smooth camera trajectory through
+$T$ poses $\{\mathbf{T}_t\}_{t=1}^{T}$, generated by cubic B-spline
+interpolation between a canonical front-facing start pose and a
+user-specified or auto-generated end pose. At each step $t$,
+differentiable rasterization produces an RGB frame
+$I_t = \mathcal{R}_\text{rgb}(\mathcal{S}^*,\mathbf{T}_t)$, a depth
+map $D_t = \mathcal{R}_\text{depth}(\mathcal{S}^*,\mathbf{T}_t)$, and
+an edge map $E_t = \text{Edge}(I_t)$. The keyframe count is set to
+$T = 8N+1$ to align with the temporal chunk constraints of modern
+video diffusion backbones.
+
+\paragraph{Dual-conditioned video diffusion.}
+Two parallel control branches inject geometric and boundary cues
+into the video diffusion backbone. The depth branch, conditioned on
+$\{D_t\}$ at strength $s_d$, anchors each frame to the 3D structure
+of $\mathcal{S}^*$, preventing the geometric drift that plagues pure
+I2V models. The edge branch, conditioned on $\{E_t\}$ at strength
+$s_e$, preserves brushstroke-level boundary detail, suppressing the
+boundary-melting artifact common when diffusion is applied to
+paintings. The combined conditioning signal per frame is
+\begin{equation}
+    \mathbf{c}_t \;=\; s_d \, \mathbf{c}_t^\text{depth}
+                   \;+\; s_e \, \mathbf{c}_t^\text{edge},
+    \label{eq:dual_control}
+\end{equation}
+injected at the corresponding residual connections of the backbone.
+Temporal coherence is further reinforced by \emph{first-frame latent
+anchoring}: subsequent frames' initial noise is set to the first-frame
+latent plus a position-encoded Gaussian perturbation
+$\boldsymbol{\epsilon}_t \sim \mathcal{N}(0, \sigma_t^2 \mathbf{I})$
+with $\sigma_t$ growing linearly with $|t-1|$, so that motion freedom
+increases smoothly away from the anchored first frame.
+
+\paragraph{Per-object motion verification.}
+After generation, we verify motion fidelity by computing the IoU
+between rendered object masks and segmented masks in each generated
+frame. If the average IoU falls below a threshold $\tau_\text{mo}$,
+the pipeline triggers a \emph{re-composition} step (dashed arrow in
+Figure~\ref{fig:overview}) that adjusts control strengths or
+regenerates the affected segment with stronger depth conditioning,
+closing the loop between composition and synthesis.
+
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\scriptsize,
+        bx/.style={draw=black!55, rounded corners=3pt, thick,
+            minimum width=2.0cm, minimum height=0.8cm, align=center},
+        block/.style={draw=black!55, rounded corners=3pt, thick,
+            fill=red!12, minimum width=2.4cm, minimum height=1.2cm,
+            align=center},
+        ar/.style={->, >=Stealth, thick, draw=black!55}
+    ]
+        \node[bx, fill=purple!10] (sc) {$\mathcal{S}^*,\,\mathcal{D}^*$};
+        \node[block, right=0.5cm of sc, minimum height=1.4cm] (rend)
+            {\textbf{Multi-view rendering}\\
+             \footnotesize B-spline trajectory\\
+             \footnotesize $\{I_t, D_t, E_t\}$};
+        \node[bx, fill=gray!8, right=0.45cm of rend, minimum width=1.6cm]
+            (rgb) {RGB $I_t$};
+        \node[bx, fill=blue!10, below=0.2cm of rgb, minimum width=1.6cm]
+            (dep) {Depth $D_t$};
+        \node[bx, fill=orange!12, below=0.2cm of dep, minimum width=1.6cm]
+            (edg) {Edge $E_t$};
+
+        \node[block, below=0.6cm of rend, xshift=0.4cm,
+              minimum width=3.0cm] (cn)
+            {\textbf{Dual control branches}\\
+             \footnotesize depth + edge injection (Eq.~\ref{eq:dual_control})};
+        \node[block, right=0.4cm of cn, minimum width=2.6cm,
+              minimum height=1.4cm] (vd)
+            {\textbf{Video diffusion backbone}\\
+             \footnotesize temporal attention\\
+             \footnotesize first-frame anchor};
+        \node[bx, fill=red!18, below=0.45cm of vd, minimum width=2.4cm]
+            (out) {Output video $V$};
+
+        \draw[ar] (sc) -- (rend);
+        \draw[ar] (rend) -- (rgb);
+        \draw[ar] (rend) -- (dep);
+        \draw[ar] (rend) -- (edg);
+        \draw[ar] (dep) -- (cn);
+        \draw[ar] (edg) -- (cn);
+        \draw[ar] (cn) -- (vd);
+        \draw[ar] (rgb) |- (vd);
+        \draw[ar] (vd) -- (out);
+    \end{tikzpicture}}
+    \caption{\textbf{ArtiFlow.} The composited 3D scene is rendered into
+    a multi-view keyframe stream providing RGB, depth, and edge signals.
+    A dual-branch control injection (depth + edge) anchors the video
+    diffusion backbone to the 3D geometry, with first-frame latent
+    anchoring for temporal coherence.}
+    \label{fig:artiflow}
+\end{figure}
+
+% =====================================================================
+\subsection{Pipeline Algorithm and Implementation}
+\label{sec:method:algo}
+
+Algorithm~\ref{alg:canvas3d} summarizes the full Canvas3D pipeline. The
+modular design enables \emph{fault-tolerant resumption}: each stage
+saves its outputs as checkpoint files, so any specialist can be
+upgraded or replaced without re-running downstream stages---for
+example, swapping in a stronger 3D predictor or a different video
+backbone. Peak memory consumption across all four stages is kept
+within a single 24\,GB budget through serial model loading with
+explicit memory release between stages, which is feasible precisely
+because the handshake representations between stages are small,
+serializable tensors rather than shared activations.
+
+\begin{algorithm}[t]
+\caption{Canvas3D Pipeline}
+\label{alg:canvas3d}
+{\footnotesize
+\begin{algorithmic}[1]
+\REQUIRE Painting $P$; line-art sketches $L=\{\ell_i\}_{i=1}^{K}$;
+         thresholds $\lambda_c$, $s_d$, $s_e$, $\tau_\text{mo}$
+\ENSURE Animated video $V$ with per-object motion
+\medskip
+\STATE \textbf{// Stage 1 --- PaintParse: perceptual grouping + layers}
+\STATE $\{M_i\}_{i=1}^{K} \gets \text{SegAdapt}(P)$
+    \hfill $\triangleright$ art-domain-adapted segmentation
+\STATE $M_\text{bg} \gets 1 - \max_i M_i$
+    \hfill $\triangleright$ Eq.~\ref{eq:bg_mask}
+\STATE $D_\text{mono} \gets \text{DepthEstimator}(P)$
+\STATE \textbf{for} $i = 1$ \textbf{to} $K$ \textbf{do}
+\STATE \quad $\Omega_i \gets \{p \mid M_i(p){=}1\}$;
+    $d_i \gets \text{Median}\{D_\text{mono}(p) \mid p \in \Omega_i\}$
+\STATE \textbf{end for}
+\medskip
+\STATE \textbf{// Stage 2 --- MonoSplat: per-object 3D lifting}
+\STATE \textbf{for} $i = 1$ \textbf{to} $K$ \textbf{do}
+\STATE \quad $\widetilde{\mathcal{G}}_i \gets
+    \text{FeedForward3D}(P \odot M_i)$
+    \hfill $\triangleright$ canonical-space 3D
+\STATE \quad $\lambda_i \gets d_i \cdot h_i^\text{px}/f$
+    \hfill $\triangleright$ Eq.~\ref{eq:metric_scale}
+\STATE \quad $\mathcal{G}_i \gets \lambda_i \cdot \widetilde{\mathcal{G}}_i$
+    \hfill $\triangleright$ metric rescaling
+\STATE \quad $\text{Lib}[i] \gets (\mathcal{G}_i,\, d_i,\, M_i)$
+\STATE \textbf{end for}
+\medskip
+\STATE \textbf{// Stage 3 --- SketchComp: composition + inpainting}
+\STATE \textbf{for} $i = 1$ \textbf{to} $K$ \textbf{do}
+\STATE \quad $\Gamma_i \gets \text{ExternalContour}(\text{Canny}(\ell_i))$
+\STATE \quad $(\theta_i^*,\mathbf{t}_i^*,s_i^*) \gets
+    \arg\min \mathcal{L}_\text{cont}(\mathcal{G}_i,\Gamma_i)$
+    \hfill $\triangleright$ Eq.~\ref{eq:contour_reg}
+\STATE \quad $\mathcal{G}'_i \gets
+    \text{Transform}(\mathcal{G}_i,\theta_i^*,\mathbf{t}_i^*,s_i^*)$
+\STATE \textbf{end for}
+\STATE $\mathcal{S},\mathcal{D} \gets
+    \text{DepthSort}(\{\mathcal{G}'_i\},\,M_\text{bg},\,\{d_i\})$
+\STATE $\Omega_\text{gap} \gets
+    \text{DetectGap}(\mathcal{S},\,M_\text{bg}^\text{orig})$
+    \hfill $\triangleright$ Eq.~\ref{eq:gap}
+\STATE $\mathcal{S}^*,\mathcal{D}^* \gets
+    \text{DepthInpaint}(\mathcal{S},\,\mathcal{D},\,\Omega_\text{gap})$
+\medskip
+\STATE \textbf{// Stage 4 --- ArtiFlow: geometry-grounded video synthesis}
+\STATE $\{\mathbf{T}_t\}_{t=1}^{T} \gets \text{BSplineTrajectory}(T)$
+\STATE \textbf{for} $t = 1$ \textbf{to} $T$ \textbf{do}
+\STATE \quad $I_t \gets \mathcal{R}_\text{rgb}(\mathcal{S}^*,\mathbf{T}_t)$;
+\STATE \quad $D_t \gets \mathcal{R}_\text{depth}(\mathcal{S}^*,\mathbf{T}_t)$;
+\STATE \quad $E_t \gets \text{Edge}(I_t)$
+\STATE \textbf{end for}
+\STATE $V \gets \text{VideoDiffusion}\bigl(\{I_t\},\,s_d\!\cdot\!D_t
+    + s_e\!\cdot\!E_t\bigr)$
+    \hfill $\triangleright$ Eq.~\ref{eq:dual_control}
+\STATE \textbf{if} $\text{MotionIoU}(V) < \tau_\text{mo}$ \textbf{then}
+    \quad \textbf{go to} Stage 3
+    \hfill $\triangleright$ re-composition loop
+\STATE \textbf{return} $V$
+\end{algorithmic}}
+\end{algorithm}

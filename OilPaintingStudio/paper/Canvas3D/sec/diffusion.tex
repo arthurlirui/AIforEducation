@@ -1,0 +1,33 @@
+% =====================================================================
+%  Section: Diffusion Models for Image and Video Generation
+% =====================================================================
+\section{Diffusion Models for Image and Video Generation}
+\label{sec:diffusion}
+
+\subsection{Foundations}
+
+Latent Diffusion Models (LDM)~\cite{rombach2022ldm} established the dominant paradigm
+for high-resolution text-to-image synthesis. Controllability was extended by
+ControlNet~\cite{zhang2023controlnet}, while subject personalization was enabled by
+DreamBooth~\cite{ruiz2023dreambooth} and Textual Inversion~\cite{gal2023textualinversion},
+with LoRA~\cite{hu2022lora} providing efficient fine-tuning. These tools form the
+practical foundation for painting-style generation pipelines that combine pretrained
+diffusion backbones with style LoRAs and ControlNet conditioning.
+
+\subsection{Inversion-Based Style Transfer}
+
+\citet{zhang2023inversion} proposed InST (CVPR~2023), which learns artistic style directly
+from a single painting by treating style as a learnable textual description, then guiding
+synthesis without complex prompts. ArtAdapter~\cite{chen2024artadapter} introduced a
+multi-level style encoder with an explicit adaptation mechanism to capture both low-level
+textures and high-level composition.
+
+\subsection{Video Diffusion Models}
+
+Video diffusion models~\cite{ho2022video,blattmann2023svd} extend image diffusion to the
+temporal axis. Tune-A-Video~\cite{wu2023tuneavideo} performs one-shot tuning of image
+diffusion for text-to-video generation. CoDeF~\cite{ouyang2024codef} and
+FlowVid~\cite{liang2024flowvid} (CVPR~2024) introduce content deformation fields and
+flow-guided synthesis respectively to ensure temporal coherence. The tuning-free
+framework RefVFX~\cite{jones2026refvfx} transfers complex temporal effects from a
+reference video, supporting diverse artistic transformations.

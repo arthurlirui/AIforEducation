@@ -1,0 +1,46 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Art-Specific Conditioning vs.\ Generic Control}
+
+Our dual-stage conditioning demonstrates that art-theoretic
+principles---the temporal separation of structure and tone in
+ink-wash practice---can be directly encoded as conditioning
+schedules in diffusion models. This contrasts with generic
+ControlNet approaches that inject all conditions uniformly
+throughout the denoising process, without accounting for the
+artistic workflow that the conditions represent.
+
+\subsection{Blank-Space as a Training Objective}
+
+The blank-space loss is, to our knowledge, the first formalization
+of a negative-space aesthetic principle as a differentiable
+training objective. While negative space has been discussed in
+computational aesthetics, it has not been enforced as a hard
+constraint on generative output. Our results suggest that explicit
+blank-space preservation significantly improves the perceived
+authenticity of generated ink-wash videos.
+
+\subsection{Limitations}
+
+\begin{itemize}
+    \item \textbf{Dataset size:} 30 paintings is a small dataset
+    for fine-tuning; results may not generalize to all Shanshui
+    sub-styles.
+    \item \textbf{Annotation cost:} line maps and ink-density maps
+    require semi-manual annotation, limiting scalability.
+    \item \textbf{Single backbone:} we use Wan2.1-I2V; transfer to
+    other I2V backbones (LTX-Video) is not yet validated.
+    \item \textbf{Short video length:} experiments use 4-frame
+    clips; longer videos may require additional temporal
+    consistency mechanisms.
+\end{itemize}
+
+\subsection{Future Directions}
+
+The dual-conditioning framework generalizes beyond ink-wash: oil
+painting (fat-over-lean layering), watercolor (wet-on-wet vs.\
+wet-on-dry), and other traditions have analogous stage-separated
+workflows that could be encoded as conditioning schedules. We also
+plan to explore automatic extraction of line maps and ink-density
+maps from input paintings, reducing the annotation burden.

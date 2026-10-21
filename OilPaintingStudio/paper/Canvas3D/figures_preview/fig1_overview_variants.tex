@@ -1,0 +1,160 @@
+% =====================================================================
+% Canvas3D Figure 1: Overview Pipeline - Variants A/B/C
+% Layout: vertical module chain (center), inputs at top, stage labels right.
+% All arrows use explicit routing, never cross any node bounding box.
+% =====================================================================
+
+% ============================ VARIANT A ==============================
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\sffamily,
+        mod/.style={draw=none, rounded corners=3pt, minimum width=2.4cm,
+                    minimum height=0.78cm, align=center,
+                    font=\sffamily\scriptsize, text=white, thick, inner sep=3.5pt},
+        data/.style={draw=black!25, rounded corners=2pt, fill=white,
+                     font=\sffamily\tiny, minimum width=2.1cm,
+                     minimum height=0.42cm, align=center, inner sep=2.5pt},
+        lbl/.style={font=\sffamily\tiny, text=black!60},
+        ar/.style={->, >=Stealth, very thick, draw=black!45},
+        ar2/.style={->, >=Stealth, thick, draw=black!35, dashed}
+    ]
+        % --- Inputs on the top row (same baseline) ---
+        \node[data, fill=yellow!20, draw=yellow!50!black] (pin) {Painting $P$};
+        \node[data, fill=yellow!20, draw=yellow!50!black, right=1.4cm of pin] (lin) {Line-art $L$};
+
+        % --- Central module chain, generous vertical gaps ---
+        \node[mod, fill=blue!70,    below=0.95cm of pin] (pp)  {\textbf{PaintParse}};
+        \node[data,                 below=0.22cm of pp]  (ppo) {Masks $\{M_i\}$, Depth $d_i$};
+        \node[mod, fill=teal!70,    below=0.62cm of ppo] (ms)  {\textbf{MonoSplat}};
+        \node[data,                 below=0.22cm of ms]  (mso) {3DGS Library $\{\mathcal{G}_i\}$};
+        \node[mod, fill=orange!80,  below=0.62cm of mso] (sc)  {\textbf{SketchComp}};
+        \node[data,                 below=0.22cm of sc]  (sco) {Scene $\mathcal{S}^*$, Depth $\mathcal{D}^*$};
+        \node[mod, fill=red!70,     below=0.62cm of sco] (af)  {\textbf{ArtiFlow}};
+        \node[data,                 below=0.22cm of af]  (afo) {Animated Video $V$};
+
+        % --- Vertical chain: south -> north ---
+        \draw[ar] (pin.south) -- (pp.north);
+        \draw[ar] (pp.south)  -- (ppo.north);
+        \draw[ar] (ppo.south) -- (ms.north);
+        \draw[ar] (ms.south)  -- (mso.north);
+        \draw[ar] (mso.south) -- (sc.north);
+        \draw[ar] (sc.south)  -- (sco.north);
+        \draw[ar] (sco.south) -- (af.north);
+        \draw[ar] (af.south)  -- (afo.north);
+
+        % --- Line-art to SketchComp: big left-side curve, clear of all nodes ---
+        % exits west of lin, travels left on a vertical channel, enters west of sc
+        \draw[ar] (lin.west) to[out=180,in=180,looseness=1.5] (sc.west);
+
+        % --- Feedback: ArtiFlow re-composition, big left curve, dashed red ---
+        \draw[ar2, draw=red!60] (af.west) to[out=180,in=180,looseness=1.5]
+            node[pos=0.5, left=2pt, lbl, text=red!60, align=right] {re-composition}
+            (sc.west);
+
+        % --- Stage labels on the right column ---
+        \node[lbl, right=0.5cm of pp] {Stage 1: Perceive};
+        \node[lbl, right=0.5cm of ms] {Stage 2: Lift};
+        \node[lbl, right=0.5cm of sc] {Stage 3: Compose};
+        \node[lbl, right=0.5cm of af] {Stage 4: Animate};
+    \end{tikzpicture}}
+    \caption{\textbf{Canvas3D overview (Variant A).} Flat modern design with
+    color-coded modules and stage annotations.}
+    \label{fig:overview_A}
+\end{figure}
+
+% ============================ VARIANT B ==============================
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\sffamily,
+        mod/.style={draw=black!80, rounded corners=1pt, minimum width=2.4cm,
+                    minimum height=0.72cm, align=center,
+                    font=\sffamily\scriptsize, thick},
+        data/.style={draw=black!40, rounded corners=1pt, fill=white,
+                     font=\sffamily\tiny, minimum width=2.2cm,
+                     minimum height=0.4cm, align=center},
+        ar/.style={->, >=Stealth, thick, draw=black!70},
+        ar2/.style={->, >=Stealth, thick, draw=black!50, dashed}
+    ]
+        \node[data] (pin) {Painting $P$};
+        \node[data, right=1.4cm of pin] (lin) {Line-art $L$};
+
+        \node[mod,  below=0.95cm of pin] (pp)  {PaintParse};
+        \node[data, below=0.22cm of pp]  (ppo) {$\{M_i\}$, $d_i$};
+        \node[mod,  below=0.62cm of ppo] (ms)  {MonoSplat};
+        \node[data, below=0.22cm of ms]  (mso) {$\{\mathcal{G}_i\}$ Library};
+        \node[mod,  below=0.62cm of mso] (sc)  {SketchComp};
+        \node[data, below=0.22cm of sc]  (sco) {$\mathcal{S}^*$, $\mathcal{D}^*$};
+        \node[mod,  below=0.62cm of sco] (af)  {ArtiFlow};
+        \node[data, below=0.22cm of af]  (afo) {Video $V$};
+
+        \draw[ar] (pin.south) -- (pp.north);
+        \draw[ar] (pp.south)  -- (ppo.north);
+        \draw[ar] (ppo.south) -- (ms.north);
+        \draw[ar] (ms.south)  -- (mso.north);
+        \draw[ar] (mso.south) -- (sc.north);
+        \draw[ar] (sc.south)  -- (sco.north);
+        \draw[ar] (sco.south) -- (af.north);
+        \draw[ar] (af.south)  -- (afo.north);
+
+        \draw[ar] (lin.west) to[out=180,in=180,looseness=1.5] (sc.west);
+        \draw[ar2] (af.west) to[out=180,in=180,looseness=1.5]
+            node[pos=0.5, left=2pt, font=\sffamily\tiny, text=black!60, align=right]
+            {re-composition} (sc.west);
+    \end{tikzpicture}}
+    \caption{\textbf{Canvas3D overview (Variant B).} Minimal monochrome
+    line-art style, suitable for black-and-white printing.}
+    \label{fig:overview_B}
+\end{figure}
+
+% ============================ VARIANT C ==============================
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\sffamily,
+        mod/.style={draw=black!60, fill=black!8, rounded corners=2pt,
+                    minimum width=2.4cm, minimum height=0.74cm, align=center,
+                    font=\sffamily\scriptsize, thick},
+        acc/.style={draw=blue!60!black, fill=blue!12, rounded corners=2pt,
+                    minimum width=2.4cm, minimum height=0.74cm, align=center,
+                    font=\sffamily\scriptsize, thick},
+        data/.style={draw=black!35, fill=white, rounded corners=1pt,
+                     font=\sffamily\tiny, minimum width=2.1cm,
+                     minimum height=0.4cm, align=center},
+        ar/.style={->, >=Stealth, thick, draw=black!55},
+        ar2/.style={->, >=Stealth, thick, draw=blue!60!black, dashed}
+    ]
+        \node[data] (pin) {Painting $P$};
+        \node[data, right=1.4cm of pin] (lin) {Line-art $L$};
+
+        \node[mod,  below=0.95cm of pin] (pp)  {\textbf{PaintParse}};
+        \node[data, below=0.22cm of pp]  (ppo) {Masks $\{M_i\}$, Depth $d_i$};
+        \node[mod,  below=0.62cm of ppo] (ms)  {\textbf{MonoSplat}};
+        \node[data, below=0.22cm of ms]  (mso) {3DGS Library $\{\mathcal{G}_i\}$};
+        \node[acc,  below=0.62cm of mso] (sc)  {\textbf{SketchComp}};
+        \node[data, below=0.22cm of sc]  (sco) {Scene $\mathcal{S}^*$, Depth $\mathcal{D}^*$};
+        \node[mod,  below=0.62cm of sco] (af)  {\textbf{ArtiFlow}};
+        \node[data, below=0.22cm of af]  (afo) {Animated Video $V$};
+
+        \draw[ar] (pin.south) -- (pp.north);
+        \draw[ar] (pp.south)  -- (ppo.north);
+        \draw[ar] (ppo.south) -- (ms.north);
+        \draw[ar] (ms.south)  -- (mso.north);
+        \draw[ar] (mso.south) -- (sc.north);
+        \draw[ar] (sc.south)  -- (sco.north);
+        \draw[ar] (sco.south) -- (af.north);
+        \draw[ar] (af.south)  -- (afo.north);
+
+        \draw[ar] (lin.west) to[out=180,in=180,looseness=1.5] (sc.west);
+        \draw[ar2] (af.west) to[out=180,in=180,looseness=1.5]
+            node[pos=0.5, left=2pt, font=\sffamily\tiny, text=blue!60!black, align=right]
+            {re-composition} (sc.west);
+    \end{tikzpicture}}
+    \caption{\textbf{Canvas3D overview (Variant C).} Academic grayscale with
+    blue accent highlighting the novel SketchComp module.}
+    \label{fig:overview_C}
+\end{figure}

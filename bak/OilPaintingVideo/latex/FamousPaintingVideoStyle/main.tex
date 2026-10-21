@@ -1,0 +1,161 @@
+%%%% main.tex -- Canvas3D: A Unified 3D-Aware Framework for Painting Animation
+%%%% via Segmentation, Monocular 3DGS, Line-Art Composition, and Controlled Video Synthesis
+%%%% IJCAI'26 submission
+%%%% Based on the official IJCAI--ECAI 26 template (ijcai26.sty).
+
+\typeout{IJCAI--ECAI 26 Submission: Canvas3D}
+
+\documentclass{article}
+\pdfpagewidth=8.5in
+\pdfpageheight=11in
+
+\usepackage{ijcai26}
+
+% Use the postscript times font!
+\usepackage{times}
+\usepackage{soul}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\usepackage[utf8]{inputenc}
+\usepackage{xeCJK}   % CJK support (compile with XeLaTeX)
+\setCJKmainfont{SimSun}[AutoFakeBold=true,AutoFakeSlant=true]
+\usepackage[small]{caption}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}    % for \mathbb{R}, \mathbb{E}
+\usepackage{natbib}   % required for \citet / \citep
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{multirow}
+\usepackage{pifont}       % for \ding{55} (cross) and \ding{51} (check)
+\usepackage[switch]{lineno}
+\usepackage{microtype}    % improve paragraph breaking, reduce overfull boxes
+
+% TikZ for high-quality architecture diagrams
+\usepackage{tikz}
+\usetikzlibrary{
+    shapes, arrows, arrows.meta, positioning, fit,
+    backgrounds, calc, decorations.pathreplacing,
+    decorations.pathmorphing, shadows, shapes.geometric,
+    shapes.multipart, patterns, matrix, chains,
+    decorations.markings, decorations.text
+}
+
+% Custom TikZ styles
+\tikzset{
+    modbox/.style={
+        draw=black!60, fill=blue!5, rounded corners=3pt,
+        minimum width=2.8cm, minimum height=1.0cm,
+        align=center, font=\footnotesize,
+        thick
+    },
+    modbox_blue/.style={
+        modbox, fill=blue!5
+    },
+    modbox_green/.style={
+        modbox, fill=green!5
+    },
+    modbox_orange/.style={
+        modbox, fill=orange!5
+    },
+    modbox_purple/.style={
+        modbox, fill=purple!5
+    },
+    modbox_red/.style={
+        modbox, fill=red!5
+    },
+    dataarrow/.style={
+        ->, >=Stealth, thick, draw=black!50
+    },
+    dataarrow_blue/.style={
+        ->, >=Stealth, thick, draw=blue!60
+    },
+    dataarrow_red/.style={
+        ->, >=Stealth, thick, draw=red!60
+    }
+}
+
+% Comment out this line in the camera-ready submission
+\linenumbers
+
+\urlstyle{same}
+
+\newtheorem{example}{Example}
+\newtheorem{theorem}{Theorem}
+\newtheorem{definition}{Definition}
+
+% \pdfinfo is pdftex-only; guard it so XeLaTeX can compile this file too.
+\ifdefined\pdfinfo
+\pdfinfo{
+/TemplateVersion (IJCAI.2026.0)
+}
+\fi
+
+% =====================================================================
+%  Title and authors
+% =====================================================================
+\title{Canvas3D: Object-Level 3D Gaussian Splatting\\
+and Line-Art Composition for Painting Animation}
+
+\author{
+    Anonymous Authors
+    \affiliations
+    AIforEducation Project
+    \emails
+    aiforeducation@example.com
+}
+
+\begin{document}
+
+\maketitle
+
+% =====================================================================
+%  Abstract
+% =====================================================================
+\begin{abstract}
+Animating static artworks---oil paintings, ink-wash scrolls, and frescoes---into
+explorable, narratively coherent videos holds transformative potential for
+cultural heritage education and AI-driven creativity. However, existing
+approaches remain bifurcated: image-to-video (I2V) diffusion models produce
+visually fluent motion but collapse 3D structure under viewpoint change, while
+3D reconstruction pipelines (NeRF, 3D Gaussian Splatting) capture geometry at
+the cost of obliterating painterly texture, impasto, and brushstroke identity.
+We propose \textbf{Canvas3D}, a framework integrating four specialized
+components to resolve this tension.
+\textbf{PaintParse} employs YOLO-family instance segmentation to decompose a
+painting into semantically meaningful foreground objects and a preserved
+background, yielding per-object masks with monocular depth-driven layer
+assignment. \textbf{MonoSplat} lifts each segmented foreground region into a
+high-fidelity 3D Gaussian Splatting (3DGS) asset via TripoSplat monocular
+reconstruction, constructing an object-level 3D model library with metric-scale
+rescaling. \textbf{SketchComp} accepts hand-drawn line-art sketches that specify
+target object poses and spatial layout; a contour-based rigid registration
+solver aligns each 3DGS object to its sketch, and a depth-conditioned inpainting
+module fills disocclusion gaps with background-coherent texture.
+\textbf{ArtiFlow} renders the composited 3D scene into multi-view keyframes and
+drives a dual-ControlNet video diffusion pipeline---Wan2.2 or LTX2.3 conditioned
+on both depth and HED edge maps---to generate temporally smooth animations with
+geometrically grounded object-motion control. Extensive experiments on a curated
+benchmark of 50 classical paintings demonstrate state-of-the-art results:
+CLIP-I style fidelity of 0.86, LPIPS perceptual quality of 0.28, and FID-VID
+temporal coherence of 18.3. User studies confirm that Canvas3D outputs are
+preferred over the strongest I2V and 3D baselines, with 82\% of participants
+favoring them for artistic authenticity and 76\% for motion naturalness.
+\end{abstract}
+
+% =====================================================================
+%  Body: each section lives in its own file under sec/
+% =====================================================================
+\input{sec/intro}
+\input{sec/related}
+\input{sec/method}
+\input{sec/experiment}
+\input{sec/conclusion}
+
+%% The file named.bst is a bibliography style file for BibTeX 0.99c
+\bibliographystyle{named}
+\bibliography{references}
+
+\end{document}

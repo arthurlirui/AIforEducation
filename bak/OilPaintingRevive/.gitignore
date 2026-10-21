@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+
+# 环境
+.env
+
+# 输出
+output/*/
+
+# 资源
+assets/input/*
+!assets/input/.gitkeep
+assets/control/*
+!assets/control/.gitkeep

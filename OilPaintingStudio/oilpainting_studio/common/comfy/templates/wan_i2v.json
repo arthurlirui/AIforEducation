@@ -1,0 +1,62 @@
+{
+  "_comment": "Wan2.2-I2V 图生视频工作流（API 格式）。节点 id 约定：wan_model(WanVideoLoader)、wan_pos(WanTextEncode正)、wan_neg(WanTextEncode负)、wan_sampler(WanVideoSampler)、wan_decode(WanVideoDecode)、wan_save(VHS_VideoCombine)、input_image(LoadImage)。注入字段见 workflows.apply_params。需要 ComfyUI 已安装 wanvideo 节点与权重。",
+  "input_image": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "input.png"
+    }
+  },
+  "wan_model": {
+    "class_type": "WanVideoLoader",
+    "inputs": {
+      "model": "wan2.2_i2v_720p_bf16.safetensors"
+    }
+  },
+  "wan_pos": {
+    "class_type": "WanTextEncode",
+    "inputs": {
+      "text": "subtle motion, cinematic",
+      "model": ["wan_model", 1]
+    }
+  },
+  "wan_neg": {
+    "class_type": "WanTextEncode",
+    "inputs": {
+      "text": "static, no motion, distorted, lowres, watermark, text",
+      "model": ["wan_model", 1]
+    }
+  },
+  "wan_sampler": {
+    "class_type": "WanVideoSampler",
+    "inputs": {
+      "model": ["wan_model", 0],
+      "positive": ["wan_pos", 0],
+      "negative": ["wan_neg", 0],
+      "image": ["input_image", 0],
+      "seed": 0,
+      "steps": 30,
+      "cfg": 6.0,
+      "guidance_scale": 5.0,
+      "num_frames": 49,
+      "width": 832,
+      "height": 1440
+    }
+  },
+  "wan_decode": {
+    "class_type": "WanVideoDecode",
+    "inputs": {
+      "model": ["wan_model", 0],
+      "latents": ["wan_sampler", 0]
+    }
+  },
+  "wan_save": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+      "images": ["wan_decode", 0],
+      "filename_prefix": "oilpaint_clip_wan",
+      "frame_rate": 24,
+      "format": "video/h264-mp4",
+      "save_metadata": false
+    }
+  }
+}

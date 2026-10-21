@@ -1,0 +1,47 @@
+<mxfile host="app.diagrams.net" modified="2026-10-13T00:00:00.000Z" agent="ZCode" version="24.0.0" type="device">
+  <diagram id="fig3_monosplat_A" name="MonoSplat_A_Flat">
+    <mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="crop" value="Crop P . Mi" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F9A825;fontSize=10;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="20" y="100" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tripo" value="TripoSplat&#10;Feed-forward transformer&#10;single-view -&gt; 3DGS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#009688;fontColor=#FFFFFF;strokeColor=none;fontSize=10;fontFamily=Helvetica;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="170" y="70" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="out" value="3DGS Gi&#10;{mu, s, q, alpha, c}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CCCCCC;fontSize=9;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="360" y="85" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sc" value="Metric Rescale&#10;lambda_i = d_i * h_i^px / f" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4DB6AC;fontColor=#FFFFFF;strokeColor=none;fontSize=9;fontFamily=Helvetica;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="170" y="160" width="140" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="lib" value="3DGS Library&#10;{G1 ... GK}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#7B1FA2;fontColor=#FFFFFF;strokeColor=none;fontSize=9;fontFamily=Helvetica;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="160" width="130" height="45" as="geometry" />
+        </mxCell>
+        <!-- Edges -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="crop" target="tripo">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="tripo" target="out">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="out" target="sc">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="425" y="115" />
+              <mxPoint x="425" y="182" />
+              <mxPoint x="310" y="182" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="sc" target="lib">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#666666;strokeWidth=2;endArrow=block;endFill=1;" edge="1" parent="1" source="out" target="lib">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

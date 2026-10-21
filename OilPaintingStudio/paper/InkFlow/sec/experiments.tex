@@ -1,0 +1,85 @@
+\section{Experiments}
+\label{sec:experiments}
+
+\subsection{Experimental Setup}
+
+\textbf{Dataset.} We collect 30 Chinese ink-wash (Shanshui)
+paintings spanning the Song, Yuan, Ming, and Qing dynasty styles.
+Each painting is annotated with: (1)~a line-distribution map
+(structural draft), (2)~an ink-density distribution map (5-channel,
+five-level ink), and (3)~a blank-space mask (negative-space
+regions). Annotations are created semi-automatically: a U-Net
+segmenter produces initial masks that are refined by a human
+annotator.
+
+\textbf{Baselines.} We compare four methods:
+\begin{itemize}
+    \item \textbf{Wan2.1-I2V (unconditional)}: the base I2V model
+    with no art-specific conditioning.
+    \item \textbf{Single-condition (line only)}: line-distribution
+    map injected at all denoising steps.
+    \item \textbf{Single-condition (ink only)}: ink-density map
+    injected at all denoising steps.
+    \item \textbf{InkFlow (full)}: our dual-conditioned method with
+    blank-space loss and rhythm prior.
+\end{itemize}
+
+\textbf{Metrics.}
+\begin{itemize}
+    \item \textbf{Ink-density histogram matching} (lower = better):
+    EMD between the generated frame's ink-level histogram and the
+    target histogram from the ink-density map.
+    \item \textbf{Blank-space texture ratio} (lower = better):
+    fraction of blank-space pixels that contain generated texture
+    above a variance threshold.
+    \item \textbf{Temporal consistency} (higher = better): average
+    optical-flow warping error between consecutive frames, measured
+    via the warping error metric from \citet{lai2018video}.
+    \item \textbf{FID} (lower = better): Fréchet Inception Distance
+    between generated frames and real ink-wash paintings.
+    \item \textbf{User study}: 20 participants rate each video on
+    7-point Likert scales for ink fidelity, blank-space
+    preservation, motion naturalness, and overall aesthetic quality.
+\end{itemize}
+
+\subsection{Quantitative Results}
+
+\textbf{[Table placeholder: quantitative comparison of 4 methods ×
+5 metrics on 30 paintings. To be filled upon experiment completion.]}
+
+\subsection{Qualitative Results}
+
+\textbf{[Figure placeholder: side-by-side video frames from 4 methods
+on 3 representative paintings, showing ink-density fidelity and
+blank-space preservation. To be filled upon experiment completion.]}
+
+\subsection{Ablation Study}
+
+\textbf{[Table placeholder: ablation removing each component
+(dual-stage separation, blank-space loss, rhythm prior) and
+measuring impact on metrics. To be filled upon experiment
+completion.]}
+
+\subsection{Perceptual User Study}
+
+\textbf{[Results pending.]} 20 participants view videos from all
+four methods in randomized order and rate them on 7-point Likert
+scales. We analyze ratings via Mann--Whitney $U$ tests with
+Bonferroni correction for multiple comparisons.
+
+\subsection{Status of Pending Experiments}
+
+The InkFlow framework is designed and the dual-condition adapter
+architecture is implemented. The following steps are required to
+complete the evaluation:
+\begin{enumerate}
+    \item Collect and annotate the 30-painting dataset (line maps,
+    ink-density maps, blank-space masks).
+    \item Fine-tune Wan2.1-I2V with the dual-condition adapters and
+    art-specific losses on the OilPaintingVideo ComfyUI pipeline.
+    \item Generate videos for all 30 paintings under all 4 methods.
+    \item Compute quantitative metrics.
+    \item Conduct the perceptual user study.
+\end{enumerate}
+We expect all experiments to be completed before the camera-ready
+deadline.
