@@ -31,3 +31,16 @@ paper/*/paper.bbl
 paper/*/paper.blg
 paper/*/paper.log
 paper/*/paper.out
+
+# LaTeX aux files
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+
+# Backup PDFs
+*_backup.pdf

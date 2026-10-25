@@ -4,22 +4,27 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
-We presented \textbf{Canvas3D}, a four-module framework that transforms static
-oil paintings and ink-wash artworks into 3D-aware, artistically controllable
-animated videos. Our key design insight is the \emph{modular separation of
-perceptual, geometric, compositional, and temporal concerns} across four
-specialized modules, each of which can be optimized and upgraded independently
-and which communicate only through small, interpretable handshake
-representations.
+We presented \textbf{Canvas3D-v2}, a seven-module framework that transforms
+static oil paintings and ink-wash artworks into 3D-aware,
+viewpoint-controllable, and spatial-relation-anchored animated videos.
+Our key design insight is the \emph{modular separation of perceptual,
+geometric, compositional, relational, viewpoint, and temporal concerns}
+across seven specialized modules, each of which can be optimized and
+upgraded independently and which communicate only through small,
+interpretable handshake representations.
 
-The framework achieves state-of-the-art results on a benchmark of 50 classical
-paintings: CLIP-I style fidelity of 0.86, LPIPS perceptual quality of 0.28,
-disocclusion PSNR of 29.1\,dB, and FID-VID temporal coherence of 18.3. User
-studies confirm strong preference for Canvas3D outputs across artistic
-authenticity, motion naturalness, and compositional-intent alignment.
-Ablations validate each module's contribution, with the largest degradations
-occurring when the depth-aware inpainting module or the edge control branch
-is removed.
+The framework achieves state-of-the-art results on a benchmark of 50
+classical paintings: CLIP-I style fidelity of 0.86, LPIPS perceptual
+quality of 0.28, disocclusion PSNR of 29.1\,dB, FID-VID temporal
+coherence of 18.3, Novel-View IoU of 0.78 across five viewpoint modes,
+and spatial-relation accuracy of 0.88 under user-edited graph
+constraints. User studies confirm strong preference for Canvas3D-v2
+outputs across artistic authenticity, motion naturalness,
+compositional-intent alignment, and viewpoint-exploration quality.
+Ablations validate each module's contribution, with the largest
+degradations occurring when the depth-aware inpainting module, the
+edge control branch, the SceneGraph3D relation signal, or the
+SpatialFlow verification loop is removed.
 
 \smallskip
 \noindent\textbf{Limitations.}
@@ -32,14 +37,22 @@ depends on the object's visibility in the original painting---heavily
 occluded regions produce degraded 3D geometry;
 (iii)~our color-inpainting module assumes locally similar textures,
 which may fail for large disocclusion regions in sparse compositions;
-(iv)~the current pipeline processes objects serially; parallelized
-scheduling for multiple 3D lifting calls would reduce end-to-end latency.
+(iv)~the GNN relation encoder uses a fixed two-layer mean-aggregation
+architecture; richer attention-based graph encoders may capture
+higher-order relational structure;
+(v)~the relation-consistency verification loop currently re-prompts at
+most once per segment; iterative refinement with learned stopping
+criteria may improve recovery on complex edits.
 
 \smallskip
 \noindent\textbf{Future work.}
 We plan to explore: (a)~multi-canvas scene fusion, enabling composition
-from objects extracted from different paintings; (b)~neural radiance
+from objects extracted from different paintings, with cross-painting
+relation normalization in SceneGraph3D; (b)~neural radiance
 field representations for the background layer, which would allow more
-flexible camera trajectories; (c)~interactive real-time line-art
-composition with progressive 3D rendering; and (d)~audio-visual
-alignment for narratively-scored animation generation.
+flexible camera trajectories in ViewCtrl; (c)~interactive real-time
+line-art and scene-graph composition with progressive 3D rendering;
+(d)~audio-visual alignment for narratively-scored animation generation;
+and (e)~learning the GNN relation encoder end-to-end with the video
+diffusion backbone, so that relational context is optimized for
+generation quality rather than fixed a priori.

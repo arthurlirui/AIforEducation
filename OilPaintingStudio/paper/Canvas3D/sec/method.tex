@@ -26,16 +26,23 @@ preventing error compounding.
 \paragraph{Problem statement.}
 Given a painting scan $P \in \mathbb{R}^{H\times W \times 3}$ and a set of
 hand-drawn line-art sketches $L = \{\ell_1, \dots, \ell_K\}$ specifying
-target object positions, Canvas3D produces an animated video $V$ that
-(i) preserves the artistic style of $P$, (ii) supports viewpoint
-exploration of a 3D-composited scene, and (iii) places each foreground
-object at its sketched location with geometrically grounded, temporally
-coherent motion. The framework comprises four modules
+target object positions, Canvas3D-v2 produces an animated video $V$ that
+(i) preserves the artistic style of $P$, (ii) supports user-specified
+viewpoint exploration of a 3D-composited scene, (iii) places each
+foreground object at its sketched location with geometrically grounded,
+temporally coherent motion, and (iv) respects user-edited spatial
+relations across frames. The framework comprises seven modules
 (Figure~\ref{fig:overview}): \textbf{PaintParse} (perceptual grouping and
 layer decomposition), \textbf{MonoSplat} (per-object 3D lifting and
 library assembly), \textbf{SketchComp} (line-art-guided scene composition
-with depth-aware inpainting), and \textbf{ArtiFlow} (geometry-grounded
-video synthesis).
+with depth-aware inpainting), \textbf{SceneGraph3D} (explicit 3D scene
+graph construction, \S\ref{sec:method:scenegraph3d}),
+\textbf{ViewCtrl} (viewpoint-controllable novel-view rendering,
+\S\ref{sec:method:viewctrl}), \textbf{SpatialFlow}
+(spatial-relation-driven video synthesis, \S\ref{sec:method:spatialflow}),
+and \textbf{ArtiFlow} (final video composition with first-frame latent
+anchoring). The first four modules form the base pipeline shown in
+Figure~\ref{fig:overview}; the three v2 modules build on their outputs.
 
 \paragraph{Notation.}
 $M_i \in \{0,1\}^{H\times W}$ denotes a binary mask for the $i$-th

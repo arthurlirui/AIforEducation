@@ -97,8 +97,8 @@
 % =====================================================================
 %  Title and authors
 % =====================================================================
-\title{Canvas3D: Object-Level 3D Lifting and Line-Art Composition\\
-for Painting Animation}
+\title{Canvas3D-v2: Scene-Graph-Grounded Viewpoint-Controllable\\
+Painting Animation with Spatial-Relation-Driven Video Synthesis}
 
 \author{
     Anonymous Authors
@@ -127,9 +127,9 @@ impasto, and brushstroke identity. The root cause is a fundamental
 \emph{objective tension}: artistic style fidelity and 3D scene structure are
 governed by incompatible optimization targets, and no single end-to-end model
 satisfies both, especially when the task demands object-level manipulation.
-We propose \textbf{Canvas3D}, a framework that resolves this tension through
+We propose \textbf{Canvas3D-v2}, a framework that resolves this tension through
 a \emph{modular decomposition of concerns}. Rather than training a monolithic
-network, Canvas3D factors the painting-to-video problem into four
+network, Canvas3D-v2 factors the painting-to-video problem into seven
 independently optimized, mutually reinforcing sub-problems:
 \emph{(i) perceptual grouping} of a painting into semantically meaningful
 foreground objects and a preserved background, jointly with monocular
@@ -140,20 +140,33 @@ scene composition} in which hand-drawn sketches serve as \emph{spatial
 constraints} rather than stylistic hints, solved by a contour-based rigid
 registration that places each 3D object at its sketched location and a
 depth-conditioned inpainting module that restores disoccluded background
-texture in a geometry-aware manner; and \emph{(iv) geometry-grounded video
-synthesis} that renders the composited 3D scene into multi-view keyframes
-and injects depth and edge cues as dual control signals into a video
-diffusion backbone, anchoring temporal motion to explicit 3D structure
-rather than learned heuristics. The key insight is that \emph{separating
-perceptual, geometric, compositional, and temporal concerns} turns an
-ill-posed, conflicting joint problem into four well-posed sub-problems,
-each addressable by an off-the-shelf specialist, while their interaction
-yields capabilities---arbitrary object repositioning, multi-view
-explorability, and style-anchored animation---that no single-modality
-pipeline offers. On a curated benchmark of classical paintings, Canvas3D
-achieves state-of-the-art style fidelity, perceptual quality, and temporal
-coherence, with user studies confirming strong preference for artistic
-authenticity, motion naturalness, and compositional-intent alignment.
+texture in a geometry-aware manner; \emph{(iv) 3D scene graph construction}
+that organizes the lifted objects and their pairwise spatial
+relations---topological, depth-ordering, and physical-support---into an
+explicit, editable, serializable graph representation, providing a structured
+intermediate that subsequent viewpoint and video stages can reason over;
+\emph{(v) viewpoint-controllable novel-view rendering} that accepts a user
+camera trajectory specification (manual, orbit, dolly, crane, or
+auto-orbit) and renders multi-view keyframes with per-node visibility masks,
+enabling arbitrary viewpoint exploration rather than a fixed arc; and
+\emph{(vi) spatial-relation-driven video synthesis} that injects a third
+control signal---a graph-neural-network-encoded relation embedding pooled
+per-frame over the visible node set---into the video diffusion backbone
+alongside depth and edge, anchoring temporal motion to explicit 3D
+\emph{spatial relations} rather than learned heuristics, with a
+relation-consistency verification loop that re-prompts when generated frames
+violate the edited scene graph. The key insight is that \emph{separating
+perceptual, geometric, compositional, relational, viewpoint, and temporal
+concerns} turns an ill-posed, conflicting joint problem into seven
+well-posed sub-problems, each addressable by an off-the-shelf specialist,
+while their interaction yields capabilities---arbitrary object repositioning,
+viewpoint-controllable exploration, and spatial-relation-anchored
+animation---that no single-modality pipeline offers. On a curated benchmark
+of classical paintings, Canvas3D-v2 achieves state-of-the-art style fidelity,
+perceptual quality, temporal coherence, novel-view consistency, and
+spatial-relation accuracy, with user studies confirming strong preference
+for artistic authenticity, motion naturalness, compositional-intent
+alignment, and viewpoint-exploration quality.
 \end{abstract}
 
 % =====================================================================
@@ -162,6 +175,7 @@ authenticity, motion naturalness, and compositional-intent alignment.
 \input{sec/intro}
 \input{sec/related}
 \input{sec/method}
+\input{sec/method_v2}
 \input{sec/experiment}
 \input{sec/conclusion}
 

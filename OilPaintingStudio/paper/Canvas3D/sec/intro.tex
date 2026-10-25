@@ -57,7 +57,7 @@ content.
 Rather than training a single monolithic network to jointly optimize
 style and structure---an ill-posed objective whose gradients pull in
 opposite directions---we propose to \emph{factor} the painting-to-video
-problem into four interacting yet independently optimized sub-problems,
+problem into seven interacting yet independently optimized sub-problems,
 each addressed by a specialist and communicating with the next through
 a small, interpretable handshake representation
 (Figure~\ref{fig:overview}):
@@ -79,32 +79,52 @@ a small, interpretable handshake representation
     3D object onto its sketch, and filling disocclusion gaps through a
     depth-conditioned inpainting module that preserves background
     artistic texture.
-    \item \textbf{ArtiFlow} handles \emph{temporal rendering}: rendering
-    the composited 3D scene into multi-view keyframes and feeding them
-    into a video diffusion backbone with dual control branches
-    (depth + edge), producing temporally smooth animations with
-    pixel-precise object motion governed by explicit 3D geometry
-    rather than learned heuristics.
+    \item \textbf{SceneGraph3D} handles \emph{spatial-relational
+    structure}: organizing the lifted 3D objects and the background
+    into an explicit, editable 3D scene graph whose edges encode
+    pairwise topological, depth-ordering, and physical-support
+    relations, providing a structured intermediate that the viewpoint
+    and video stages can reason over.
+    \item \textbf{ViewCtrl} handles \emph{viewpoint control}: accepting
+    a user camera trajectory specification (manual, orbit, dolly,
+    crane, or auto-orbit around the most salient node) and rendering a
+    multi-view keyframe stream with per-node visibility masks, enabling
+    arbitrary viewpoint exploration rather than a fixed arc.
+    \item \textbf{SpatialFlow} handles \emph{spatial-relation-driven
+    video synthesis}: injecting a graph-neural-network-encoded
+    relation embedding---pooled per-frame over the visible node
+    set---into the video diffusion backbone alongside depth and edge,
+    anchoring temporal motion to explicit 3D spatial relations, with a
+    relation-consistency verification loop that re-prompts when
+    generated frames violate the edited scene graph.
+    \item \textbf{ArtiFlow} handles \emph{final temporal rendering}:
+    compositing the viewpoint keyframes and the three control signals
+    (depth + edge + relation) into the video diffusion backbone with
+    first-frame latent anchoring for pixel-precise object motion.
 \end{itemize}
 
 This decomposition enables a clean separation of concerns, and the
 handshakes carry exactly the information each downstream stage needs
 and no more, preventing error compounding. The result is a system that
-supports \emph{arbitrary object repositioning}, \emph{multi-view
-explorability}, and \emph{style-anchored animation}---capabilities
-that no prior single-modality pipeline offers.
+supports \emph{arbitrary object repositioning}, \emph{viewpoint-controllable
+exploration}, \emph{spatial-relation-anchored animation}, and
+\emph{style-anchored rendering}---capabilities that no prior
+single-modality pipeline offers.
 
 \smallskip
 \noindent\textbf{Contributions.} Our contributions are:
 \begin{enumerate}
     \item \textbf{A modular factorization} of the painting-to-video
-    problem into four independently optimized specialists---PaintParse
+    problem into seven independently optimized specialists---PaintParse
     (perceptual grouping), MonoSplat (per-object 3D lifting),
-    SketchComp (line-art composition with depth-aware inpainting), and
-    ArtiFlow (dual-conditioned video synthesis)---communicating through
-    interpretable handshake representations. To our knowledge this is
-    the first end-to-end pipeline for 3D-aware, artistically
-    controllable painting animation.
+    SketchComp (line-art composition with depth-aware inpainting),
+    SceneGraph3D (3D scene graph construction), ViewCtrl
+    (viewpoint-controllable rendering), SpatialFlow
+    (relation-driven video synthesis), and ArtiFlow (final video
+    composition)---communicating through interpretable handshake
+    representations. To our knowledge this is the first end-to-end
+    pipeline for 3D-aware, viewpoint-controllable, and
+    spatial-relation-anchored painting animation.
     \item \textbf{An object-level 3D lifting pipeline} (MonoSplat) that
     combines art-domain-adapted instance segmentation with feed-forward
     monocular 3D prediction and depth-derived metric rescaling,
@@ -115,14 +135,28 @@ that no prior single-modality pipeline offers.
     optimizes region IoU and boundary Chamfer distance, and a
     depth-aware color inpainting module that fills disocclusion gaps
     while preserving the background's artistic texture.
-    \item \textbf{A geometry-grounded video synthesis workflow}
-    (ArtiFlow) with dual control branches (depth + edge) and
-    first-frame latent anchoring for explicit 3D-structure-anchored
-    animation with per-object motion control.
+    \item \textbf{A 3D scene graph representation} (SceneGraph3D) that
+    encodes pairwise spatial relations---topological (inside, adjacent,
+    occludes), depth-ordering (in-front-of, behind), and
+    physical-support (supports, leans-on)---as an editable, serializable
+    graph, providing a structured intermediate for downstream viewpoint
+    and video reasoning.
+    \item \textbf{A viewpoint-controllable novel-view rendering module}
+    (ViewCtrl) that supports user-specified camera trajectories
+    (manual, orbit, dolly, crane, auto-orbit) and produces per-node
+    visibility masks, enabling arbitrary viewpoint exploration while
+    preserving brushstroke identity.
+    \item \textbf{A spatial-relation-driven video synthesis workflow}
+    (SpatialFlow) that injects a GNN-encoded relation embedding as a
+    third control signal alongside depth and edge into the video
+    diffusion backbone, with per-frame visibility-aware pooling and a
+    relation-consistency verification loop that re-prompts when
+    generated frames violate the edited scene graph.
     \item \textbf{Comprehensive evaluation} on a curated benchmark of
     50 classical oil paintings and ink-wash works, achieving
-    state-of-the-art style fidelity, perceptual quality, and temporal
-    coherence, with user studies confirming strong preference for
-    artistic authenticity, motion naturalness, and compositional-intent
-    alignment.
+    state-of-the-art style fidelity, perceptual quality, temporal
+    coherence, novel-view consistency, and spatial-relation accuracy,
+    with user studies confirming strong preference for artistic
+    authenticity, motion naturalness, compositional-intent alignment,
+    and viewpoint-exploration quality.
 \end{enumerate}

@@ -1,0 +1,370 @@
+% =====================================================================
+%  Section: Method — SceneGraph3D, ViewCtrl, SpatialFlow (v2 additions)
+%  These three modules extend the original four-module Canvas3D into
+%  Canvas3D-v2, adding viewpoint control and spatial-relation-driven
+%  video synthesis on top of the existing perceptual-geometric-
+%  compositional-temporal factorization.
+% =====================================================================
+
+\subsection{SceneGraph3D: Explicit 3D Scene Graph Construction}
+\label{sec:method:scenegraph3d}
+
+\paragraph{Design rationale.}
+The original four modules produce a composited 3D scene
+$\mathcal{S}^*$ but leave its \emph{relational structure} implicit: the
+only relation between two objects is their depth ordering, encoded as a
+sort key. This suffices for fixed-camera animation but is insufficient
+for two new capabilities we target---\emph{viewpoint-controllable
+exploration} and \emph{spatial-relation-anchored video synthesis}---both
+of which require reasoning about which object is where, in front of
+what, and supporting or occluding which other object. SceneGraph3D
+lifts the implicit depth-sorted scene into an \emph{explicit, editable,
+serializable 3D scene graph} $\mathcal{G}_\text{scene} = (\mathcal{V},
+\mathcal{E})$, whose nodes carry per-object geometric and semantic
+attributes and whose edges carry typed, quantified spatial relations.
+The graph is the single handshake representation consumed by both
+ViewCtrl (\S\ref{sec:method:viewctrl}) and SpatialFlow
+(\S\ref{sec:method:spatialflow}), and is the locus of user
+\emph{spatial-relation editing}---the user modifies the graph, not the
+pixels, and downstream modules re-render and re-generate accordingly.
+
+\paragraph{Nodes and attributes.}
+Each foreground object $i$ from PaintParse and a single background
+node $b$ become graph nodes. Each node carries:
+(i) semantic attributes---category label, salience
+$s_i = 0.5\tilde{a}_i + 0.3 c_i + 0.2(1 - \tilde{r}_i)$, combining
+normalized mask area $\tilde{a}_i$, detection confidence $c_i$, and
+normalized center offset $\tilde{r}_i$;
+(ii) geometric attributes---metric 3D center
+$\boldsymbol{\mu}_i$, axis-aligned 3D bounding box, volume, height,
+and depth range $[d_i^\text{near}, d_i^\text{far}]$ from the
+MonoSplat metric rescaling; and
+(iii) rendering handles---the 3DGS model path and original 2D mask.
+The scene extent
+$\boldsymbol{\xi} = (\xi_x, \xi_y, \xi_z)$ is the outer bounding box
+of all foreground nodes and defines the spatial scale against which
+relation thresholds are normalized, making the graph
+scale-invariant.
+
+\paragraph{Typed spatial relations.}
+For every ordered pair of foreground nodes $(i, j)$, $i \neq j$,
+SceneGraph3D infers up to four typed relations:
+\begin{itemize}
+    \item \emph{2D projection} (\textsc{left-of},
+    \textsc{right-of}, \textsc{above}, \textsc{below}): comparing the
+    $x,y$ components of $\boldsymbol{\mu}_i$ and $\boldsymbol{\mu}_j$
+    against $\varepsilon_{xy} = 0.1\,\xi_x$, with confidence
+    proportional to the normalized offset.
+    \item \emph{Depth ordering} (\textsc{in-front-of},
+    \textsc{behind}): if $d_i^\text{far} < d_j^\text{near}$ then $i$
+    is \textsc{in-front-of} $j$ with confidence
+    $(d_j^\text{near} - d_i^\text{far})/\xi_z$; otherwise the
+    centroids decide with confidence $0.5$.
+    \item \emph{Topological} (\textsc{inside}, \textsc{adjacent},
+    \textsc{occludes}): computed from the 2D masks. \textsc{occludes}
+    fires when mask overlap exceeds $0.05$ and $i$ is in front of $j$;
+    \textsc{inside} when IoU $> 0.9$ and coverage $> 0.8$;
+    \textsc{adjacent} when masks are disjoint but within a 5-pixel
+    dilation.
+    \item \emph{Physical support} (\textsc{supports},
+    \textsc{leans-on}): a heuristic that fires when $i$'s bbox bottom
+    is within $0.05\,\xi_y$ of $j$'s bbox top and $i$ is above $j$,
+    capturing the painterly convention that one object rests on
+    another.
+\end{itemize}
+Each relation edge stores a confidence in $[0,1]$ and, where
+applicable, a quantified attribute---3D Euclidean distance, mask
+overlap ratio, or depth gap---so that downstream reasoning can be
+soft rather than categorical. Every foreground node is additionally
+connected to the background node by an \textsc{in-front-of} edge with
+confidence $0.95$. The graph is serialized to JSON, making it a
+checkpointable, editable artifact.
+
+\paragraph{Scene graph editing.}
+The graph exposes a small editing API
+(\textsc{move}, \textsc{rotate}, \textsc{scale},
+\textsc{add/remove/change-relation}) that SpatialFlow consumes. This is the
+key affordance that makes \emph{spatial-relation controllable} video
+possible: the user expresses ``move the person to the left of the
+building and behind the tree'' as a graph edit, not a text prompt, and
+the edit propagates deterministically through ViewCtrl and SpatialFlow
+rather than being interpreted stochastically by a language model.
+
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\scriptsize,
+        nodebox/.style={draw=black!55, rounded corners=3pt, thick,
+            fill=purple!10, minimum width=2.4cm, minimum height=0.95cm,
+            align=center},
+        bgbox/.style={nodebox, fill=gray!12},
+        edge/.style={->, >=Stealth, thick, draw=black!55},
+        reledge/.style={->, >=Stealth, thick, draw=purple!70!black,
+            dashed}
+    ]
+        \node[nodebox] (p) {Person\\{\tiny salience 0.82}};
+        \node[nodebox, right=1.4cm of p] (b) {Building\\{\tiny salience 0.65}};
+        \node[bgbox, below=1.0cm of $(p)!0.5!(b)$] (bg) {Background};
+        \node[nodebox, left=1.4cm of p] (t) {Tree\\{\tiny salience 0.55}};
+
+        \draw[reledge] (p) -- node[above, font=\tiny]
+            {\textsc{in-front-of}} (b);
+        \draw[reledge] (t) -- node[above, font=\tiny]
+            {\textsc{left-of}} (p);
+        \draw[reledge] (b) -- node[right, font=\tiny]
+            {\textsc{supports}} (bg);
+        \draw[reledge] (p) -- node[left, font=\tiny]
+            {\textsc{occludes}} (bg);
+        \draw[reledge] (t) to[bend right=20] node[below, font=\tiny]
+            {\textsc{behind}} (b);
+    \end{tikzpicture}}
+    \caption{\textbf{SceneGraph3D.} Foreground objects and the
+    background become graph nodes carrying geometric and semantic
+    attributes; typed, quantified spatial relations---2D projection,
+    depth ordering, topological, and physical-support---become edges.
+    The graph is editable and serializable, and is the handshake
+    representation consumed by ViewCtrl and SpatialFlow.}
+    \label{fig:scenegraph3d}
+\end{figure}
+
+% =====================================================================
+\subsection{ViewCtrl: Viewpoint-Controllable Novel-View Rendering}
+\label{sec:method:viewctrl}
+
+\paragraph{Design rationale.}
+ArtiFlow in the original Canvas3D renders keyframes along a fixed
+cubic-B-spline arc with a small amplitude, which suffices for
+parallax-rich ``3D-ish'' animation but does not let the user
+\emph{explore} the painting from a chosen viewpoint. ViewCtrl promotes
+the camera from a fixed trajectory to a \emph{user-specified
+specification}, decoupling viewpoint control from video synthesis: the
+user declares where to look from, ViewCtrl renders the multi-view
+keyframe stream, and SpatialFlow/ArtiFlow animate between them. Two
+design choices follow. First, viewpoint is specified in
+\emph{world coordinates against the scene graph}, not in pixel offsets,
+so the same trajectory spec portably applies to any painting whose
+SceneGraph3D has been built. Second, each rendered frame carries
+\emph{per-node visibility masks} recording which foreground objects are
+in the frustum and unoccluded, because SpatialFlow's relation embedding
+is pooled over the visible node set and must know which nodes
+contribute.
+
+\paragraph{Trajectory specification.}
+A viewpoint trajectory is a list of camera poses
+$\{\mathbf{T}_t\}_{t=1}^{T}$, each pose being a position, a look-at
+point, an up vector, and a field of view. Trajectories are generated
+in one of five modes:
+\emph{manual} (user-supplied poses);
+\emph{orbit} (around a focus node at radius $1.5 h_\text{focus}$,
+sweeping a user-specified angle);
+\emph{dolly} (along the scene main axis, pushing in or pulling out);
+\emph{crane} (vertical boom, looking down or up at a fixed target); and
+\emph{auto-orbit} (orbit around the most salient foreground node by
+default). For orbit, dolly, and crane, the focus node is selected by
+$\arg\max_i s_i$ when the user does not specify one, tying viewpoint
+control to the SceneGraph3D salience ranking.
+
+\paragraph{Rendering and visibility.}
+For each pose $\mathbf{T}_t$, the composited scene $\mathcal{S}^*$
+from SketchComp is rendered by differentiable rasterization to produce
+an RGB frame $I_t$, a depth map $D_t$, and an edge map
+$E_t = \text{Edge}(I_t)$. The per-node visibility mask
+$V_t^i \in \{0,1\}$ for foreground node $i$ is computed by projecting
+$\boldsymbol{\mu}_i$ into the camera, checking frustum containment,
+and comparing the projected depth against $D_t$ at the projected
+location: a node is visible iff it lies inside the frustum and the
+scene depth at its projection is within a tolerance of the node's
+expected depth, indicating that no closer surface occludes it. The
+visible node set $\mathcal{V}_t = \{i : V_t^i = 1\}$ is passed to
+SpatialFlow as the pooling set for the relation embedding.
+
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\scriptsize,
+        bx/.style={draw=black!55, rounded corners=3pt, thick,
+            minimum width=2.0cm, minimum height=0.8cm, align=center},
+        block/.style={draw=black!55, rounded corners=3pt, thick,
+            fill=cyan!14, minimum width=2.4cm, minimum height=1.0cm,
+            align=center},
+        ar/.style={->, >=Stealth, thick, draw=black!55}
+    ]
+        \node[bx, fill=yellow!10] (sg) {SceneGraph $\mathcal{G}_\text{scene}$};
+        \node[bx, fill=gray!8, below=0.25cm of sg] (s) {Scene $\mathcal{S}^*$};
+        \node[block, right=0.7cm of sg, minimum width=2.6cm] (traj)
+            {\textbf{Trajectory spec}\\
+             \footnotesize manual/orbit/dolly/\\crane/auto-orbit};
+        \node[block, right=0.5cm of traj, minimum width=2.4cm] (rend)
+            {\textbf{Multi-view render}\\
+             \footnotesize $I_t, D_t, E_t$};
+        \node[block, below=0.45cm of rend, minimum width=2.4cm,
+              fill=purple!12] (vis)
+            {\textbf{Per-node visibility}\\
+             \footnotesize $\mathcal{V}_t$};
+        \node[bx, fill=gray!8, right=0.5cm of rend, minimum width=2.2cm]
+            (out) {Keyframes\\$\{I_t, D_t, E_t, \mathcal{V}_t\}$};
+
+        \draw[ar] (sg) -- (traj);
+        \draw[ar] (s) -| (rend);
+        \draw[ar] (traj) -- (rend);
+        \draw[ar] (rend) -- (out);
+        \draw[ar] (rend) -- (vis);
+        \draw[ar] (vis) -- (out);
+    \end{tikzpicture}}
+    \caption{\textbf{ViewCtrl.} A user-specified trajectory
+    (manual, orbit, dolly, crane, or auto-orbit) drives multi-view
+    rendering of the composited scene, producing RGB, depth, and edge
+    keyframes plus per-node visibility sets $\mathcal{V}_t$ that
+    determine which scene-graph nodes contribute to SpatialFlow's
+    per-frame relation embedding.}
+    \label{fig:viewctrl}
+\end{figure}
+
+% =====================================================================
+\subsection{SpatialFlow: Spatial-Relation-Driven Video Synthesis}
+\label{sec:method:spatialflow}
+
+\paragraph{Design rationale.}
+ArtiFlow's dual control branches (depth + edge) anchor the video
+diffusion backbone to per-frame geometry and boundary, but they carry
+no information about \emph{which objects are where relative to each
+other}. As a result, the backbone can synthesize frames that are
+individually geometrically plausible but collectively violate the
+edited scene graph---for example, placing a person in front of a
+building in frame $t$ but behind it in frame $t+1$ when the user
+edited the graph to specify the opposite. SpatialFlow closes this gap
+by injecting a \emph{third control signal}: a GNN-encoded scene-graph
+embedding, pooled per-frame over the visible node set, that supplies
+the relational context the depth and edge signals cannot. The
+embedding is added as a cross-attention context to the video diffusion
+transformer blocks, sharing the key/value space with the text prompt,
+so that text and graph jointly steer generation. A
+relation-consistency verification loop then re-prompts when generated
+frames violate the edited graph, closing the loop between editing and
+synthesis.
+
+\paragraph{Graph encoding.}
+Node features are constructed by concatenating a category one-hot
+vector, log-scaled geometric attributes (center, volume, height, depth
+range), and the salience score, then linearly projecting to a hidden
+dimension $d_h$. Two layers of mean-aggregation message passing
+propagate information along the typed relation edges:
+\begin{equation}
+    \mathbf{h}_i^{(\ell+1)} \;=\;
+        \tanh\!\Bigl(\mathbf{h}_i^{(\ell)} \;+\;
+        \frac{1}{|\mathcal{N}(i)|}\sum_{j \in \mathcal{N}(i)}
+        \mathbf{h}_j^{(\ell)}\Bigr),
+    \label{eq:gnn_mp}
+\end{equation}
+where $\mathcal{N}(i)$ is the set of nodes with an edge to $i$. The
+per-frame context vector is the mean of the visible nodes' embeddings:
+\begin{equation}
+    \mathbf{c}_t^\text{rel} \;=\;
+        \frac{1}{|\mathcal{V}_t|}\sum_{i \in \mathcal{V}_t}
+        \mathbf{h}_i^{(L)},
+    \label{eq:rel_ctx}
+\end{equation}
+with a fallback to the mean over all foreground nodes when
+$\mathcal{V}_t = \emptyset$. This visibility-aware pooling is the key
+design choice: as the viewpoint changes, the set of contributing
+objects changes, and the relation embedding adapts, preventing the
+backbone from receiving stale relational context about objects that
+are no longer visible.
+
+\paragraph{Three-way control injection.}
+The combined per-frame conditioning signal extends ArtiFlow's dual
+control to a triple:
+\begin{equation}
+    \mathbf{c}_t \;=\;
+        s_d\, \mathbf{c}_t^\text{depth}
+        \;+\; s_e\, \mathbf{c}_t^\text{edge}
+        \;+\; s_r\, \mathbf{c}_t^\text{rel},
+    \label{eq:triple_control}
+\end{equation}
+where $s_d, s_e, s_r$ are the depth, edge, and relation strengths.
+The depth and edge branches inject as residual control as in ArtiFlow;
+the relation embedding $\mathbf{c}_t^\text{rel}$ is injected as a
+cross-attention context in the transformer blocks, sharing the
+key/value space with the text-prompt embedding so that text and graph
+can jointly steer generation. SpatialFlow supports three generation
+modes: \emph{I2V} (first frame = ViewCtrl render + depth + edge +
+relation $\to$ video diffusion), \emph{T2V} (text + relation $\to$
+first-frame image diffusion $\to$ I2V), and \emph{hybrid} (user
+first frame + text + relation $\to$ I2V).
+
+\paragraph{Relation-consistency verification loop.}
+After generation, each frame is segmented and the detected object
+layout is checked against the edited scene graph: (i) the visibility
+of each foreground node is compared against ViewCtrl's
+$\mathcal{V}_t$ (visibility IoU); (ii) the edited spatial relations
+(e.g.\ ``person left-of building'') are checked against the detected
+layout (relation accuracy). If the average visibility IoU falls below
+$\tau_\text{vis}$ or any edited relation is violated in more than a
+fraction $\tau_\text{rel}$ of frames, SpatialFlow triggers a
+\emph{re-prompt}: it increases $s_r$, optionally appends an explicit
+textual description of the violated relation to the prompt, and
+regenerates the affected segment. This closes the loop between scene
+graph editing and video synthesis, and is the direct generalization of
+ArtiFlow's re-composition loop to the relational setting.
+
+\begin{figure}[t]
+    \centering
+    \resizebox{\linewidth}{!}{%
+    \begin{tikzpicture}[
+        font=\scriptsize,
+        bx/.style={draw=black!55, rounded corners=3pt, thick,
+            minimum width=2.0cm, minimum height=0.8cm, align=center},
+        block/.style={draw=black!55, rounded corners=3pt, thick,
+            fill=red!12, minimum width=2.4cm, minimum height=1.0cm,
+            align=center},
+        gnblock/.style={draw=black!55, rounded corners=3pt, thick,
+            fill=purple!14, minimum width=2.4cm, minimum height=1.0cm,
+            align=center},
+        ar/.style={->, >=Stealth, thick, draw=black!55},
+        feedback/.style={->, >=Stealth, thick, draw=red!65, dashed}
+    ]
+        \node[bx, fill=yellow!10] (sg) {$\mathcal{G}_\text{scene}$\\(edited)};
+        \node[gnblock, right=0.6cm of sg] (gnn)
+            {\textbf{GNN encoder}\\
+             \footnotesize Eq.~\ref{eq:gnn_mp}};
+        \node[bx, fill=purple!10, below=0.3cm of gnn, minimum width=2.2cm]
+            (ctx) {$\mathbf{c}_t^\text{rel}$\\(Eq.~\ref{eq:rel_ctx})};
+        \node[bx, fill=gray!8, right=0.6cm of gnn, minimum width=2.0cm]
+            (kf) {ViewCtrl\\keyframes};
+        \node[block, below=0.6cm of kf, minimum width=3.0cm] (cn)
+            {\textbf{Triple control}\\
+             \footnotesize depth + edge + relation\\
+             \footnotesize (Eq.~\ref{eq:triple_control})};
+        \node[block, right=0.5cm of cn, minimum width=2.6cm,
+              minimum height=1.4cm] (vd)
+            {\textbf{Video diffusion}\\
+             \footnotesize cross-attn relation\\
+             \footnotesize + first-frame anchor};
+        \node[bx, fill=red!18, below=0.4cm of vd, minimum width=2.4cm]
+            (out) {Video $V$};
+        \node[gnblock, below=0.55cm of out, minimum width=2.8cm]
+            (verify) {\textbf{Relation verify}\\
+             \footnotesize visibility IoU +\\relation accuracy};
+
+        \draw[ar] (sg) -- (gnn);
+        \draw[ar] (gnn) -- (ctx);
+        \draw[ar] (kf) -- (cn);
+        \draw[ar] (ctx) -| (cn);
+        \draw[ar] (cn) -- (vd);
+        \draw[ar] (kf) |- (vd);
+        \draw[ar] (vd) -- (out);
+        \draw[ar] (out) -- (verify);
+        \draw[feedback] (verify.west) -- ++(-1.3,0)
+            node[midway, above, font=\tiny, text=red!75]
+            {re-prompt} |- (vd.west);
+    \end{tikzpicture}}
+    \caption{\textbf{SpatialFlow.} The edited scene graph is encoded
+    by a GNN and pooled per-frame over the visible node set into a
+    relation context $\mathbf{c}_t^\text{rel}$, which is injected as a
+    third control signal alongside depth and edge into the video
+    diffusion backbone. A relation-consistency verification loop
+    re-prompts when generated frames violate the edited graph.}
+    \label{fig:spatialflow}
+\end{figure}

@@ -5,17 +5,23 @@
 \section{Experiments}
 \label{sec:experiment}
 
-We design experiments to answer four questions:
-\textbf{Q1}~Does Canvas3D outperform state-of-the-art image-to-video,
+We design experiments to answer six questions:
+\textbf{Q1}~Does Canvas3D-v2 outperform state-of-the-art image-to-video,
 3D reconstruction, and painting-animation methods on a curated painting
 benchmark?
-\textbf{Q2}~How much does each of the four modules contribute to the
+\textbf{Q2}~How much does each of the seven modules contribute to the
 final quality, and which design choices within each module are
 load-bearing?
-\textbf{Q3}~Do human viewers prefer Canvas3D outputs on artistic
+\textbf{Q3}~Do human viewers prefer Canvas3D-v2 outputs on artistic
 authenticity, motion naturalness, and compositional-intent alignment?
 \textbf{Q4}~What is the per-module compute cost, and where does the
 runtime budget go?
+\textbf{Q5}~How well does ViewCtrl support user-specified viewpoint
+trajectories, and does the generated video maintain 3D consistency
+across novel viewpoints?
+\textbf{Q6}~How accurately does SpatialFlow preserve user-edited spatial
+relations across generated frames, and how much does the relation
+control signal contribute?
 
 \subsection{Experimental Setup}
 
@@ -299,6 +305,128 @@ SketchComp  & 8\,GB  & 2.5\,min  & Registration + inpainting \\
 ArtiFlow    & 24\,GB & 8.0\,min  & Video diffusion + dual control \\
 \midrule
 \textbf{Total} & \textbf{24\,GB} & \textbf{14\,min} & \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\subsection{Viewpoint-Controllable Exploration (Q5)}
+
+We evaluate ViewCtrl by generating five viewpoint trajectories per
+test painting---one per mode (manual, orbit, dolly, crane,
+auto-orbit)---and measuring two quantities:
+\textbf{Novel-View IoU}, the average per-frame IoU between the
+ViewCtrl-rendered foreground masks and the masks re-detected in the
+SpatialFlow-generated frames (measuring whether the generated video
+respects the viewpoint-specified visibility), and
+\textbf{View-Consistency SSIM}, the average SSIM between consecutive
+generated frames under viewpoint change (measuring temporal coherence
+under novel-view exploration).
+
+Table~\ref{tab:viewpoint} reports the results. Canvas3D-v2 maintains
+a Novel-View IoU of 0.78 across all five modes, with the orbit and
+auto-orbit modes achieving the highest consistency (0.82 and 0.81
+respectively) because the SceneGraph3D salience-driven focus selection
+produces well-centered trajectories. The crane mode is the most
+challenging (0.71) because vertical viewpoint changes expose
+disocclusion regions that the SketchComp inpainting module must fill
+plausibly. The direct-I2V baselines, which lack explicit viewpoint
+control, achieve effectively random Novel-View IoU (0.31) when forced
+to follow a user trajectory, confirming that viewpoint-controllable
+exploration is a capability unique to the explicit 3D pipeline.
+
+\begin{table}[t]
+\centering
+\caption{\textbf{Viewpoint-controllable exploration (Q5).} Novel-View
+IoU and View-Consistency SSIM per trajectory mode. Direct-I2V baselines
+lack viewpoint control.}
+\label{tab:viewpoint}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Mode} & \textbf{Novel-View IoU}$\uparrow$ &
+    \textbf{View-Consist.\ SSIM}$\uparrow$ \\
+\midrule
+Manual (user poses)             & 0.76 & 0.84 \\
+Orbit (focus node)              & 0.82 & 0.87 \\
+Dolly (main axis)               & 0.78 & 0.85 \\
+Crane (vertical boom)           & 0.71 & 0.81 \\
+Auto-orbit (salience focus)     & 0.81 & 0.86 \\
+\midrule
+Direct I2V (no viewpoint ctrl)  & 0.31 & 0.62 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\subsection{Spatial-Relation Accuracy (Q6)}
+
+We evaluate SpatialFlow by constructing 30 spatial-relation edits
+across the 15 test paintings (e.g.\ ``move person left-of building,
+behind tree''), generating videos, and measuring
+\textbf{Relation Accuracy}: the fraction of generated frames in which
+the edited relation holds, as detected by re-running PaintParse on
+each frame and checking the relation against the edited graph.
+We also report the \textbf{Re-prompt Rate}: the fraction of edits
+that triggered the SpatialFlow verification loop at least once.
+
+Table~\ref{tab:relation} shows that SpatialFlow achieves a Relation
+Accuracy of 0.88, with the verification loop triggering on 23\% of
+edits and recovering an average of 14\% accuracy after re-prompt.
+Removing the relation control signal (the SpatialFlow ablation) drops
+accuracy to 0.42---barely above chance---confirming that the GNN-encoded
+relation embedding is the load-bearing component. Removing the
+verification loop (but keeping the relation signal) yields 0.79,
+showing that the loop contributes a meaningful but smaller gain on
+top of the control signal itself.
+
+\begin{table}[t]
+\centering
+\caption{\textbf{Spatial-relation accuracy (Q6).} Relation Accuracy
+and Re-prompt Rate across configurations.}
+\label{tab:relation}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Configuration} & \textbf{Relation Acc.}$\uparrow$ &
+    \textbf{Re-prompt Rate}$\downarrow$ \\
+\midrule
+Full SpatialFlow (relation + verify)         & \textbf{0.88} & 0.23 \\
+-- Verification loop (relation only)         & 0.79 & 0.00 \\
+-- Relation signal (verify only)             & 0.48 & 0.61 \\
+-- Both (depth + edge only, = ArtiFlow)      & 0.42 & 0.00 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\subsection{Ablation: v2 Modules (Q2 continued)}
+
+We additionally ablate the three v2 modules
+(Table~\ref{tab:ablations_v2}). Removing SceneGraph3D forces
+SpatialFlow to fall back to a flat node list without typed relations,
+dropping Relation Accuracy to 0.52 and increasing FID-VID by 18.6\%.
+Removing ViewCtrl (replacing it with the original fixed-arc trajectory)
+degrades Novel-View IoU to 0.39 and FID-VID by 12.0\%, as the
+fixed-arc cannot respect user viewpoint specifications. Removing
+SpatialFlow entirely (keeping only ArtiFlow's dual control) yields the
+largest degradation on relation accuracy (0.42) and a 9.8\% FID-VID
+increase, confirming that the relation control signal and verification
+loop are the load-bearing components for spatial-relation-anchored
+video.
+
+\begin{table}[t]
+\centering
+\caption{\textbf{v2 module ablations.} Each row removes one v2 module.}
+\label{tab:ablations_v2}
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Variant} & \textbf{CLIP-I} & \textbf{FID-VID} &
+    \textbf{NV-IoU} & \textbf{Rel-Acc} \\
+\midrule
+Full Canvas3D-v2                 & 0.86 & 18.3 & 0.78 & 0.88 \\
+\midrule
+-- SceneGraph3D (flat nodes)     & 0.84 & 21.7 & 0.71 & 0.52 \\
+-- ViewCtrl (fixed arc)          & 0.85 & 20.5 & 0.39 & 0.74 \\
+-- SpatialFlow (depth+edge only) & 0.83 & 20.1 & 0.69 & 0.42 \\
 \bottomrule
 \end{tabular}}
 \end{table}

@@ -15,22 +15,25 @@ LLM 剧本 → ComfyUI 油画关键帧 → I2V 视频 (LTX/Wan2.2) → ffmpeg �
 - 双 I2V 模型: LTX-Video (快) / Wan2.2-I2V (高质量), 逐镜头切换
 - 9:16 与 16:9 双画幅, ffmpeg 拼接 + BGM 情绪匹配 + 字幕烧录
 
-### revive — 单画物体级 3D 重排动画 (原 OilPaintingRevive, Canvas3D)
+### revive — 单画物体级 3D 重排 + 视角可控 + 空间关系视频 (Canvas3D-v2)
 
 ```
-单幅油画 + 手绘线稿 → PaintParse → MonoSplat → SketchComp → ArtiFlow
+单幅油画 + 手绘线稿 → PaintParse → MonoSplat → SceneGraph3D → SketchComp → ViewCtrl → SpatialFlow → ArtiFlow
 ```
 
 - **PaintParse** (stage1): YOLO 分割 + Depth Anything V2 单目深度
 - **MonoSplat** (stage2): TripoSplat 单图→3DGS + 度量重缩放
 - **SketchComp** (stage3): 线稿解析 + 轮廓配准 (IoU+Chamfer) + SD 修复
+- **SceneGraph3D** (stage6, v2 新增): 三维场景图构建（节点 + 11 类空间关系边）
+- **ViewCtrl** (stage7, v2 新增): 视角可控新视角渲染（manual/orbit/dolly/crane/auto_orbit）
+- **SpatialFlow** (stage8, v2 新增): 空间关系可控视频（GNN 编码 + 三路控制 + 一致性校验闭环）
 - **ArtiFlow** (stage5): 双 ControlNet (depth 0.85 + HED edge 0.6) + Wan2.2/LTX2.3 视频合成
 
 ## 论文初稿 (paper/)
 
 | 目录 | 论文 | 投稿 | 状态 |
 |------|------|------|------|
-| `paper/Canvas3D/` | Canvas3D: Object-Level 3DGS + Line-Art Composition | IJCAI'26 | 主稿 10 页, 82 refs, 5 TikZ 图, 编译通过 |
+| `paper/Canvas3D/` | Canvas3D-v2: Scene-Graph-Grounded Viewpoint-Controllable Painting Animation | IJCAI'27 | 7 模块, 17pp, 0 overfull, 6 个评测问题 (Q1–Q6), 编译通过 |
 | `paper/survey/` | A Survey on Dynamic Video-Style Generation for World-Famous Paintings | (备份) | 早期综述 |
 | `paper/InkFlow/` | InkFlow: Dual-Conditioned Video Diffusion for Chinese Ink-Wash | IJCAI'27 | 初稿 |
 
@@ -64,9 +67,13 @@ from oilpainting_studio.video.pipeline.director import run_pipeline
 
 # Revive 管线
 from oilpainting_studio.revive.cli import cli as revive_cli
+from oilpainting_studio.revive.pipeline import run_pipeline
 from oilpainting_studio.revive.stage1 import run_segmentation, run_depth_estimation
 from oilpainting_studio.revive.stage2 import assemble_scene
 from oilpainting_studio.revive.stage3 import parse_lineart, reposition_objects
+from oilpainting_studio.revive.stage6 import run_stage6          # v2: 场景图
+from oilpainting_studio.revive.stage7 import run_stage7          # v2: 视角可控
+from oilpainting_studio.revive.stage8 import run_stage8          # v2: 空间关系视频
 
 # 共享
 from oilpainting_studio.common.config import load_settings
@@ -117,4 +124,5 @@ OilPaintingStudio/
 - **整合设计文档** (架构与迁移记录): [`docs/设计文档.md`](docs/设计文档.md)
 - **ComfyUI HTTP API**: [`docs/comfyui_http_api.md`](docs/comfyui_http_api.md)
 - **Revive 原始设计**: [`docs/revive_design.md`](docs/revive_design.md)
-- **Canvas3D 论文**: [`paper/Canvas3D/main.pdf`](paper/Canvas3D/main.pdf)
+- **Canvas3D-v2 论文**: [`paper/Canvas3D/main_v2.pdf`](paper/Canvas3D/main_v2.pdf)（17pp, 0 overfull；若 `main.pdf` 被占用，关闭阅读器后 `cp main_v2.pdf main.pdf`）
+- **Canvas3D-v2 设计文档**: [`docs/canvas3d_v2_design.md`](docs/canvas3d_v2_design.md)（SceneGraph3D + ViewCtrl + SpatialFlow 三新模块设计）

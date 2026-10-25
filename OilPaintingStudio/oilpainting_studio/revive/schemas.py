@@ -153,3 +153,175 @@ class ProjectMeta(BaseModel):
     def mark_stage(self, stage: int, info: dict[str, Any]) -> None:
         self.stages[str(stage)] = info
         self.current_stage = max(self.current_stage, stage)
+
+
+# ────────────────────── Module 6: 3D 场景图 ──────────────────────
+# Canvas3D-v2 新增：将 stage1 分割 + stage2 物体级 3DGS 组织为带节点属性
+# 与关系边的三维场景图，作为视角可控与空间关系可控视频的统一中间表示。
+
+class SpatialRelationType(str, Enum):
+    """场景图中两个节点之间的空间关系类型。"""
+    # 2D 投影关系
+    LEFT_OF = "left_of"
+    RIGHT_OF = "right_of"
+    ABOVE = "above"
+    BELOW = "below"
+    # 深度关系
+    IN_FRONT_OF = "in_front_of"
+    BEHIND = "behind"
+    # 拓扑关系
+    INSIDE = "inside"
+    ADJACENT = "adjacent"
+    OCCLUDES = "occludes"
+    # 物理支撑（启发式）
+    SUPPORTS = "supports"
+    LEANS_ON = "leans_on"
+
+
+class SceneGraphNode(BaseModel):
+    """场景图节点：单个前景物体或背景。"""
+    object_id: int = Field(description="对应 SegmentedObject.object_id；背景节点为 -1")
+    label: str
+    category: ObjectCategory
+    node_type: str = Field(description="foreground / background")
+    # 几何属性（世界坐标，度量尺度）
+    center_3d: tuple[float, float, float]
+    bbox_3d: tuple[float, float, float, float, float, float] = Field(
+        description="3D 包围盒 (xmin,ymin,zmin,xmax,ymax,zmax)")
+    volume: float = Field(default=0.0, description="包围盒体积（立方米）")
+    height_3d: float = Field(default=0.0, description="米制高度")
+    depth_range: tuple[float, float] = Field(description="[near, far] 深度范围")
+    # 渲染属性
+    ply_path: Path | None = None
+    mask_path: Path | None = None
+    # 语义属性
+    salience: float = Field(default=0.0, description="显著性 [0,1]")
+
+
+class SpatialRelation(BaseModel):
+    """场景图中两个节点之间的有向空间关系。"""
+    src_id: int
+    dst_id: int
+    rel_type: SpatialRelationType
+    confidence: float = Field(default=1.0, description="关系置信度 [0,1]")
+    # 可量化属性（可选）
+    distance_3d: float | None = None
+    overlap_ratio: float | None = None
+    depth_gap: float | None = None
+
+
+class SceneGraph(BaseModel):
+    """完整三维场景图：节点 + 关系 + 全局场景属性。"""
+    nodes: list[SceneGraphNode] = Field(default_factory=list)
+    relations: list[SpatialRelation] = Field(default_factory=list)
+    background_node_id: int | None = None
+    # 全局场景属性
+    scene_extent: tuple[float, float, float] = Field(
+        default=(0.0, 0.0, 0.0), description="场景三轴尺度 (sx, sy, sz)")
+    focal_length: float = 1000.0
+    principal_point: tuple[float, float] = (0.0, 0.0)
+    # 序列化路径
+    graph_path: Path | None = None
+
+    def get_node(self, object_id: int) -> SceneGraphNode | None:
+        for n in self.nodes:
+            if n.object_id == object_id:
+                return n
+        return None
+
+    def relations_of(self, node_id: int) -> list[SpatialRelation]:
+        return [r for r in self.relations if r.src_id == node_id or r.dst_id == node_id]
+
+
+class Stage6Output(BaseModel):
+    """模块 6 输出：三维场景图。"""
+    scene_graph: SceneGraph
+    graph_path: Path = Field(description="scene_graph.json 路径")
+    num_nodes: int
+    num_relations: int
+
+
+# ────────────────────── Module 7: 视角可控新视角 ──────────────────────
+# Canvas3D-v2 新增：用户指定视角轨迹（手动 / 轨道 / 推拉 / 俯仰 / 自动），
+# 模块从编辑后场景渲染多视角关键帧流，附带每帧每节点可见性 mask。
+
+class CameraPose(BaseModel):
+    """单相机位姿。"""
+    position: tuple[float, float, float]
+    look_at: tuple[float, float, float]
+    up: tuple[float, float, float] = (0.0, 1.0, 0.0)
+    fov_deg: float = 55.0
+
+
+class ViewpointTrajectory(BaseModel):
+    """视角轨迹。"""
+    poses: list[CameraPose] = Field(default_factory=list)
+    interpolation: str = Field(default="bspline", description="bspline/linear/lookat_orbit")
+    mode: str = Field(default="manual", description="manual/orbit/dolly/crane/auto_orbit")
+    orbit_params: dict[str, Any] | None = None
+    focus_node_id: int | None = None
+
+
+class ViewframeSpec(BaseModel):
+    """单视角帧规格（含可见性 mask）。"""
+    frame_index: int
+    pose: CameraPose
+    render_path: Path
+    depth_path: Path
+    edge_path: Path
+    visibility_mask_path: Path = Field(description="每节点可见性 mask (多通道 PNG 或 npz)")
+    visible_node_ids: list[int] = Field(default_factory=list)
+
+
+class Stage7Output(BaseModel):
+    """模块 7 输出：多视角关键帧流。"""
+    trajectory: ViewpointTrajectory
+    keyframes: list[ViewframeSpec] = Field(default_factory=list)
+    avg_visible_nodes: float = Field(default=0.0)
+
+
+# ────────────────────── Module 8: 空间关系可控视频 ──────────────────────
+# Canvas3D-v2 新增：在 ArtiFlow 双控制（深度+边缘）之上注入第三路「关系图嵌入」，
+# 用文本 + 空间关系图联合驱动 video diffusion 生成三维关系可控的动态视频。
+
+class SpatialEditType(str, Enum):
+    MOVE = "move"
+    ROTATE = "rotate"
+    SCALE = "scale"
+    ADD_RELATION = "add_relation"
+    REMOVE_RELATION = "remove_relation"
+    CHANGE_RELATION = "change_relation"
+
+
+class SpatialEdit(BaseModel):
+    """单条空间关系编辑指令。"""
+    edit_type: SpatialEditType
+    target_node_id: int | None = None
+    translation: tuple[float, float, float] | None = None
+    rotation_deg: float | None = None
+    scale_factor: float | None = None
+    relation: SpatialRelation | None = None
+    text_prompt: str = ""
+
+
+class SpatialEditSpec(BaseModel):
+    """空间关系编辑规格（模块 8 输入）。"""
+    edits: list[SpatialEdit] = Field(default_factory=list)
+    edited_graph_path: Path | None = None
+    text_prompt: str = Field(default="", description="全局视频意图文本")
+    negative_prompt: str = ""
+    num_frames: int = 25
+    fps: int = 8
+    depth_strength: float = 0.85
+    edge_strength: float = 0.6
+    relation_strength: float = 0.7
+    generation_mode: str = Field(default="i2v", description="i2v/t2v/hybrid")
+
+
+class Stage8Output(BaseModel):
+    """模块 8 输出：空间关系可控的动态视频。"""
+    final_video_path: Path
+    workflow_path: Path | None = None
+    generator: str = Field(default="mock")
+    relation_embedding_path: Path | None = None
+    consistency_metrics: dict[str, float] = Field(default_factory=dict)

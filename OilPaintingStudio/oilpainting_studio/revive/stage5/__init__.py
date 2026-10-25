@@ -152,7 +152,7 @@ def run_stage5(
     use_comfyui: bool = True,
 ) -> Stage4Output:
     """执行模块 4 动画生成。"""
-    from .stage4 import run_keyframe_generation
+    from ..stage4 import run_keyframe_generation
 
     stage5_dir = project_dir / "stage5"
     stage5_dir.mkdir(parents=True, exist_ok=True)

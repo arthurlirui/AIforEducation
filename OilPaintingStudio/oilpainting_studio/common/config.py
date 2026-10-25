@@ -81,6 +81,52 @@ class Settings:
     comfy_host: str = "127.0.0.1"
     comfy_port: int = 8188
 
+    # ── Revive 管线（原 OilPaintingRevive）配置 ──
+    # 修复：config/settings.yaml 引用了这些字段但 dataclass 原先未声明，
+    # 代码各处直接 settings.focal_length 访问，会 AttributeError。
+    yolo_model: str = "yolov8x-seg.pt"
+    yolo_conf_threshold: float = 0.4
+    yolo_iou_threshold: float = 0.5
+    da_v2_model: str = "depth_anything_v2_vitlarge.pth"
+    depth_max: float = 12.0
+    object_depth_ranges: dict[str, list[float]] = field(default_factory=dict)
+
+    triposplat_model: str = "triposplat.ckpt"
+    triposplat_repo: str = ""
+    focal_length: float = 1000.0
+    gaussians_per_object: int = 5000
+    gs2d_repo: str = ""
+
+    edge_align_iterations: int = 50
+    edge_align_lr: float = 0.01
+    inpaint_radius: int = 5
+    inpaint_method: str = "telea"
+    lineart_threshold: float = 0.15
+
+    video_generator: str = "wan2.2"          # wan2.2 / ltx2.3 / mock
+    num_keyframes: int = 5
+    duration_sec: int = 5                     # revive 视频时长（秒）
+    ltx_iclora: str = ""
+    ltx_5a_resolution: tuple[int, int] = (768, 512)
+    ltx_5b_denoise: float = 0.4
+    depth_guide_strength: float = 1.0
+    rgb_guide_strength: float = 0.6
+    edge_guide_strength: float = 0.8
+    controlnet_depth: str = "control_v11f1p_sd15_depth"
+    controlnet_canny: str = "control_v11p_sd15_canny"
+    coarse_resolution: tuple[int, int] = (768, 512)
+    eval_style_threshold: float = 0.75
+
+    # ── Canvas3D-v2 新增 ──
+    scene_graph_threshold_xy: float = 0.1     # 2D 关系判定阈值（场景尺度比例）
+    scene_graph_overlap_threshold: float = 0.05
+    view_trajectory_mode: str = "auto_orbit"  # manual/orbit/dolly/crane/auto_orbit
+    view_orbit_angle_deg: float = 30.0
+    view_num_poses: int = 8
+    spatial_relation_strength: float = 0.7
+    spatial_text_mode: str = "i2v"            # i2v / t2v / hybrid
+    spatial_gnn_hidden: int = 128
+
     @property
     def comfy_url(self) -> str:
         return f"http://{self.comfy_host}:{self.comfy_port}"
@@ -181,5 +227,59 @@ def load_settings(settings_path: Path | None = None) -> Settings:
 
     # 风格预设
     s.styles = _load_styles(CONFIG_DIR / "styles.yaml")
+
+    # ── Revive 字段 ──
+    s.yolo_model = raw.get("yolo_model", s.yolo_model)
+    s.yolo_conf_threshold = float(raw.get("yolo_conf_threshold", s.yolo_conf_threshold))
+    s.yolo_iou_threshold = float(raw.get("yolo_iou_threshold", s.yolo_iou_threshold))
+    s.da_v2_model = raw.get("da_v2_model", s.da_v2_model)
+    s.depth_max = float(raw.get("depth_max", s.depth_max))
+    odr = raw.get("object_depth_ranges")
+    if isinstance(odr, dict):
+        s.object_depth_ranges = {k: list(v) for k, v in odr.items()}
+
+    s.triposplat_model = raw.get("triposplat_model", s.triposplat_model)
+    s.triposplat_repo = raw.get("triposplat_repo", s.triposplat_repo)
+    s.focal_length = float(raw.get("focal_length", s.focal_length))
+    s.gaussians_per_object = int(raw.get("gaussians_per_object", s.gaussians_per_object))
+    s.gs2d_repo = raw.get("gs2d_repo", s.gs2d_repo)
+
+    s.edge_align_iterations = int(raw.get("edge_align_iterations", s.edge_align_iterations))
+    s.edge_align_lr = float(raw.get("edge_align_lr", s.edge_align_lr))
+    s.inpaint_radius = int(raw.get("inpaint_radius", s.inpaint_radius))
+    s.inpaint_method = raw.get("inpaint_method", s.inpaint_method)
+    s.lineart_threshold = float(raw.get("lineart_threshold", s.lineart_threshold))
+
+    s.video_generator = raw.get("video_generator", s.video_generator)
+    s.num_keyframes = int(raw.get("num_keyframes", s.num_keyframes))
+    s.duration_sec = int(raw.get("duration_sec", s.duration_sec))
+    s.ltx_iclora = raw.get("ltx_iclora", s.ltx_iclora)
+    cr = raw.get("ltx_5a_resolution")
+    if isinstance(cr, list) and len(cr) == 2:
+        s.ltx_5a_resolution = (int(cr[0]), int(cr[1]))
+    s.ltx_5b_denoise = float(raw.get("ltx_5b_denoise", s.ltx_5b_denoise))
+    s.depth_guide_strength = float(raw.get("depth_guide_strength", s.depth_guide_strength))
+    s.rgb_guide_strength = float(raw.get("rgb_guide_strength", s.rgb_guide_strength))
+    s.edge_guide_strength = float(raw.get("edge_guide_strength", s.edge_guide_strength))
+    s.controlnet_depth = raw.get("controlnet_depth", s.controlnet_depth)
+    s.controlnet_canny = raw.get("controlnet_canny", s.controlnet_canny)
+    cr2 = raw.get("coarse_resolution")
+    if isinstance(cr2, list) and len(cr2) == 2:
+        s.coarse_resolution = (int(cr2[0]), int(cr2[1]))
+    s.eval_style_threshold = float(raw.get("eval_style_threshold", s.eval_style_threshold))
+
+    # ── Canvas3D-v2 字段 ──
+    s.scene_graph_threshold_xy = float(raw.get("scene_graph_threshold_xy", s.scene_graph_threshold_xy))
+    s.scene_graph_overlap_threshold = float(raw.get("scene_graph_overlap_threshold", s.scene_graph_overlap_threshold))
+    s.view_trajectory_mode = raw.get("view_trajectory_mode", s.view_trajectory_mode)
+    s.view_orbit_angle_deg = float(raw.get("view_orbit_angle_deg", s.view_orbit_angle_deg))
+    s.view_num_poses = int(raw.get("view_num_poses", s.view_num_poses))
+    s.spatial_relation_strength = float(raw.get("spatial_relation_strength", s.spatial_relation_strength))
+    s.spatial_text_mode = raw.get("spatial_text_mode", s.spatial_text_mode)
+    s.spatial_gnn_hidden = int(raw.get("spatial_gnn_hidden", s.spatial_gnn_hidden))
+
+    # env 覆盖：revive 模型路径
+    s.yolo_model = os.getenv("YOLO_MODEL") or s.yolo_model
+    s.da_v2_model = os.getenv("DA_V2_CHECKPOINT") or s.da_v2_model
 
     return s
