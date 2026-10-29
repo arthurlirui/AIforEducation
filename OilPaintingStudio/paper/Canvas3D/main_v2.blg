@@ -1,0 +1,49 @@
+This is BibTeX, Version 0.99d (TeX Live 2024)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: main_v2.aux
+The style file: named.bst
+Database file #1: references.bib
+Warning--can't use both volume and number fields in deng2021arbitrary
+Warning--can't use both volume and number fields in wang2020consistent
+You've used 62 entries,
+            2439 wiz_defined-function locations,
+            828 strings with 16523 characters,
+and the built_in function-call counts, 31086 in all, are:
+= -- 3045
+> -- 1690
+< -- 27
++ -- 612
+- -- 604
+* -- 2450
+:= -- 4835
+add.period$ -- 188
+call.type$ -- 62
+change.case$ -- 547
+chr.to.int$ -- 56
+cite$ -- 64
+duplicate$ -- 1243
+empty$ -- 2163
+format.name$ -- 669
+if$ -- 6519
+int.to.chr$ -- 7
+int.to.str$ -- 0
+missing$ -- 60
+newline$ -- 314
+num.names$ -- 186
+pop$ -- 618
+preamble$ -- 1
+purify$ -- 609
+quote$ -- 0
+skip$ -- 1068
+stack$ -- 0
+substring$ -- 1425
+swap$ -- 437
+text.length$ -- 27
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 496
+warning$ -- 2
+while$ -- 210
+width$ -- 69
+write$ -- 783
+(There were 2 warnings)
