@@ -232,15 +232,18 @@ practice, art history, and general viewing backgrounds. Each
 participant views 20 triplets consisting of a 5-second Canvas3D output
 alongside outputs from the strongest direct-I2V baseline and
 OilPaintingRevive~\cite{oilpaintingrevive2026} for the same painting,
-rating each video on three 5-point Likert scales:
-\textbf{artistic authenticity} (``How well does the video preserve the
-painting's artistic character?''), \textbf{motion naturalness} (``How
-natural and physically plausible is the object motion?''), and
+presented in randomized, anonymized order. Participants rate each
+video on three 5-point Likert scales: \textbf{artistic authenticity}
+(``How well does the video preserve the painting's artistic
+character?''), \textbf{motion naturalness} (``How natural and
+physically plausible is the object motion?''), and
 \textbf{compositional intent} (``How well does the result match the
 intended composition shown in the reference sketch?'').
 
 Results (Table~\ref{tab:user_study}) show Canvas3D leading on all
-three dimensions. The artistic-authenticity advantage over
+three dimensions; all pairwise advantages over both baselines are
+significant at $p < 0.01$ under a two-sided Wilcoxon signed-rank test
+over per-trial ratings. The artistic-authenticity advantage over
 OilPaintingRevive (mean 4.31 vs.\ 3.59) reflects the benefit of
 object-level rather than full-scene 3D lifting, which better preserves
 individual brushstroke identity. The compositional-intent gap is the

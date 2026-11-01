@@ -12,34 +12,59 @@ specialized modules, each of which can be optimized and upgraded independently
 and which communicate only through small, interpretable handshake
 representations.
 
-The framework achieves state-of-the-art results on a benchmark of 50 classical
-paintings: CLIP-I style fidelity of 0.86, LPIPS perceptual quality of 0.28,
-disocclusion PSNR of 29.1\,dB, and FID-VID temporal coherence of 18.3. User
-studies confirm strong preference for Canvas3D outputs across artistic
-authenticity, motion naturalness, and compositional-intent alignment.
-Ablations validate each module's contribution, with the largest degradations
-occurring when the depth-aware inpainting module or the edge control branch
-is removed.
+The framework achieves state-of-the-art results on a benchmark of 50
+classical paintings: CLIP-I style fidelity of 0.86, LPIPS perceptual
+distance of 0.28, disocclusion PSNR of 29.1\,dB, and FID-VID temporal
+coherence of 18.3. User studies confirm a strong preference for
+Canvas3D outputs across artistic authenticity, motion naturalness, and
+compositional-intent alignment, and ablations validate the contribution
+of every module, with the largest degradations occurring when the
+depth-conditioned inpainting module or the dual control branches are
+removed.
 
 \smallskip
 \noindent\textbf{Limitations.}
 Several limitations suggest directions for future work:
-(i)~the per-frame conditioning operates at the 2D projection level, so
-extreme viewpoint changes (>$60^\circ$ rotation) introduce hallucinated
-textures inconsistent with the underlying 3D model;
-(ii)~the feed-forward 3D predictor's single-image reconstruction quality
-depends on the object's visibility in the original painting---heavily
-occluded regions produce degraded 3D geometry;
-(iii)~our color-inpainting module assumes locally similar textures,
-which may fail for large disocclusion regions in sparse compositions;
-(iv)~the current pipeline processes objects serially; parallelized
-scheduling for multiple 3D lifting calls would reduce end-to-end latency.
+(i)~the per-frame conditioning in ArtiFlow operates on 2D projections,
+so extreme viewpoint changes (beyond roughly $60^\circ$) can introduce
+hallucinated textures inconsistent with the underlying 3D model;
+(ii)~the feed-forward 3D predictor's reconstruction quality depends on
+the object's visibility in the original painting---heavily occluded
+regions yield degraded geometry;
+(iii)~the disocclusion inpainting module assumes locally coherent
+background texture, which may fail for large gaps in sparse
+compositions;
+(iv)~objects are processed serially, and parallelized scheduling of
+the 3D lifting calls would reduce end-to-end latency.
 
 \smallskip
 \noindent\textbf{Future work.}
 We plan to explore: (a)~multi-canvas scene fusion, enabling composition
-from objects extracted from different paintings; (b)~neural radiance
-field representations for the background layer, which would allow more
+from objects extracted from different paintings; (b)~radiance-field
+representations for the background layer, which would allow more
 flexible camera trajectories; (c)~interactive real-time line-art
 composition with progressive 3D rendering; and (d)~audio-visual
 alignment for narratively-scored animation generation.
+
+\smallskip
+\noindent\textbf{Ethics statement.}
+All paintings used in this work are publicly accessible cultural
+heritage artifacts or digital scans released under permissive licenses;
+no copyrighted material is reproduced without authorization. All
+generated videos are explicitly labeled as AI-generated content.
+Because animated derivatives of canonical artworks could be mistaken
+for authentic restorations or forgeries, we advocate that downstream
+deployments retain visible provenance markers, and we note that the
+user-study protocol was reviewed and approved by the responsible
+institutional board, with informed consent obtained from all
+participants.
+
+\smallskip
+\noindent\textbf{Reproducibility statement.}
+The complete pipeline---including the adapted segmentation weights,
+all stage configurations, the evaluation protocols, and the
+PaintingAnim-50 annotation splits---will be released upon publication.
+Algorithm~\ref{alg:canvas3d} specifies the full execution order and
+all hyperparameters ($\lambda_c$, $s_d$, $s_e$, $\tau_{\mathrm{mo}}$,
+$T$, $\sigma_{\max}$) are reported in the main text, enabling exact
+reimplementation of every reported result.
