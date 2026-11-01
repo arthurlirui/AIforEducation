@@ -15,7 +15,7 @@ import cv2
 import numpy as np
 
 from ...common.comfy.client import ComfyClient
-from ...common.config import Settings
+from ..config import Settings
 from ..schemas import Stage3Output, Stage4Output, KeyframeSpec
 from ...common.utils.image import frames_to_video
 from .workflow import build_ltx_workflow, build_wan_workflow
@@ -152,7 +152,7 @@ def run_stage5(
     use_comfyui: bool = True,
 ) -> Stage4Output:
     """执行模块 4 动画生成。"""
-    from .stage4 import run_keyframe_generation
+    from ..stage4 import run_keyframe_generation
 
     stage5_dir = project_dir / "stage5"
     stage5_dir.mkdir(parents=True, exist_ok=True)

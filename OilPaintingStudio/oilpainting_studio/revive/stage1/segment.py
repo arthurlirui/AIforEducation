@@ -13,7 +13,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from ...common.config import Settings
+from ..config import Settings
 from ..schemas import ObjectCategory, SegmentedObject
 
 logger = logging.getLogger(__name__)
@@ -210,7 +210,7 @@ def run_segmentation(
         raise FileNotFoundError(f"无法读取图像: {painting_path}")
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    # 尝试 YOLO，失败则 mock
+    # 尝试 YOLO，失败或零检出则 mock
     detector = "mock"
     try:
         detections = segment_with_yolo(
@@ -222,6 +222,11 @@ def run_segmentation(
         detector = "yolo"
     except (ImportError, Exception) as e:
         logger.warning("YOLO 不可用 (%s)，使用 mock 分割", e)
+        detections = []
+    if not detections:
+        if detector == "yolo":
+            logger.warning("YOLO 检出 0 物体，降级为 mock 分割")
+            detector = "mock"
         detections = segment_mock(image_rgb)
 
     output_dir.mkdir(parents=True, exist_ok=True)

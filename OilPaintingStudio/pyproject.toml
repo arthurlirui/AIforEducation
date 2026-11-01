@@ -49,8 +49,9 @@ all = [
 ]
 
 [project.scripts]
-# 两个 CLI 入口 (待注册; 当前用 python -m 调用)
-oilpainting-studio = "oilpainting_studio.cli:main"
+# 两个 CLI 入口
+oilpaint-video = "oilpainting_studio.video.cli:cli"
+oilpaint-revive = "oilpainting_studio.revive.cli:cli"
 
 [tool.setuptools.packages.find]
 where = ["."]

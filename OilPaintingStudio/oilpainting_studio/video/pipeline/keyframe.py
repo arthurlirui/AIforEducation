@@ -7,7 +7,7 @@ from pathlib import Path
 from ...common.comfy.client import ComfyClient
 from ...common.comfy.workflows import apply_params, load_template, set_seed
 from ...common.config import Settings, StylePreset
-from .screenplay.schemas import Shot
+from ..screenplay.schemas import Shot
 
 logger = logging.getLogger(__name__)
 

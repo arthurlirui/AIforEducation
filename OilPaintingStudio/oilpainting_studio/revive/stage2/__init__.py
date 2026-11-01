@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from ...common.config import Settings
+from ..config import Settings
 from ..schemas import Stage1Output, Stage2Output
 from .assemble import assemble_scene
 from .triposplat import generate_background_2dgs, generate_object_3dgs

@@ -16,7 +16,7 @@ import random
 from pathlib import Path
 from typing import Any
 
-from ...common.config import Settings
+from ..config import Settings
 
 logger = logging.getLogger(__name__)
 

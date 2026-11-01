@@ -19,9 +19,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from oilpaint.comfy.workflows import apply_params, load_template
-from oilpaint.config import load_settings
-from oilpaint.screenplay.schemas import Scene, Script, Shot
+from oilpainting_studio.common.comfy.workflows import apply_params, load_template
+from oilpainting_studio.common.config import load_settings
+from oilpainting_studio.video.screenplay.schemas import Scene, Script, Shot
 
 
 # ───────────────────────── 配置 ─────────────────────────
@@ -134,7 +134,7 @@ def test_load_template_missing_raises():
 # ───────────────────────── keyframe / animate 工作流构造 ─────────────────────────
 
 def test_keyframe_workflow_builds_valid():
-    from oilpaint.pipeline.keyframe import build_keyframe_workflow, build_positive
+    from oilpainting_studio.video.pipeline.keyframe import build_keyframe_workflow, build_positive
 
     s = load_settings()
     style = s.style("impressionism")
@@ -156,7 +156,7 @@ def test_keyframe_workflow_builds_valid():
 
 
 def test_animate_ltx_workflow_builds_valid():
-    from oilpaint.pipeline.animate import _build_ltx
+    from oilpainting_studio.video.pipeline.animate import _build_ltx
 
     s = load_settings()
     shot = Shot(index=1, scene_index=1, prompt="x", camera_motion="zoom_in",
@@ -173,7 +173,7 @@ def test_animate_ltx_workflow_builds_valid():
 
 
 def test_animate_wan_workflow_builds_valid():
-    from oilpaint.pipeline.animate import _build_wan
+    from oilpainting_studio.video.pipeline.animate import _build_wan
 
     s = load_settings()
     shot = Shot(index=1, scene_index=1, prompt="x", camera_motion="static",
@@ -186,7 +186,7 @@ def test_animate_wan_workflow_builds_valid():
 
 
 def test_animate_num_frames_aligns():
-    from oilpaint.pipeline.animate import _num_frames
+    from oilpainting_studio.video.pipeline.animate import _num_frames
 
     assert _num_frames(Shot(index=1, scene_index=1, prompt="x", duration_sec=3), 24) == 73
     assert _num_frames(Shot(index=1, scene_index=1, prompt="x", duration_sec=0.2), 24) == 9
@@ -201,7 +201,7 @@ def test_animate_num_frames_aligns():
 @pytest.mark.asyncio
 async def test_comfy_client_run_collects_outputs(tmp_path):
     """mock ComfyClient 的 queue_prompt / get_history / download_view，验证 run() 收集产物。"""
-    from oilpaint.comfy.client import ComfyClient
+    from oilpainting_studio.common.comfy.client import ComfyClient
 
     client = ComfyClient("http://127.0.0.1:8188", concurrency=1)
 
@@ -227,7 +227,7 @@ async def test_comfy_client_run_collects_outputs(tmp_path):
 
 @pytest.mark.asyncio
 async def test_comfy_client_run_error_status_raises(tmp_path):
-    from oilpaint.comfy.client import ComfyClient
+    from oilpainting_studio.common.comfy.client import ComfyClient
 
     client = ComfyClient("http://127.0.0.1:8188", concurrency=1)
     client.queue_prompt = AsyncMock(return_value="pid-err")
@@ -241,7 +241,7 @@ async def test_comfy_client_run_error_status_raises(tmp_path):
 
 @pytest.mark.asyncio
 async def test_comfy_client_run_timeout(tmp_path):
-    from oilpaint.comfy.client import ComfyClient
+    from oilpainting_studio.common.comfy.client import ComfyClient
 
     client = ComfyClient("http://127.0.0.1:8188", concurrency=1)
     client.queue_prompt = AsyncMock(return_value="pid-to")
@@ -275,8 +275,8 @@ def _make_script() -> Script:
 @pytest.mark.asyncio
 async def test_stage_generate_with_mock_llm(tmp_path):
     """剧本生成阶段：mock LLM 返回合法 JSON，验证落盘与解析。"""
-    from oilpaint.llm_client import LLMClient
-    from oilpaint.pipeline.director import stage_generate, new_project_dir
+    from oilpainting_studio.common.llm_client import LLMClient
+    from oilpainting_studio.video.pipeline.director import stage_generate, new_project_dir
 
     s = load_settings()
     s.output_dir = tmp_path
@@ -292,7 +292,7 @@ async def test_stage_generate_with_mock_llm(tmp_path):
     assert out.title == "晨曦归舟"
     assert (pdir / "screenplay.json").exists()
     # 落盘内容可重新加载
-    from oilpaint.pipeline.director import load_script
+    from oilpainting_studio.video.pipeline.director import load_script
     reloaded = load_script(pdir)
     assert len(reloaded.shots) == 2
     llm.chat_json.assert_awaited_once()
@@ -301,8 +301,8 @@ async def test_stage_generate_with_mock_llm(tmp_path):
 @pytest.mark.asyncio
 async def test_stage_render_with_mock_comfy(tmp_path):
     """渲染阶段：mock ComfyClient.run 返回伪造的关键帧与视频，验证编排顺序与产物。"""
-    from oilpaint.comfy.client import ComfyClient
-    from oilpaint.pipeline.director import stage_render, new_project_dir
+    from oilpainting_studio.common.comfy.client import ComfyClient
+    from oilpainting_studio.video.pipeline.director import stage_render, new_project_dir
 
     s = load_settings()
     s.output_dir = tmp_path
@@ -331,9 +331,9 @@ async def test_stage_render_with_mock_comfy(tmp_path):
 @pytest.mark.asyncio
 async def test_run_full_end_to_end_with_all_mocks(tmp_path):
     """端到端：mock LLM + Comfy + ffmpeg，验证 meta.json 与 final.mp4 产出。"""
-    from oilpaint.llm_client import LLMClient
-    from oilpaint.comfy.client import ComfyClient
-    from oilpaint.pipeline.director import run_full
+    from oilpainting_studio.common.llm_client import LLMClient
+    from oilpainting_studio.common.comfy.client import ComfyClient
+    from oilpainting_studio.video.pipeline.director import run_full
 
     s = load_settings()
     s.output_dir = tmp_path
@@ -368,11 +368,11 @@ async def test_run_full_end_to_end_with_all_mocks(tmp_path):
     ff_exe = tmp_path / "ffmpeg.exe"; ff_exe.write_bytes(b"\x00")
     s.ffmpeg_path = str(ff_exe)
 
-    with patch("oilpaint.pipeline.director.LLMClient", return_value=llm), \
-         patch("oilpaint.pipeline.director.ComfyClient", return_value=comfy), \
-         patch("oilpaint.pipeline.edit.run_ffmpeg", side_effect=fake_run_ffmpeg), \
-         patch("oilpaint.pipeline.edit.resolve_ffmpeg", return_value=str(ff_exe)), \
-         patch("oilpaint.pipeline.ffmpeg_tool.resolve_ffmpeg", return_value=str(ff_exe)):
+    with patch("oilpainting_studio.video.pipeline.director.LLMClient", return_value=llm), \
+         patch("oilpainting_studio.video.pipeline.director.ComfyClient", return_value=comfy), \
+         patch("oilpainting_studio.video.pipeline.edit.run_ffmpeg", side_effect=fake_run_ffmpeg), \
+         patch("oilpainting_studio.video.pipeline.edit.resolve_ffmpeg", return_value=str(ff_exe)), \
+         patch("oilpainting_studio.video.pipeline.ffmpeg_tool.resolve_ffmpeg", return_value=str(ff_exe)):
         final = await run_full(s, "渔夫归港", style_key="impressionism",
                                aspect="9:16", target_duration_sec=4, project_id="e2e")
 
@@ -389,7 +389,7 @@ async def test_run_full_end_to_end_with_all_mocks(tmp_path):
 
 def test_compose_video_invokes_ffmpeg_chain(tmp_path):
     """验证 compose_video 调用 ffmpeg 的链路（normalize→concat→合成），且能容错。"""
-    from oilpaint.pipeline.edit import compose_video
+    from oilpainting_studio.video.pipeline.edit import compose_video
 
     s = load_settings()
     s.output_dir = tmp_path
@@ -415,8 +415,8 @@ def test_compose_video_invokes_ffmpeg_chain(tmp_path):
         out.write_bytes(b"out")
         return True, ""
 
-    with patch("oilpaint.pipeline.edit.run_ffmpeg", side_effect=fake_run), \
-         patch("oilpaint.pipeline.edit.resolve_ffmpeg", return_value=str(ff_exe)):
+    with patch("oilpainting_studio.video.pipeline.edit.run_ffmpeg", side_effect=fake_run), \
+         patch("oilpainting_studio.video.pipeline.edit.resolve_ffmpeg", return_value=str(ff_exe)):
         final = compose_video(s, script, clips, tmp_path)
 
     assert final.exists()
@@ -429,7 +429,7 @@ def test_compose_video_invokes_ffmpeg_chain(tmp_path):
 
 
 def test_subtitle_filter_built_from_shots():
-    from oilpaint.pipeline.edit import _build_subtitle_filter
+    from oilpainting_studio.video.pipeline.edit import _build_subtitle_filter
 
     script = _make_script()
     s = load_settings()
@@ -442,7 +442,7 @@ def test_subtitle_filter_built_from_shots():
 
 
 def test_subtitle_filter_empty_narration():
-    from oilpaint.pipeline.edit import _build_subtitle_filter
+    from oilpainting_studio.video.pipeline.edit import _build_subtitle_filter
 
     script = Script(title="t", style="impressionism", scenes=[
         Scene(index=1, shots=[Shot(index=1, scene_index=1, prompt="x", narration="")]),
@@ -456,7 +456,7 @@ def test_subtitle_filter_empty_narration():
 
 @pytest.mark.asyncio
 async def test_llm_client_missing_key_returns_error():
-    from oilpaint.llm_client import LLMClient, LLM_ERROR_PREFIX
+    from oilpainting_studio.common.llm_client import LLMClient, LLM_ERROR_PREFIX
 
     c = LLMClient("http://x", "", "model")
     out = await c.chat([{"role": "user", "content": "hi"}])
@@ -467,7 +467,7 @@ async def test_llm_client_missing_key_returns_error():
 @pytest.mark.asyncio
 async def test_llm_client_chat_json_extracts_json():
     """mock httpx 返回合法 JSON，验证 chat_json 解析。"""
-    from oilpaint.llm_client import LLMClient
+    from oilpainting_studio.common.llm_client import LLMClient
 
     c = LLMClient("http://x", "key", "model")
 
@@ -491,7 +491,7 @@ async def test_llm_client_chat_json_extracts_json():
 
 @pytest.mark.asyncio
 async def test_llm_client_chat_json_strips_code_fence():
-    from oilpaint.llm_client import LLMClient
+    from oilpainting_studio.common.llm_client import LLMClient
 
     c = LLMClient("http://x", "key", "model")
     fake_resp = MagicMock()

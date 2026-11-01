@@ -12,7 +12,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from ...common.config import Settings
+from ..config import Settings
 from ..schemas import Stage1Output, Stage2Output, Stage3Output, RepositionTransform
 from .inpaint import compute_hole_mask, inpaint_holes
 from .lineart_parse import (

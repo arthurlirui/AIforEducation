@@ -13,9 +13,9 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from .audio.bgm import pick_bgm
+from ..audio.bgm import pick_bgm
 from ...common.config import Settings
-from .screenplay.schemas import Script, Shot
+from ..screenplay.schemas import Script, Shot
 from .ffmpeg_tool import probe_duration, resolve_ffmpeg, run_ffmpeg
 
 logger = logging.getLogger(__name__)

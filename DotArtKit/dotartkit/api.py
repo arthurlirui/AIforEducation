@@ -45,8 +45,15 @@ _DL_MODES = {
     "kusama_depth": generate_kusama_depth,
 }
 
+# 需要 torch 的流派 (无 torch 时回退固定幂律, 仍可渲染)
+from .learned import generate_learned  # noqa: E402
+
+_TORCH_MODES = {
+    "learned": generate_learned,
+}
+
 # 完整模式表
-MODES = {**_PURE_MODES, **_DL_MODES}
+MODES = {**_PURE_MODES, **_DL_MODES, **_TORCH_MODES}
 
 
 def list_modes() -> list[str]:
@@ -64,6 +71,11 @@ def list_dl_modes() -> list[str]:
     return list(_DL_MODES.keys())
 
 
+def list_torch_modes() -> list[str]:
+    """返回可学习 (torch) 模式. 无 torch 时回退固定幂律仍可渲染."""
+    return list(_TORCH_MODES.keys())
+
+
 def mode_info(mode: str) -> dict:
     """返回某个模式的元信息 (依赖 / 简述)."""
     info = {
@@ -75,6 +87,8 @@ def mode_info(mode: str) -> dict:
         "kusama_basic": {"deps": ["scipy (可选)"],            "desc": "草间弥生基础版: 亮度密度 Voronoi + 多层"},
         "kusama_depth": {"deps": ["ultralytics", "YOLO26 权重", "GPU 推荐"],
                          "desc": "草间弥生深度感知版: YOLO26 深度 + 三层架构 + 语义双色"},
+        "learned":      {"deps": ["torch (可选, 缺省回退固定幂律)"],
+                         "desc": "可学习深度→点半径映射: CNN 替代固定幂律 (IJCAI 论文扩展)"},
     }
     return info.get(mode, {"deps": [], "desc": "未知模式"})
 

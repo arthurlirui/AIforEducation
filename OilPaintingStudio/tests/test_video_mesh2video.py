@@ -17,7 +17,7 @@ import pytest
 
 trimesh = pytest.importorskip("trimesh")
 
-from oilpaint.mesh2video import (  # noqa: E402
+from oilpainting_studio.video.mesh2video import (  # noqa: E402
     Camera,
     orbit_camera,
     WhiteMeshRenderer,
@@ -26,7 +26,7 @@ from oilpaint.mesh2video import (  # noqa: E402
     Mesh2VideoPipeline,
     Mesh2VideoConfig,
 )
-from oilpaint.mesh2video.animation import MorphDriver  # noqa: E402
+from oilpainting_studio.video.mesh2video.animation import MorphDriver  # noqa: E402
 
 
 def _box_mesh() -> "trimesh.Trimesh":

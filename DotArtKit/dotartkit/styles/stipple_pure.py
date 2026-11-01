@@ -56,7 +56,11 @@ def generate_stipple(
     pts: list[list[float]] = []
     grid = GridHash(min_dist_px)
     tries_per_batch = 20000
-    while len(pts) < n_dots:
+    # 安全上限: 小图/大 min_dist 时拒绝采样可能凑不齐 n_dots, 防止死循环
+    max_batches = max(50, (n_dots * 20) // tries_per_batch + 10)
+    batches = 0
+    while len(pts) < n_dots and batches < max_batches:
+        batches += 1
         idx = rng.choice(flat.size, size=tries_per_batch, p=flat, replace=True)
         ys, xs = np.divmod(idx, w)
         cand = np.stack(

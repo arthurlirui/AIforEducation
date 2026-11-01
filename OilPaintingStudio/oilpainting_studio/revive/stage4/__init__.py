@@ -16,7 +16,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from ...common.config import Settings
+from ..config import Settings
 from ..schemas import Stage3Output, KeyframeSpec
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ def render_keyframe_from_scene(
     focal: float,
 ) -> tuple[np.ndarray, np.ndarray]:
     """从编辑后场景渲染单张关键帧。返回 (rgb, depth)。"""
-    from .stage3.reposition import load_surfels_from_ply
+    from ..stage3.reposition import load_surfels_from_ply
 
     surfels = load_surfels_from_ply(scene_ply_path)
     positions = surfels[:, :3]

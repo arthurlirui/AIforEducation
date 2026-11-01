@@ -9,8 +9,8 @@ from pathlib import Path
 import click
 
 from ..common.comfy.client import ComfyClient
-from ..common.config import load_settings
-from ..video.pipeline.director import run_pipeline
+from .config import load_settings
+from .pipeline.director import run_pipeline
 
 logging.basicConfig(
     level=logging.INFO,

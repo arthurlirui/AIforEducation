@@ -17,12 +17,10 @@ import cv2
 import numpy as np
 import pytest
 
-# 让 src 可导入
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from oilrev.config import load_settings
-from oilrev.pipeline.director import run_pipeline
-from oilrev.schemas import Stage1Output, Stage2Output, Stage3Output, Stage4Output
+from oilpainting_studio.revive.config import load_settings
+from oilpainting_studio.revive.pipeline.director import run_pipeline
+from oilpainting_studio.revive.schemas import Stage1Output, Stage2Output, Stage3Output, Stage4Output
 
 
 @pytest.fixture
@@ -63,7 +61,7 @@ class TestModule1:
     """模块 1 单独测试：YOLO 分割 + 深度 + 背景。"""
 
     def test_segmentation(self, test_painting, test_settings, tmp_path):
-        from oilrev.stage1 import run_stage1
+        from oilpainting_studio.revive.stage1 import run_stage1
         s1 = run_stage1(test_painting, tmp_path / "p", test_settings)
         assert len(s1.objects) >= 1, "至少检测到一个物体"
         assert s1.depth_path.exists(), "深度图存在"
@@ -78,7 +76,7 @@ class TestModule1:
 
     def test_background_preservation(self, test_painting, test_settings, tmp_path):
         """背景掩码 = 所有前景之外的区域。"""
-        from oilrev.stage1 import run_stage1
+        from oilpainting_studio.revive.stage1 import run_stage1
         s1 = run_stage1(test_painting, tmp_path / "p", test_settings)
         bg_mask = cv2.imread(str(s1.background_mask_path), cv2.IMREAD_GRAYSCALE)
         # 合并所有前景 mask
@@ -94,7 +92,7 @@ class TestModule1:
 
     def test_auto_canny_edge(self, test_painting, test_settings, tmp_path):
         """无线稿时自动生成 Canny 边缘。"""
-        from oilrev.stage1 import run_stage1
+        from oilpainting_studio.revive.stage1 import run_stage1
         s1 = run_stage1(test_painting, tmp_path / "p", test_settings)
         assert s1.controls.edge_path is not None
         assert s1.controls.edge_path.exists()
@@ -104,8 +102,8 @@ class TestModule2:
     """模块 2 单独测试：TripoSplat 3DGS 生成 + 模型注册表。"""
 
     def test_3dgs_generation(self, test_painting, test_settings, tmp_path):
-        from oilrev.stage1 import run_stage1
-        from oilrev.stage2 import run_stage2
+        from oilpainting_studio.revive.stage1 import run_stage1
+        from oilpainting_studio.revive.stage2 import run_stage2
         s1 = run_stage1(test_painting, tmp_path / "p", test_settings)
         s2 = run_stage2(s1, tmp_path / "p", test_settings)
         assert s2.scene_ply_path.exists(), "统一场景 PLY 存在"
@@ -117,8 +115,8 @@ class TestModule2:
 
     def test_model_registry(self, test_painting, test_settings, tmp_path):
         """模型注册表查找功能。"""
-        from oilrev.stage1 import run_stage1
-        from oilrev.stage2 import run_stage2
+        from oilpainting_studio.revive.stage1 import run_stage1
+        from oilpainting_studio.revive.stage2 import run_stage2
         s1 = run_stage1(test_painting, tmp_path / "p", test_settings)
         s2 = run_stage2(s1, tmp_path / "p", test_settings)
         for obj in s1.objects:
@@ -130,8 +128,8 @@ class TestModule2:
 
     def test_background_2dgs(self, test_painting, test_settings, tmp_path):
         """背景生成 2DGS surfel。"""
-        from oilrev.stage1 import run_stage1
-        from oilrev.stage2 import run_stage2
+        from oilpainting_studio.revive.stage1 import run_stage1
+        from oilpainting_studio.revive.stage2 import run_stage2
         s1 = run_stage1(test_painting, tmp_path / "p", test_settings)
         s2 = run_stage2(s1, tmp_path / "p", test_settings)
         assert s2.registry.background_ply_path is not None
@@ -142,9 +140,9 @@ class TestModule3:
     """模块 3 单独测试：线稿引导重定位 + 填色补缺。"""
 
     def test_repositioning(self, test_painting, test_settings, tmp_path):
-        from oilrev.stage1 import run_stage1
-        from oilrev.stage2 import run_stage2
-        from oilrev.stage3 import run_stage3
+        from oilpainting_studio.revive.stage1 import run_stage1
+        from oilpainting_studio.revive.stage2 import run_stage2
+        from oilpainting_studio.revive.stage3 import run_stage3
         s1 = run_stage1(test_painting, tmp_path / "p", test_settings)
         s2 = run_stage2(s1, tmp_path / "p", test_settings)
         s3 = run_stage3(s1, s2, tmp_path / "p", test_settings)
@@ -161,9 +159,9 @@ class TestModule3:
 
     def test_inpainting(self, test_painting, test_settings, tmp_path):
         """填色补缺后背景图无空洞。"""
-        from oilrev.stage1 import run_stage1
-        from oilrev.stage2 import run_stage2
-        from oilrev.stage3 import run_stage3
+        from oilpainting_studio.revive.stage1 import run_stage1
+        from oilpainting_studio.revive.stage2 import run_stage2
+        from oilpainting_studio.revive.stage3 import run_stage3
         s1 = run_stage1(test_painting, tmp_path / "p", test_settings)
         s2 = run_stage2(s1, tmp_path / "p", test_settings)
         s3 = run_stage3(s1, s2, tmp_path / "p", test_settings)
@@ -173,9 +171,9 @@ class TestModule3:
 
     def test_keyframe_dimensions(self, test_painting, test_settings, tmp_path):
         """关键帧尺寸正确。"""
-        from oilrev.stage1 import run_stage1
-        from oilrev.stage2 import run_stage2
-        from oilrev.stage3 import run_stage3
+        from oilpainting_studio.revive.stage1 import run_stage1
+        from oilpainting_studio.revive.stage2 import run_stage2
+        from oilpainting_studio.revive.stage3 import run_stage3
         s1 = run_stage1(test_painting, tmp_path / "p", test_settings)
         s2 = run_stage2(s1, tmp_path / "p", test_settings)
         s3 = run_stage3(s1, s2, tmp_path / "p", test_settings)
@@ -187,10 +185,10 @@ class TestModule4:
     """模块 4 单独测试：关键帧 + 动画生成（mock 模式）。"""
 
     def test_keyframe_generation(self, test_painting, test_settings, tmp_path):
-        from oilrev.stage1 import run_stage1
-        from oilrev.stage2 import run_stage2
-        from oilrev.stage3 import run_stage3
-        from oilrev.stage4 import run_keyframe_generation
+        from oilpainting_studio.revive.stage1 import run_stage1
+        from oilpainting_studio.revive.stage2 import run_stage2
+        from oilpainting_studio.revive.stage3 import run_stage3
+        from oilpainting_studio.revive.stage4 import run_keyframe_generation
         s1 = run_stage1(test_painting, tmp_path / "p", test_settings)
         s2 = run_stage2(s1, tmp_path / "p", test_settings)
         s3 = run_stage3(s1, s2, tmp_path / "p", test_settings)
@@ -202,11 +200,11 @@ class TestModule4:
             assert kf.edge_path.exists(), f"关键帧 {kf.frame_index} 边缘图存在"
 
     def test_mock_animation(self, test_painting, test_settings, tmp_path):
-        from oilrev.stage1 import run_stage1
-        from oilrev.stage2 import run_stage2
-        from oilrev.stage3 import run_stage3
-        from oilrev.stage4 import run_keyframe_generation
-        from oilrev.stage5 import run_stage5
+        from oilpainting_studio.revive.stage1 import run_stage1
+        from oilpainting_studio.revive.stage2 import run_stage2
+        from oilpainting_studio.revive.stage3 import run_stage3
+        from oilpainting_studio.revive.stage4 import run_keyframe_generation
+        from oilpainting_studio.revive.stage5 import run_stage5
         s1 = run_stage1(test_painting, tmp_path / "p", test_settings)
         s2 = run_stage2(s1, tmp_path / "p", test_settings)
         s3 = run_stage3(s1, s2, tmp_path / "p", test_settings)
@@ -269,7 +267,7 @@ class TestSchemas:
     """数据模型校验。"""
 
     def test_stage1_output_serializable(self, test_painting, test_settings, tmp_path):
-        from oilrev.stage1 import run_stage1
+        from oilpainting_studio.revive.stage1 import run_stage1
         s1 = run_stage1(test_painting, tmp_path / "p", test_settings)
         j = s1.model_dump_json()
         assert "objects" in j
@@ -277,8 +275,8 @@ class TestSchemas:
         assert "background_path" in j
 
     def test_model_registry_serializable(self, test_painting, test_settings, tmp_path):
-        from oilrev.stage1 import run_stage1
-        from oilrev.stage2 import run_stage2
+        from oilpainting_studio.revive.stage1 import run_stage1
+        from oilpainting_studio.revive.stage2 import run_stage2
         s1 = run_stage1(test_painting, tmp_path / "p", test_settings)
         s2 = run_stage2(s1, tmp_path / "p", test_settings)
         j = s2.model_dump_json()
@@ -286,9 +284,9 @@ class TestSchemas:
         assert "models" in j
 
     def test_reposition_transform_serializable(self, test_painting, test_settings, tmp_path):
-        from oilrev.stage1 import run_stage1
-        from oilrev.stage2 import run_stage2
-        from oilrev.stage3 import run_stage3
+        from oilpainting_studio.revive.stage1 import run_stage1
+        from oilpainting_studio.revive.stage2 import run_stage2
+        from oilpainting_studio.revive.stage3 import run_stage3
         s1 = run_stage1(test_painting, tmp_path / "p", test_settings)
         s2 = run_stage2(s1, tmp_path / "p", test_settings)
         s3 = run_stage3(s1, s2, tmp_path / "p", test_settings)
@@ -301,7 +299,7 @@ class TestWorkflowTemplate:
     """模块 4 工作流模板测试。"""
 
     def test_ltx_template_loads(self):
-        from oilrev.stage5.workflow import load_workflow_template
+        from oilpainting_studio.revive.stage5.workflow import load_workflow_template
         wf = load_workflow_template("ltx2.3")
         assert "input_rgb" in wf
         assert "input_depth" in wf
@@ -309,7 +307,7 @@ class TestWorkflowTemplate:
         assert "save" in wf
 
     def test_wan_template_loads(self):
-        from oilrev.stage5.workflow import load_workflow_template
+        from oilpainting_studio.revive.stage5.workflow import load_workflow_template
         wf = load_workflow_template("wan2.2")
         assert "input_image" in wf
         assert "input_depth" in wf
@@ -318,7 +316,7 @@ class TestWorkflowTemplate:
         assert "save" in wf
 
     def test_wan_workflow_param_injection(self, test_settings):
-        from oilrev.stage5.workflow import build_wan_workflow
+        from oilpainting_studio.revive.stage5.workflow import build_wan_workflow
         wf = build_wan_workflow(test_settings, "kf.png", "depth.png", "edge.png", 9)
         assert wf["input_image"]["inputs"]["image"] == "kf.png"
         assert wf["input_depth"]["inputs"]["image"] == "depth.png"
@@ -327,7 +325,7 @@ class TestWorkflowTemplate:
         assert isinstance(wf["sampler"]["inputs"]["seed"], int)
 
     def test_ltx_workflow_param_injection(self, test_settings):
-        from oilrev.stage5.workflow import build_ltx_workflow
+        from oilpainting_studio.revive.stage5.workflow import build_ltx_workflow
         wf = build_ltx_workflow(test_settings, "rgb.mp4", "depth.mp4", 9)
         assert wf["input_rgb"]["inputs"]["video"] == "rgb.mp4"
         assert wf["input_depth"]["inputs"]["video"] == "depth.mp4"

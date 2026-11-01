@@ -6,20 +6,30 @@
 
 ```
 AIforEducation/
-├── AIforPolkaDotsArt/     子项目: 草间弥生波点艺术生成
-├── GestureCoach/          子项目: 绘画手势教练
-├── OilPaintingRevive/     子项目: 油画复活 (3DGS)
-├── OilPaintingVideo/      子项目: 油画风格叙事视频
-├── images/                共享名画素材
-├── latex/                 共享 LaTeX 论文模板
-├── docs/                  项目文档 (本目录)
-│   ├── README.md          文档导航
-│   ├── architecture.md    架构总览
-│   ├── modules/           各子项目模块参考
-│   ├── VERSIONING.md      版本管理策略
-│   ├── CHANGELOG.md       更新日志
-│   └── CONTRIBUTING.md    本文件
-└── VERSION                Monorepo 版本号
+├── DotArtKit/            子项目: 统一波点艺术生成器 (8 流派)
+├── OilPaintingStudio/    子项目: 油画动态生成 (video + revive/Canvas3D)
+├── OilPaintingPlatform/  子项目: 油画教学 + AI 文生图网站
+├── TechLearnStudio/      子项目: 可交互网页 PPT 学习平台
+├── GestureCoach/         子项目: 绘画手势教练 (git submodule)
+├── images/               共享名画素材
+├── latex/                共享 LaTeX 论文模板
+├── bak/                  重组前旧项目存档 (已从 git 移除, 仅本地保留)
+├── docs/                 项目文档 (本目录)
+│   ├── README.md         文档导航
+│   ├── architecture.md   架构总览
+│   ├── modules/          各子项目模块参考
+│   ├── VERSIONING.md     版本管理策略
+│   ├── CHANGELOG.md      更新日志
+│   └── CONTRIBUTING.md   本文件
+└── VERSION               Monorepo 版本号
+```
+
+克隆后注意初始化 submodule：
+
+```bash
+git clone --recurse-submodules <repo-url>
+# 或已克隆的仓库中
+git submodule update --init
 ```
 
 ## 2. 代码提交约定
@@ -52,7 +62,7 @@ AIforEducation/
 |---------|---------------|
 | 新增/删除/重命名源文件 | 对应子项目的 `docs/modules/*.md` |
 | 新增/删除/修改模块间依赖 | `docs/architecture.md` 的依赖关系图 |
-| 新增/删除子项目 | `docs/README.md` + `docs/architecture.md` |
+| 新增/删除子项目 | `docs/README.md` + `docs/architecture.md` + 根 `README.md` |
 | 新增/删除/修改配置项 | 对应子项目的模块参考文档 |
 | 新增/删除测试文件 | 对应子项目的模块参考文档 (测试小节) |
 | 任何版本号变更 | `VERSION` + `docs/CHANGELOG.md` + `docs/README.md` |
@@ -79,6 +89,7 @@ AIforEducation/
 
 - [ ] 在 `docs/modules/` 创建新子项目的模块参考文档
 - [ ] 在 `docs/README.md` 添加文档导航条目
+- [ ] 在根 `README.md` 子项目表格中添加条目
 - [ ] 在 `docs/architecture.md` 添加子项目概览和架构要点
 - [ ] 在 `docs/architecture.md` 更新技术栈矩阵和依赖矩阵
 - [ ] 在 `docs/CHANGELOG.md` 记录新增
@@ -88,17 +99,20 @@ AIforEducation/
 ### 4.1 各子项目测试命令
 
 ```bash
-# GestureCoach
+# DotArtKit (无 pytest 测试，使用 demo 冒烟)
+cd DotArtKit && python scripts/run_demos.py
+
+# OilPaintingStudio (58 项, mock 全链路, 无需 GPU/ComfyUI)
+cd OilPaintingStudio && pip install -e ".[dev]" && pytest -v
+
+# TechLearnStudio (43 项含 e2e)
+cd TechLearnStudio && pip install -r backend/requirements.txt && pytest -v
+
+# GestureCoach (284 项)
 cd GestureCoach && PYTHONPATH=. pytest tests/ -v
 
-# OilPaintingRevive
-cd OilPaintingRevive && pip install -e ".[dev]" && pytest -v
-
-# OilPaintingVideo
-cd OilPaintingVideo && pip install -e ".[dev]" && pytest -v
-
-# AIforPolkaDotsArt (无正式测试，使用 demo 验证)
-cd AIforPolkaDotsArt && python run_demo.py && python run_depth_demo.py
+# OilPaintingPlatform (测试待补)
+cd OilPaintingPlatform && uvicorn app.main:app --directory backend  # 手动冒烟
 ```
 
 ### 4.2 测试维护原则
@@ -129,7 +143,8 @@ cd AIforPolkaDotsArt && python run_demo.py && python run_depth_demo.py
 - [ ] `VERSION` 文件与 `docs/CHANGELOG.md` 最新条目一致
 - [ ] `docs/README.md` 中的版本号和日期已更新
 - [ ] 各子项目的 `__version__` / `pyproject.toml` 版本号一致
-- [ ] 无遗留的 `__pycache__` / `.egg-info` 被意外追踪
+- [ ] 无遗留的 `__pycache__` / `.egg-info` / LaTeX 中间产物 (*.aux/*.bbl 等) 被意外追踪
+- [ ] `git status` 无意外未跟踪文件
 
 ## 7. 常见维护场景
 
@@ -141,9 +156,11 @@ cd AIforPolkaDotsArt && python run_demo.py && python run_depth_demo.py
 4. 在 `docs/CHANGELOG.md` 记录变更
 5. 视变更范围递增版本号
 
-### 场景: 修改 OilPaintingRevive 的配置项
+### 场景: 修改 OilPaintingStudio 的配置项
 
-1. 更新 `docs/modules/oilpaintingrevive.md` 中的配置文件说明表格
+- video 管线配置在 `OilPaintingStudio/config/settings.yaml` + `styles.yaml`
+- revive 管线配置在 `OilPaintingStudio/config/revive_settings.yaml`
+1. 更新 `docs/modules/oilpaintingstudio.md` 中的配置文件说明表格
 2. 如果是新增配置项，说明其用途和默认值
 3. 在 `docs/CHANGELOG.md` 记录变更
 

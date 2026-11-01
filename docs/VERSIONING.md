@@ -18,16 +18,13 @@ MAJOR.MINOR.PATCH
 | MINOR | 次版本号 | 向后兼容的新功能 | 1.0.0 → 1.1.0 |
 | PATCH | 修订号 | 向后兼容的缺陷修复 | 1.0.0 → 1.0.1 |
 
-### 1.2 初始开发阶段
+### 1.2 子项目当前版本
 
-当前所有子项目处于 `0.x.y` 初始开发阶段：
-
-- `0.x.y` 中的 `x` 为 0 表示核心 API 可能随时变动
-- 子项目当前版本：
-  - AIforPolkaDotsArt: `1.0.0` (功能已稳定，含深度感知版)
-  - GestureCoach: `0.1.0` (原型阶段)
-  - OilPaintingRevive: `0.1.0` (管线已建通，mock 模式完整)
-  - OilPaintingVideo: `0.1.0` (管线已建通，mock 模式完整)
+- DotArtKit: `1.0.0` (8 流派整合完成)
+- OilPaintingStudio: `1.0.0` (video + revive 双管线，58 测试)
+- GestureCoach: `0.1.0` (原型阶段，独立仓库)
+- OilPaintingPlatform: 未设独立版本 (MVP)
+- TechLearnStudio: 未设独立版本 (设计稿→实现过渡)
 
 ### 1.3 Monorepo 版本与子项目版本
 
@@ -41,11 +38,11 @@ MAJOR.MINOR.PATCH
 
 | 位置 | 文件 | 格式 |
 |------|------|------|
-| Monorepo | `VERSION` | `1.0.0` (纯版本号，单行) |
-| AIforPolkaDotsArt | 无 `__version__`，记录在 `docs/CHANGELOG.md` | — |
+| Monorepo | `VERSION` | `1.1.0` (纯版本号，单行) |
+| DotArtKit | `dotartkit/__init__.py` → `__version__` + `pyproject.toml` → `version` | `"1.0.0"` |
+| OilPaintingStudio | `oilpainting_studio/__init__.py` → `__version__` + `pyproject.toml` → `version` | `"1.0.0"` |
 | GestureCoach | `gesturecoach/__init__.py` → `__version__` | `"0.1.0"` |
-| OilPaintingRevive | `src/oilrev/__init__.py` → `__version__` + `pyproject.toml` → `version` | `"0.1.0"` |
-| OilPaintingVideo | `src/oilpaint/__init__.py` → `__version__` + `pyproject.toml` → `version` | `"0.1.0"` |
+| OilPaintingPlatform / TechLearnStudio | 暂无独立版本，变更记录在 `docs/CHANGELOG.md` | — |
 
 ### 2.2 版本更新流程
 
@@ -81,13 +78,14 @@ MAJOR.MINOR.PATCH
 - [ ] 更新 `docs/modules/` 下的模块参考 (如有文件变更)
 - [ ] 更新 `docs/architecture.md` (如有架构变更)
 - [ ] 更新 `docs/README.md` 中的版本号和最后更新日期
-- [ ] 运行子项目测试 (GestureCoach: `pytest tests/`, OilPaintingRevive/Video: `pytest`)
+- [ ] 运行子项目测试 (OilPaintingStudio: `pytest`; TechLearnStudio: `pytest`; GestureCoach: `pytest tests/`)
 - [ ] 检查依赖版本是否需要更新
 
 ## 4. 版本历史摘要
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
-| 1.0.0 | 2026-10-14 | 文档套件初始发布；四个子项目完整文档化 |
+| 1.1.0 | 2026-10-29 | 目录重组后文档套件全面更新：新增 DotArtKit/OilPaintingStudio/OilPaintingPlatform 模块文档 |
+| 1.0.0 | 2026-10-14 | 文档套件初始发布；四个子项目（重组前结构）完整文档化 |
 
 详见 [CHANGELOG.md](CHANGELOG.md)。

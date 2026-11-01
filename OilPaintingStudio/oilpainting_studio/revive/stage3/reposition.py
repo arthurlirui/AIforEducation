@@ -16,7 +16,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from ...common.config import Settings
+from ..config import Settings
 from ..schemas import GSModelRecord, RepositionTransform, SegmentedObject
 
 logger = logging.getLogger(__name__)
@@ -247,5 +247,5 @@ def load_surfels_from_ply(ply_path: Path) -> np.ndarray:
 
 def save_surfels_to_ply(surfels: np.ndarray, ply_path: Path) -> None:
     """保存 surfel 数组为 PLY。"""
-    from .stage2.gs2d_init import surfels_to_ply
+    from ..stage2.gs2d_init import surfels_to_ply
     surfels_to_ply(surfels, ply_path)

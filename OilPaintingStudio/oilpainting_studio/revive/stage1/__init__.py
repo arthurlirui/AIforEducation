@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from ...common.config import Settings
+from ..config import Settings
 from ..schemas import Stage1Output
 from .depth import run_depth_estimation
 from .parse_control import parse_controls

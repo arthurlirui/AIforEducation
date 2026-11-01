@@ -70,6 +70,29 @@ class ComfyClient:
         r.raise_for_status()
         return r.json()
 
+    async def upload_video(self, video_path: Path) -> dict[str, str]:
+        """上传视频到 ComfyUI input 目录，返回 {name, subfolder, type}。"""
+        with video_path.open("rb") as f:
+            files = {"image": (video_path.name, f, "video/mp4")}
+            r = await self._get_http().post(
+                f"{self.base_url}/upload/image", files=files, timeout=300
+            )
+        r.raise_for_status()
+        return r.json()
+
+    async def free_memory(self) -> None:
+        """触发 ComfyUI 释放模型/显存缓存（/free 端点）。失败仅告警。"""
+        try:
+            r = await self._get_http().post(
+                f"{self.base_url}/free",
+                json={"unload_models": True, "free_memory": True},
+                timeout=30,
+            )
+            if r.status_code != 200:
+                logger.warning("ComfyUI /free 返回 HTTP %s", r.status_code)
+        except httpx.HTTPError as e:
+            logger.warning("ComfyUI /free 调用失败: %s", e)
+
     async def queue_prompt(self, workflow: dict[str, Any]) -> str:
         """提交工作流（API 格式），返回 prompt_id。"""
         payload = {"prompt": workflow, "client_id": self.client_id}

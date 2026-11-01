@@ -298,3 +298,104 @@ def compare_fixed_vs_learned(d_norm: np.ndarray,
         'learned_depth_correlation': float(np.corrcoef(
             (1 - d_norm).flatten(), learned_radius.flatten())[0, 1]),
     }
+
+
+# ---------------------------------------------------------------------------
+# 4. PIL 渲染入口 (api.generate("learned", ...) 用)
+# ---------------------------------------------------------------------------
+
+def generate_learned(
+    image,
+    n_dots: int = 6000,
+    r_min: float = 1.0,
+    r_max: float | None = None,
+    alpha: float = 1.5,
+    sigma: float = 0.12,
+    min_dist_px: float | None = None,
+    model=None,
+    ckpt_path: str | None = None,
+    device: str = "cpu",
+    bg=(1.0, 1.0, 1.0),
+    fg=(0.08, 0.08, 0.08),
+    seed: int = 0,
+):
+    """可学习深度→半径波点渲染 (PIL 接口, 与其他流派统一).
+
+    深度场用亮度近似 (无 YOLO 依赖): 暗视为近景大点, 亮视为远景小点.
+    torch 可用时用 DepthRadiusNet 推理半径场 (可加载 ckpt_path),
+    否则回退固定幂律 ``r = r_min + (r_max-r_min)·(1-d)^α`` — 两者点阵相同,
+    仅半径来源不同, 保证无 torch 环境下本模式仍可用.
+
+    r_max / min_dist_px 缺省按图宽自适应 (r_max ≈ 宽/85), 小图不会被大点糊满.
+    """
+    from .ops.color import draw_disks, luminance, sample_color, to_float01
+    from .ops.grid import GridHash
+
+    rng = np.random.default_rng(seed)
+    arr = to_float01(image)
+    h, w = arr.shape[:2]
+    gray = luminance(arr)
+
+    # 小图自适应: r_max ≈ 宽/85 (1024 宽 → ~12px), min_dist ≈ r_max/4
+    if r_max is None:
+        r_max = max(2.0, w / 85.0)
+    if min_dist_px is None:
+        min_dist_px = max(1.0, r_max / 4.0)
+
+    # 亮度→伪深度: 暗处近 (d_norm 小) → 大点
+    d_norm = np.clip(gray, 0.0, 1.0).astype(np.float32)
+
+    # 半径场: 可学习或固定幂律
+    if model is None and _HAS_TORCH and ckpt_path:
+        import torch as _torch
+        m = DepthRadiusNet(r_min=r_min, r_max=r_max)
+        m.load_state_dict(_torch.load(ckpt_path, map_location=device))
+        m.eval()
+        model = m
+    if model is not None:
+        if not _HAS_TORCH:
+            raise ImportError("learned 模式使用已训练模型需要 torch")
+        radius_map = learned_depth_to_radius(
+            model, d_norm, gray, sigma=sigma, device=device, rng=rng)
+    else:
+        radius_map = r_min + (r_max - r_min) * np.power(1.0 - d_norm, alpha)
+        if sigma > 0:
+            radius_map = radius_map * (1.0 + rng.normal(0, sigma, radius_map.shape))
+        radius_map = np.clip(radius_map, 0.3, r_max * 1.1).astype(np.float32)
+
+    # 点采样: 密度 ∝ 半径²(近景点大且密), GridHash 最小间距约束
+    density = np.power((radius_map - 0.3) / max(r_max, 1e-6), 2.0)
+    density += 0.02
+    flat = density.ravel().astype(np.float64)
+    flat /= flat.sum()
+
+    pts: list[list[float]] = []
+    grid = GridHash(min_dist_px)
+    tries_per_batch = 20000
+    # 安全上限: 小图时拒绝采样可能凑不齐 n_dots, 防止死循环
+    max_batches = max(50, (n_dots * 20) // tries_per_batch + 10)
+    batches = 0
+    while len(pts) < n_dots and batches < max_batches:
+        batches += 1
+        idx = rng.choice(flat.size, size=tries_per_batch, p=flat, replace=True)
+        ys, xs = np.divmod(idx, w)
+        cand = np.stack(
+            [xs + rng.uniform(0, 1, len(xs)), ys + rng.uniform(0, 1, len(ys))],
+            axis=-1,
+        )
+        for x, y in cand:
+            r_here = float(radius_map[int(y), int(x)])
+            local_min = min_dist_px + r_here * 0.6
+            if grid.far_enough(x, y, local_min):
+                grid.add(x, y)
+                pts.append([x, y])
+                if len(pts) >= n_dots:
+                    break
+
+    P = np.array(pts[:n_dots], np.float32)
+    radii = sample_color(radius_map[..., None], P)[:, 0]
+    colors = np.tile(np.array(fg, np.float32), (len(P), 1))
+
+    from PIL import Image as _Image
+    canvas = _Image.new("RGB", (w, h), tuple(int(c * 255) for c in bg))
+    return draw_disks(canvas, P, radii, colors)

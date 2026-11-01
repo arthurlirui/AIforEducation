@@ -27,7 +27,10 @@ from pathlib import Path
 
 from PIL import Image
 
-from .api import generate, list_modes, list_pure_modes, list_dl_modes, mode_info
+from .api import (
+    generate, list_modes, list_pure_modes, list_dl_modes,
+    list_torch_modes, mode_info,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -42,6 +45,12 @@ def _cmd_list(args: argparse.Namespace) -> int:
         print(f"  {m:14s}  {info['desc']}")
     print("\n== 深度学习模式 (需 ultralytics + YOLO26 权重) ==")
     for m in list_dl_modes():
+        info = mode_info(m)
+        deps = ", ".join(info["deps"]) or "(无)"
+        print(f"  {m:14s}  {info['desc']}")
+        print(f"                  依赖: {deps}")
+    print("\n== 可学习模式 (torch 可选, 缺省回退固定幂律) ==")
+    for m in list_torch_modes():
         info = mode_info(m)
         deps = ", ".join(info["deps"]) or "(无)"
         print(f"  {m:14s}  {info['desc']}")

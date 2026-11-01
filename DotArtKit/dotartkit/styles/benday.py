@@ -22,6 +22,7 @@ def generate_benday(
     angle_deg: float = 15.0,
     use_pop_palette: bool = True,
     bg=(1.0, 1.0, 1.0),
+    **kwargs,
 ) -> Image.Image:
     """Ben-Day / 半调生成.
 

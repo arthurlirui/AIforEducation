@@ -14,8 +14,8 @@ from pathlib import Path
 from ...common.comfy.client import ComfyClient
 from ...common.config import Settings
 from ...common.llm_client import LLMClient
-from .screenplay.generator import generate_script
-from .screenplay.schemas import Script
+from ..screenplay.generator import generate_script
+from ..screenplay.schemas import Script
 from .animate import render_clip
 from .edit import compose_video
 from .keyframe import render_keyframe

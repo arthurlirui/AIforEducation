@@ -5,8 +5,8 @@ import json
 
 import pytest
 
-from oilpaint.screenplay.generator import _repair_shot_numbering
-from oilpaint.screenplay.schemas import Scene, Script, Shot
+from oilpainting_studio.video.screenplay.generator import _repair_shot_numbering
+from oilpainting_studio.video.screenplay.schemas import Scene, Script, Shot
 
 
 def test_shot_validation_ok():
@@ -68,7 +68,7 @@ class _MockSettings:
     target_duration_sec = 15
 
     def style(self, key=None):
-        from oilpaint.config import StylePreset
+        from oilpainting_studio.common.config import StylePreset
         return StylePreset(
             key="impressionism", name="印象派",
             painters=["Claude Monet"],
@@ -79,7 +79,7 @@ class _MockSettings:
 
 @pytest.mark.asyncio
 async def test_generate_script_from_mock():
-    from oilpaint.screenplay.generator import generate_script
+    from oilpainting_studio.video.screenplay.generator import generate_script
 
     payload = {
         "title": "晨曦归舟",
@@ -104,7 +104,7 @@ async def test_generate_script_from_mock():
 
 @pytest.mark.asyncio
 async def test_generate_script_parse_retry():
-    from oilpaint.screenplay.generator import generate_script
+    from oilpainting_studio.video.screenplay.generator import generate_script
 
     # 第一轮返回非法 JSON 文本，第二轮返回合法 payload
     class _Seq:

@@ -13,7 +13,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from ...common.config import Settings
+from ..config import Settings
 from ..schemas import SegmentedObject, GSModelRecord
 
 logger = logging.getLogger(__name__)
