@@ -1,0 +1,211 @@
+[
+  {
+    "id": "impressionism",
+    "name": "印象派",
+    "name_en": "Impressionism",
+    "era": "19世纪末",
+    "description": "强调光影瞬间变化，色彩明快，笔触松散可见，代表作有莫奈《日出·印象》。",
+    "prompt_keywords": [
+      "oil painting",
+      "impressionism style",
+      "visible brushstrokes",
+      "vibrant light",
+      "en plein air",
+      "broken color",
+      "soft edges"
+    ],
+    "negative_keywords": ["sharp detail", "flat color", "digital"],
+    "reference_artists": ["Claude Monet", "Pierre-Auguste Renoir", "Camille Pissarro"]
+  },
+  {
+    "id": "realism",
+    "name": "写实主义",
+    "name_en": "Realism",
+    "era": "19世纪",
+    "description": "忠实再现客观对象，注重解剖、透视与质感，笔触细腻，色彩接近自然。",
+    "prompt_keywords": [
+      "oil painting",
+      "realism",
+      "highly detailed",
+      "accurate anatomy",
+      "naturalistic color",
+      "smooth brushwork",
+      "dramatic lighting"
+    ],
+    "negative_keywords": ["cartoon", "anime", "abstract"],
+    "reference_artists": ["Gustave Courbet", "Jean-François Millet", "Ilya Repin"]
+  },
+  {
+    "id": "classical",
+    "name": "古典主义",
+    "name_en": "Classicism",
+    "era": "17-19世纪",
+    "description": "构图严谨均衡，造型理想化，色调统一，源于古希腊罗马美学。",
+    "prompt_keywords": [
+      "oil painting",
+      "classical style",
+      "idealized form",
+      "balanced composition",
+      "chiaroscuro",
+      "warm earth tones",
+      "academic technique"
+    ],
+    "negative_keywords": ["modern", "neon", "distorted"],
+    "reference_artists": ["Nicolas Poussin", "Jacques-Louis David", "William-Adolphe Bouguereau"]
+  },
+  {
+    "id": "baroque",
+    "name": "巴洛克",
+    "name_en": "Baroque",
+    "era": "17世纪",
+    "description": "戏剧性强烈光影（明暗对照法），动态构图，富丽华美，情感充沛。",
+    "prompt_keywords": [
+      "oil painting",
+      "baroque style",
+      "tenebrism",
+      "strong chiaroscuro",
+      "dramatic contrast",
+      "dynamic composition",
+      "rich deep colors"
+    ],
+    "negative_keywords": ["flat lighting", "pastel", "minimalist"],
+    "reference_artists": ["Caravaggio", "Rembrandt", "Peter Paul Rubens"]
+  },
+  {
+    "id": "romanticism",
+    "name": "浪漫主义",
+    "name_en": "Romanticism",
+    "era": "18-19世纪",
+    "description": "强调情感、想象与自然伟力，色彩热烈，笔触奔放，常有宏大叙事。",
+    "prompt_keywords": [
+      "oil painting",
+      "romanticism style",
+      "emotional atmosphere",
+      "dramatic sky",
+      "loose expressive brushwork",
+      "rich saturated color"
+    ],
+    "negative_keywords": ["calm", "minimalist", "geometric"],
+    "reference_artists": ["J.M.W. Turner", "Eugène Delacroix", "Caspar David Friedrich"]
+  },
+  {
+    "id": "renaissance",
+    "name": "文艺复兴",
+    "name_en": "Renaissance",
+    "era": "14-16世纪",
+    "description": "复兴古希腊罗马艺术，讲求透视、解剖与和谐比例，代表达芬奇、米开朗基罗。",
+    "prompt_keywords": [
+      "oil painting",
+      "renaissance style",
+      "sfumato",
+      "linear perspective",
+      "anatomical accuracy",
+      "harmonious composition",
+      "soft transitions"
+    ],
+    "negative_keywords": ["modern", "neon", "cartoon"],
+    "reference_artists": ["Leonardo da Vinci", "Raphael", "Titian"]
+  },
+  {
+    "id": "post_impressionism",
+    "name": "后印象派",
+    "name_en": "Post-Impressionism",
+    "era": "19世纪末-20世纪初",
+    "description": "在印象派基础上强调主观情感与结构，色彩大胆，笔触更具表现力。",
+    "prompt_keywords": [
+      "oil painting",
+      "post-impressionism",
+      "bold expressive color",
+      "structured brushwork",
+      "emotional distortion",
+      "thick impasto"
+    ],
+    "negative_keywords": ["photo-realistic", "flat"],
+    "reference_artists": ["Vincent van Gogh", "Paul Cézanne", "Paul Gauguin"]
+  },
+  {
+    "id": "expressionism",
+    "name": "表现主义",
+    "name_en": "Expressionism",
+    "era": "20世纪初",
+    "description": "通过扭曲造型与强烈色彩直抒内在情感，常带有焦虑、激越的情绪张力。",
+    "prompt_keywords": [
+      "oil painting",
+      "expressionism style",
+      "distorted forms",
+      "intense subjective color",
+      "agitated brushwork",
+      "emotional intensity"
+    ],
+    "negative_keywords": ["calm", "realistic", "pastel"],
+    "reference_artists": ["Edvard Munch", "Egon Schiele", "Francis Bacon"]
+  },
+  {
+    "id": "surrealism",
+    "name": "超现实主义",
+    "name_en": "Surrealism",
+    "era": "20世纪",
+    "description": "将梦境与现实并置，营造不合逻辑却逼真的画面，达利、马格利特为代表。",
+    "prompt_keywords": [
+      "oil painting",
+      "surrealism style",
+      "dreamlike",
+      "impossible juxtaposition",
+      "meticulous detail",
+      "mysterious atmosphere"
+    ],
+    "negative_keywords": ["mundane", "documentary"],
+    "reference_artists": ["Salvador Dalí", "René Magritte", "Max Ernst"]
+  },
+  {
+    "id": "pointillism",
+    "name": "点彩派",
+    "name_en": "Pointillism",
+    "era": "19世纪末",
+    "description": "用纯色小点密集排列，通过视觉混色构成画面，修拉为代表。",
+    "prompt_keywords": [
+      "oil painting",
+      "pointillism style",
+      "small distinct dots of color",
+      "optical color mixing",
+      "scientific color theory",
+      "smooth surface"
+    ],
+    "negative_keywords": ["brushstroke", "impasto", "blur"],
+    "reference_artists": ["Georges Seurat", "Paul Signac"]
+  },
+  {
+    "id": "abstract",
+    "name": "抽象表现主义",
+    "name_en": "Abstract Expressionism",
+    "era": "20世纪中叶",
+    "description": "脱离具象，以色彩、笔触与肌理自身传达情绪，波洛克的滴画为代表。",
+    "prompt_keywords": [
+      "oil painting",
+      "abstract expressionism",
+      "non-representational",
+      "gestural brushwork",
+      "drip painting",
+      "bold color fields"
+    ],
+    "negative_keywords": ["realistic", "figurative", "photo"],
+    "reference_artists": ["Jackson Pollock", "Mark Rothko", "Willem de Kooning"]
+  },
+  {
+    "id": "chinese_oil",
+    "name": "中国当代油画",
+    "name_en": "Chinese Contemporary Oil",
+    "era": "20-21世纪",
+    "description": "融合西方油画语言与东方意境，讲究写意精神与东方色彩，常以山水、人物为题。",
+    "prompt_keywords": [
+      "oil painting",
+      "chinese contemporary oil painting",
+      "eastern aesthetic",
+      "poetic atmosphere",
+      "xieyi spirit",
+      "soft muted palette"
+    ],
+    "negative_keywords": ["western gothic", "neon"],
+    "reference_artists": ["吴冠中", "赵无极", "朱德群"]
+  }
+]

@@ -1,0 +1,226 @@
+[
+  {
+    "id": "landscape-golden-hour",
+    "title": "黄昏薰衣草田",
+    "category": "风景",
+    "prompt": "lavender fields at golden hour in Provence, loose expressive brushwork, warm purples and amber skies, plein air",
+    "recommended_style": "impressionism",
+    "description": "普罗旺斯薰衣草田的黄昏时分，温暖的紫色调与琥珀色天空"
+  },
+  {
+    "id": "landscape-stormy-sea",
+    "title": "暴风雨中的灯塔",
+    "category": "风景",
+    "prompt": "a stormy sea crashing against a lighthouse, thick impasto for waves, dramatic grey sky, wide horizontal composition",
+    "recommended_style": "romanticism",
+    "description": "惊涛骇浪拍打灯塔，厚重颜料表现海浪，戏剧性灰色天空"
+  },
+  {
+    "id": "landscape-moonlit-forest",
+    "title": "月光下的森林",
+    "category": "风景",
+    "prompt": "moonlit forest, silver blue moonlight filtering through trees, glowing fireflies, thick impasto brushstrokes, mystical atmosphere",
+    "recommended_style": "romanticism",
+    "description": "银蓝色月光透过树梢洒落，萤火虫微光闪烁，神秘氛围"
+  },
+  {
+    "id": "landscape-autumn-orchard",
+    "title": "秋日果园",
+    "category": "风景",
+    "prompt": "an autumn orchard with heavy apples on low branches, warm reds and oranges, afternoon sunlight, rural idyll",
+    "recommended_style": "post_impressionism",
+    "description": "秋日果园中低垂的苹果枝头，温暖的红色与橙色调，午后阳光"
+  },
+  {
+    "id": "landscape-snowy-birch",
+    "title": "雪中桦树林的狐狸",
+    "category": "风景",
+    "prompt": "a red fox standing in a snowy birch forest at twilight, visible brushwork, cool blue shadows and warm rust coat, atmospheric",
+    "recommended_style": "realism",
+    "description": "暮色中红狐立于雪白桦林，冷蓝阴影与温暖铁锈色皮毛对比"
+  },
+  {
+    "id": "landscape-chinese-mountains",
+    "title": "烟雨江南山水",
+    "category": "风景",
+    "prompt": "misty mountains and a tranquil river in southern China, soft muted palette, poetic atmosphere, xieyi spirit, distant boats",
+    "recommended_style": "chinese_oil",
+    "description": "中国南方烟雨朦胧的山水河流，淡雅色调，写意意境"
+  },
+  {
+    "id": "portrait-candlelight",
+    "title": "烛光下读书的少女",
+    "category": "人物",
+    "prompt": "a young woman reading by candlelight, Rembrandt-style lighting, earth tone palette, soft edges, introspective mood",
+    "recommended_style": "baroque",
+    "description": "少女在烛光下读书，伦勃朗式布光，土色调，沉静内省"
+  },
+  {
+    "id": "portrait-fisherman",
+    "title": "黎明修网的老渔夫",
+    "category": "人物",
+    "prompt": "an elderly fisherman repairing a net at dawn, thick impasto brushstrokes, muted blue-grey palette, warm cottage lamplight",
+    "recommended_style": "classical",
+    "description": "黎明时分老渔夫修补渔网，厚重笔触，蓝灰色调，温暖灯光"
+  },
+  {
+    "id": "portrait-dancer",
+    "title": "后台拉伸的舞者",
+    "category": "人物",
+    "prompt": "a young dancer stretching backstage, warm stage light, soft edges, intimate moment, visible movement",
+    "recommended_style": "impressionism",
+    "description": "芭蕾舞者在后台拉伸，温暖舞台灯光，柔软边缘，私密瞬间"
+  },
+  {
+    "id": "portrait-jazz-club",
+    "title": "1950年代爵士俱乐部",
+    "category": "人物",
+    "prompt": "a jazz club interior in 1950s New York, warm amber lighting, smoky atmosphere, visible brushstrokes, wide shot",
+    "recommended_style": "realism",
+    "description": "1950年代纽约爵士酒吧内景，温暖琥珀灯光，烟雾缭绕"
+  },
+  {
+    "id": "portrait-musician-lute",
+    "title": "烛光下调鲁特琴的乐师",
+    "category": "人物",
+    "prompt": "a young musician tuning a lute by candlelight, dramatic chiaroscuro, deep shadow and warm glow, ultra-detailed",
+    "recommended_style": "baroque",
+    "description": "年轻乐师在烛光下调鲁特琴，戏剧性明暗对照，深邃阴影与温暖光晕"
+  },
+  {
+    "id": "still-life-sunflowers",
+    "title": "瓶中向日葵",
+    "category": "静物",
+    "prompt": "sunflowers in a vase, swirling brushstrokes, vibrant yellow and blue, impasto technique, emotional expression, bold outlines",
+    "recommended_style": "post_impressionism",
+    "description": "花瓶中的向日葵，旋涡状笔触，鲜艳的黄蓝色，厚涂技法"
+  },
+  {
+    "id": "still-life-teapot",
+    "title": "银茶壶与柠檬",
+    "category": "静物",
+    "prompt": "a silver teapot, lemons, and Persian rug, dramatic chiaroscuro lighting, dark background, ultra-detailed, museum quality",
+    "recommended_style": "baroque",
+    "description": "银茶壶、柠檬与波斯地毯，戏剧性明暗布光，深色背景"
+  },
+  {
+    "id": "still-life-fruit-game",
+    "title": "水果猎物与银器",
+    "category": "静物",
+    "prompt": "fruits, game, and silverware on a dark wooden table, dramatic directional lighting, rich texture, horizontal composition",
+    "recommended_style": "baroque",
+    "description": "深色木桌上的水果、猎物与银器，方向性光影，丰富质感"
+  },
+  {
+    "id": "still-life-wildflowers",
+    "title": "野花蕨类植物研究",
+    "category": "静物",
+    "prompt": "wildflowers and ferns, delicate technique, scientific illustration style, pale background, precise and serene",
+    "recommended_style": "realism",
+    "description": "野花与蕨类植物的精细研究，科学插图风格，浅色背景"
+  },
+  {
+    "id": "abstract-color-fields",
+    "title": "色域抽象",
+    "category": "抽象",
+    "prompt": "non-representational color fields, bold warm and cool contrasts, gestural brushwork, emotional depth, large canvas feel",
+    "recommended_style": "abstract",
+    "description": "非具象色域，大胆冷暖对比，手势笔触，情感深度"
+  },
+  {
+    "id": "abstract-drip",
+    "title": "滴洒表现",
+    "category": "抽象",
+    "prompt": "drip painting, energetic rhythmic lines, layered colors, raw canvas showing through, spontaneous and chaotic",
+    "recommended_style": "abstract",
+    "description": "滴洒画法，富有节奏感的线条，层叠色彩，画布裸露"
+  },
+  {
+    "id": "surreal-melting-clocks",
+    "title": "融化的时钟",
+    "category": "超现实",
+    "prompt": "melting clocks draped over a barren tree branch, dreamlike desert landscape, impossible physics, meticulous detail",
+    "recommended_style": "surrealism",
+    "description": "融化时钟搭在枯树枝上，梦境般的沙漠风景，不合逻辑的物理"
+  },
+  {
+    "id": "surreal-floating-islands",
+    "title": "浮空岛屿",
+    "category": "超现实",
+    "prompt": "floating islands in the sky with waterfalls cascading into clouds, warm sunset light, atmospheric haze, dreamlike",
+    "recommended_style": "surrealism",
+    "description": "天空中的浮岛与瀑布倾入云海，温暖夕阳光线，梦幻氛围"
+  },
+  {
+    "id": "surreal-doorway",
+    "title": "通往未知之门",
+    "category": "超现实",
+    "prompt": "a mysterious doorway standing alone in a vast empty landscape, soft glow emanating from within, clouds above",
+    "recommended_style": "surrealism",
+    "description": "空旷大地上孤立的神秘门，门内散发柔和光芒"
+  },
+  {
+    "id": "expressionist-loneliness",
+    "title": "孤独的表达",
+    "category": "表现主义",
+    "prompt": "intense emotions, distorted perspective, vivid clashing colors, raw brushwork, personal interpretation of loneliness",
+    "recommended_style": "expressionism",
+    "description": "强烈情感，扭曲透视，鲜艳冲突色彩，粗犷笔触，对孤独的个人诠释"
+  },
+  {
+    "id": "expressionist-scream",
+    "title": "焦虑的呐喊",
+    "category": "表现主义",
+    "prompt": "a figure on a bridge screaming, sky swirling with unnatural red and orange, distorted features, emotional intensity",
+    "recommended_style": "expressionism",
+    "description": "桥上呐喊的身影，天空旋涡般红橙色，扭曲面孔，情感张力"
+  },
+  {
+    "id": "pointillism-river",
+    "title": "点彩河畔",
+    "category": "点彩派",
+    "prompt": "a riverside scene with boats, small distinct dots of pure color, optical color mixing, smooth surface, luminous",
+    "recommended_style": "pointillism",
+    "description": "河畔停泊小船的场景，纯色小点排列，视觉混色，明亮通透"
+  },
+  {
+    "id": "pointillism-park",
+    "title": "周日午后公园",
+    "category": "点彩派",
+    "prompt": "people relaxing in a park on Sunday afternoon, tiny dots of color, scientific color theory, serene and luminous",
+    "recommended_style": "pointillism",
+    "description": "周日下午公园中休憩的人群，微小色点，科学色彩理论，宁静明亮"
+  },
+  {
+    "id": "renaissance-madonna",
+    "title": "圣母与圣子",
+    "category": "古典",
+    "prompt": "Madonna and Child, sfumato technique, linear perspective, harmonious composition, soft transitions, idealized form",
+    "recommended_style": "renaissance",
+    "description": "圣母与圣子，晕涂法，线性透视，和谐构图，理想化造型"
+  },
+  {
+    "id": "renaissance-scholar",
+    "title": "书房中的学者",
+    "category": "古典",
+    "prompt": "a scholar in a library with leather-bound books, soft window light, earth tone palette, introspective mood",
+    "recommended_style": "renaissance",
+    "description": "皮革书墙中的学者，柔和窗光，土色调，沉思氛围"
+  },
+  {
+    "id": "chinese-village",
+    "title": "江南水乡",
+    "category": "中国风",
+    "prompt": "a water town in southern China, stone bridges over canals, white-walled houses with dark tiles, misty morning, poetic",
+    "recommended_style": "chinese_oil",
+    "description": "中国南方水乡，石桥流水，白墙黛瓦，晨雾朦胧，诗意盎然"
+  },
+  {
+    "id": "chinese-mountain-village",
+    "title": "山间古村",
+    "category": "中国风",
+    "prompt": "an ancient village nestled in misty mountains, terraced fields, traditional architecture, soft ink-wash atmosphere",
+    "recommended_style": "chinese_oil",
+    "description": "云雾山中古村落，梯田层叠，传统建筑，水墨意境"
+  }
+]
