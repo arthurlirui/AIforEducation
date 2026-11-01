@@ -1,0 +1,441 @@
+"""Masterpiece knowledge base: background, spirit, layered composition, narrative.
+
+The composition layers are hand-authored *style prescriptions* (palette +
+geometry semantics). The layer renderer converts these into real raster
+layers (base / mid / accent / line), which the frontend composites in 3D
+as parallax planes around a procedurally painted canvas.
+"""
+from __future__ import annotations
+
+from typing import Any
+
+
+# --------------------------------------------------------------------------
+# Narrative chapters: each entry advances the immersive tour.
+# type: intro | background | composition | spirit | technique | epilogue
+# --------------------------------------------------------------------------
+MASTERPIECES: list[dict[str, Any]] = [
+    {
+        "id": "starry-night",
+        "title": "星月夜",
+        "title_en": "The Starry Night",
+        "artist": "文森特·梵高",
+        "artist_en": "Vincent van Gogh",
+        "year": "1889",
+        "movement": "后印象派",
+        "location": "纽约现代艺术博物馆 (MoMA)",
+        "medium": "布面油画",
+        "size": "73.7 × 92.1 cm",
+        "summary": "1889年6月，梵高在圣雷米精神病院的铁窗内，凭记忆与想象绘出这片翻腾的夜空——艺术史上最著名的心理风景。",
+        "hero_palette": ["#0b1b3f", "#f5d76e", "#4a7fb5", "#e8f0ff"],
+        "layers": [
+            {
+                "role": "sky",
+                "depth": -14.0,
+                "opacity": 1.0,
+                "zdraw": 0.0,
+                "style": "night-sky",
+                "semantics": "翻腾的夜空与星云",
+                "palette": ["#0a1636", "#16305e", "#3c6ea5", "#7fa8d9"],
+                "detail": {"moon": True, "stars": 11, "swirl": True, "horizon": 0.62},
+            },
+            {
+                "role": "hills",
+                "depth": -7.0,
+                "opacity": 1.0,
+                "zdraw": 1.0,
+                "style": "rolling-hills",
+                "semantics": "远处低伏的阿尔卑斯山麓",
+                "palette": ["#1d3a2f", "#2e5244", "#4b7a63"],
+                "detail": {"amplitude": 0.05, "frequency": 2.2},
+            },
+            {
+                "role": "village",
+                "depth": -3.5,
+                "opacity": 1.0,
+                "zdraw": 2.0,
+                "style": "village",
+                "semantics": "沉睡的圣雷米小镇",
+                "palette": ["#101c33", "#23385c", "#e8d9a0"],
+                "detail": {"houses": 12, "church": True, "windows": True},
+            },
+            {
+                "role": "cypress",
+                "depth": 1.0,
+                "opacity": 1.0,
+                "zdraw": 3.0,
+                "style": "cypress",
+                "semantics": "如黑色火焰般升腾的丝柏",
+                "palette": ["#0d1f16", "#1a3323", "#274a30"],
+                "detail": {"flame": True},
+            },
+        ],
+        "chapters": [
+            {
+                "id": "intro",
+                "type": "intro",
+                "title": "进入画中",
+                "subtitle": "一幅用情绪描绘的夜",
+                "text": "欢迎来到1889年法国南部的夜晚。这不是眼睛看到的星空，而是心灵感受到的星空。请移动视角，走进梵高的精神宇宙。",
+                "focus": {"layer": "sky", "camera": "overview"},
+                "duration": 12,
+            },
+            {
+                "id": "sky",
+                "type": "composition",
+                "title": "翻腾的天空",
+                "subtitle": "十一颗星辰与两股气旋",
+                "text": "看那贯穿天际的巨大漩涡——学者们说它暗合湍流的数学结构。梵高在躁动中画下了精确的流场：星辰不是安静的光点，而是在呼吸、在旋转的生命。",
+                "focus": {"layer": "sky", "camera": "close-up", "zoom": 1.6},
+                "duration": 20,
+            },
+            {
+                "id": "cypress",
+                "type": "composition",
+                "title": "大地与火焰",
+                "subtitle": "连接尘世与天堂的丝柏",
+                "text": "前景这株丝柏如黑色火焰般扭向天空。在地中海文化中，丝柏是墓地之树——它是死亡与永恒的通道。梵高写道：'柏树在我心中始终萦绕，它像埃及的方尖碑一样美丽。'",
+                "focus": {"layer": "cypress", "camera": "close-up", "zoom": 1.8},
+                "duration": 20,
+            },
+            {
+                "id": "village",
+                "type": "background",
+                "title": "沉睡的小镇",
+                "subtitle": "秩序与人间的安宁",
+                "text": "与激荡的天空相反，小镇笔直、安静、几何化。尖顶教堂直指星夜——人间秩序与宇宙洪荒在此对望。这是梵高在病院中回望的人间：温暖、克制、遥远。",
+                "focus": {"layer": "village", "camera": "medium", "zoom": 1.3},
+                "duration": 18,
+            },
+            {
+                "id": "spirit",
+                "type": "spirit",
+                "title": "精神内核",
+                "subtitle": "在漩涡中寻找安宁",
+                "text": "《星月夜》的核心张力在于：宇宙在燃烧，而村庄在安睡。梵高把内心的风暴与对安宁的渴望画进了同一片夜空。他在给弟弟提奥的信中说：'我常常觉得夜晚比白天更有生命力、更色彩斑斓。'",
+                "focus": {"layer": "sky", "camera": "overview", "zoom": 1.1},
+                "duration": 20,
+            },
+            {
+                "id": "epilogue",
+                "type": "epilogue",
+                "title": "尾声",
+                "subtitle": "从圣雷米到永恒",
+                "text": "梵高于1890年7月离世，这幅画在他生前从未被理解。今天，它是人类孤独与渴望最明亮的证词。愿你记住：即使身处最深的黑夜，也能画出发光的星辰。",
+                "focus": {"layer": None, "camera": "pull-back"},
+                "duration": 14,
+            },
+        ],
+        "quiz": [
+            {
+                "q": "梵高是在哪里创作《星月夜》的？",
+                "options": ["法国阿尔勒的黄房子", "圣雷米精神病院的病房", "巴黎的画室", "荷兰的家乡"],
+                "answer": 1,
+                "explain": "1889年5月梵高自愿住进圣雷米的精神病院，6月凭记忆与想象完成了这幅画。",
+            },
+            {
+                "q": "前景中如黑色火焰般的树是什么树？",
+                "options": ["松树", "橡树", "丝柏", "白杨"],
+                "answer": 2,
+                "explain": "丝柏在地中海文化中是墓地之树，象征死亡与永恒。梵高曾赞美它'像埃及方尖碑一样美丽'。",
+            },
+            {
+                "q": "画面中天空与村庄的关系传达了什么？",
+                "options": [
+                    "自然的狂暴与人间的安宁形成张力",
+                    "村庄即将被风暴摧毁",
+                    "天空是村庄的倒影",
+                    "二者毫无关联",
+                ],
+                "answer": 0,
+                "explain": "激荡的宇宙与沉睡的小镇构成核心张力：内心的风暴与对安宁的渴望共存。",
+            },
+        ],
+    },
+    {
+        "id": "great-wave",
+        "title": "神奈川冲浪里",
+        "title_en": "The Great Wave off Kanagawa",
+        "artist": "葛饰北斋",
+        "artist_en": "Katsushika Hokusai",
+        "year": "约1831",
+        "movement": "浮世绘",
+        "location": "大英博物馆 / 大都会艺术博物馆等",
+        "medium": "木刻版画",
+        "size": "25.7 × 37.9 cm",
+        "summary": "《富岳三十六景》中最负盛名的一幅：巨浪之爪扑向三艘渔船，远处富士山静默如一——动与静、危机与永恒的一瞬。",
+        "hero_palette": ["#1b4a6b", "#f4f1e8", "#4d7ba0", "#e0e7ef"],
+        "layers": [
+            {
+                "role": "sky",
+                "depth": -12.0,
+                "opacity": 1.0,
+                "zdraw": 0.0,
+                "style": "wave-sky",
+                "semantics": "泛白的晨空",
+                "palette": ["#e8e4d8", "#d6d2c4", "#c2beb0"],
+                "detail": {"fuji": True, "clouds": 4},
+            },
+            {
+                "role": "sea",
+                "depth": -5.0,
+                "opacity": 1.0,
+                "zdraw": 1.0,
+                "style": "great-wave",
+                "semantics": "掀起巨爪的怒海",
+                "palette": ["#123a5c", "#1b5a8a", "#2e7ab0", "#9fc3da"],
+                "detail": {"claws": True, "foam": True},
+            },
+            {
+                "role": "boats",
+                "depth": -2.0,
+                "opacity": 1.0,
+                "zdraw": 2.0,
+                "style": "fishing-boats",
+                "semantics": "押送船上的渔夫",
+                "palette": ["#2a2620", "#4a443a", "#8a8272"],
+                "detail": {"boats": 3, "rowers": True},
+            },
+            {
+                "role": "frame",
+                "depth": 0.5,
+                "opacity": 1.0,
+                "zdraw": 3.0,
+                "style": "hokusai-frame",
+                "semantics": "右上题签与红色印章",
+                "palette": ["#8a2a22", "#2a2620", "#f4f0e6"],
+                "detail": {"cartouche": True, "seal": True},
+            },
+        ],
+        "chapters": [
+            {
+                "id": "intro",
+                "type": "intro",
+                "title": "进入画中",
+                "subtitle": "定格在巨浪坠落前的一秒",
+                "text": "这是江户时代最惊心动魄的一瞬：巨浪张开了利爪，即将吞没三艘渔船。请注意远处——富士山小得像一个静默的旁观者。",
+                "focus": {"layer": "sea", "camera": "overview"},
+                "duration": 12,
+            },
+            {
+                "id": "wave",
+                "type": "composition",
+                "title": "巨浪之爪",
+                "subtitle": "重复的曲线与'利爪'浪花",
+                "text": "北斋用重复的小弧线堆叠出浪爪，形似佛手。浪的曲线在画面左侧盘旋回卷，形成椭圆形的视觉循环——观者的目光被巨浪裹挟，永远无法逃离。",
+                "focus": {"layer": "sea", "camera": "close-up", "zoom": 1.7},
+                "duration": 20,
+            },
+            {
+                "id": "fuji",
+                "type": "composition",
+                "title": "静默的富士",
+                "subtitle": "动与静的对位法",
+                "text": "在狂暴的前景与愤怒的海之后，富士山以一个安静的三角形出现。它是永恒的锚点：海浪会落下，渔船会倾覆，而山永远在那里。动与静构成了日本美学的核心——'不变'与'无常'的对话。",
+                "focus": {"layer": "sky", "camera": "medium", "zoom": 1.4},
+                "duration": 20,
+            },
+            {
+                "id": "people",
+                "type": "background",
+                "title": "浪里的人生",
+                "subtitle": "低头划桨的渔夫",
+                "text": "细看渔船：押送船的渔夫们没有呼救，只是低头整齐划桨。他们不是与自然对抗的英雄，而是接受无常、继续劳作的普通人。这正是北斋的深意——在不可抗拒的力量面前，尊严来自继续前行。",
+                "focus": {"layer": "boats", "camera": "close-up", "zoom": 1.6},
+                "duration": 18,
+            },
+            {
+                "id": "spirit",
+                "type": "spirit",
+                "title": "精神内核",
+                "subtitle": "无常之美与人的坚韧",
+                "text": "《神奈川冲浪里》的精神内核是日本美学中的'物哀'：美恰恰存在于短暂与危机之中。巨浪终将落下，这一秒的惊险就是永恒。北斋七十岁时作此画，他一生搬迁九十三次，却在画中找到了安放无常的方式。",
+                "focus": {"layer": "sea", "camera": "overview", "zoom": 1.1},
+                "duration": 20,
+            },
+            {
+                "id": "epilogue",
+                "type": "epilogue",
+                "title": "尾声",
+                "subtitle": "从江户到世界",
+                "text": "这幅版画印数以千计，漂洋过海启发了莫奈、德彪西与整个欧洲印象派。一朵江户的浪花，最终拍响了现代艺术的海岸。",
+                "focus": {"layer": None, "camera": "pull-back"},
+                "duration": 12,
+            },
+        ],
+        "quiz": [
+            {
+                "q": "这幅画属于哪个系列？",
+                "options": ["《东海道五十三次》", "《富岳三十六景》", "《名所江户百景》", "《洛中洛外图》"],
+                "answer": 1,
+                "explain": "它是葛饰北斋晚年版画集《富岳三十六景》的第一幅，也是最著名的一幅。",
+            },
+            {
+                "q": "画面中的三艘船是什么船？",
+                "options": ["观光游船", "运押鲜鱼的'押送船'", "战船", "渔民的私船"],
+                "answer": 1,
+                "explain": "是运送活鱼到江户市场的押送船（oshiokuri-bune），船速极快，常与海浪搏斗。",
+            },
+            {
+                "q": "巨浪与富士山的对比表达了什么？",
+                "options": [
+                    "自然的两副面孔：瞬间的狂暴与永恒的静默",
+                    "海比山更美丽",
+                    "富士山即将喷发",
+                    "渔船要驶向富士山",
+                ],
+                "answer": 0,
+                "explain": "无常的浪与不变的富士构成对位：危机中的一瞬被凝固成永恒，这是'物哀'美学的核心。",
+            },
+        ],
+    },
+    {
+        "id": "girl-with-pearl",
+        "title": "戴珍珠耳环的少女",
+        "title_en": "Girl with a Pearl Earring",
+        "artist": "约翰内斯·维米尔",
+        "artist_en": "Johannes Vermeer",
+        "year": "约1665",
+        "movement": "荷兰黄金时代",
+        "location": "海牙莫瑞泰斯皇家美术馆",
+        "medium": "布面油画",
+        "size": "44.5 × 39 cm",
+        "summary": "一位少女在深色背景中回眸，耳畔一点珍珠的光——被称为'北方的蒙娜丽莎'，一个永远无法解开的凝视之谜。",
+        "hero_palette": ["#1a1d24", "#3f5ea8", "#e8cfa8", "#f0ead8"],
+        "layers": [
+            {
+                "role": "background",
+                "depth": -8.0,
+                "opacity": 1.0,
+                "zdraw": 0.0,
+                "style": "dark-void",
+                "semantics": "虚空般的深色背景",
+                "palette": ["#141620", "#1c1f2b", "#242836"],
+                "detail": {"vignette": 0.5},
+            },
+            {
+                "role": "figure",
+                "depth": -3.0,
+                "opacity": 1.0,
+                "zdraw": 1.0,
+                "style": "delft-girl",
+                "semantics": "回眸的少女",
+                "palette": ["#e8cfa8", "#d9b98c", "#3f5ea8", "#8a6a3a"],
+                "detail": {"turban": True, "face": True, "collar": True},
+            },
+            {
+                "role": "pearl",
+                "depth": 0.0,
+                "opacity": 1.0,
+                "zdraw": 2.0,
+                "style": "pearl",
+                "semantics": "一点珍珠的光",
+                "palette": ["#f5f2e8", "#ffffff", "#d8d4c4"],
+                "detail": {"glow": True},
+            },
+        ],
+        "chapters": [
+            {
+                "id": "intro",
+                "type": "intro",
+                "title": "进入画中",
+                "subtitle": "一次跨越三百五十年的对视",
+                "text": "在代尔夫特的一间暗室里，一位少女转过身来。没有故事、没有姓名、没有委托人——维米尔只留给我们这一次对视。",
+                "focus": {"layer": "figure", "camera": "overview"},
+                "duration": 12,
+            },
+            {
+                "id": "gaze",
+                "type": "composition",
+                "title": "回眸",
+                "subtitle": "被捕捉的瞬间动作",
+                "text": "这不是一幅肖像画，而是一幅'tronjie'——荷兰语中的'头像习作'。少女的动作是进行中的：她刚刚转身，双唇微启，仿佛正要开口又欲言而止。维米尔捕捉的正是这个'未完成'的瞬间。",
+                "focus": {"layer": "figure", "camera": "close-up", "zoom": 1.8},
+                "duration": 20,
+            },
+            {
+                "id": "light",
+                "type": "technique",
+                "title": "光与珍珠",
+                "subtitle": "两点高光构成的光学戏剧",
+                "text": "看少女的眼睛与耳畔的珍珠——两点高光遥相呼应。珍珠其实只有两个笔触：一点亮部、一点暗部，维米尔用最少的颜料完成了最完整的错觉。有人说他借助了暗箱（camera obscura），把光学仪器的观看方式带进了绘画。",
+                "focus": {"layer": "pearl", "camera": "extreme-close-up", "zoom": 2.2},
+                "duration": 20,
+            },
+            {
+                "id": "background-story",
+                "type": "background",
+                "title": "代尔夫特的画室",
+                "subtitle": "11个孩子与一屋债务",
+                "text": "维米尔一生只留下约35幅画，死时负债累累，妻子用画作抵债。他的画室在岳母家的二楼，楼下住着11个孩子。这些宁静的画面背后，是一个嘈杂、窘迫、被战争阴影笼罩的荷兰黄金时代。",
+                "focus": {"layer": "background", "camera": "medium", "zoom": 1.2},
+                "duration": 18,
+            },
+            {
+                "id": "spirit",
+                "type": "spirit",
+                "title": "精神内核",
+                "subtitle": "无名者的尊严",
+                "text": "这幅画没有神话、没有圣经、没有贵族——只有一位无名少女的回眸。维米尔把'日常的一瞬'提升为永恒：普通人值得被光影郑重对待。这是荷兰黄金时代最安静也最大胆的宣言。",
+                "focus": {"layer": "figure", "camera": "overview", "zoom": 1.15},
+                "duration": 20,
+            },
+            {
+                "id": "epilogue",
+                "type": "epilogue",
+                "title": "尾声",
+                "subtitle": "从遗忘到icon",
+                "text": "维米尔被遗忘了两个世纪，直到19世纪才被重新发现。今天，这幅小画让全世界的游客专程飞往海牙——只为与她对视三十秒。",
+                "focus": {"layer": None, "camera": "pull-back"},
+                "duration": 12,
+            },
+        ],
+        "quiz": [
+            {
+                "q": "这幅画在荷兰语中属于哪种类型？",
+                "options": ["肖像画 (portret)", "头像习作 (tronjie)", "历史画", "风俗画"],
+                "answer": 1,
+                "explain": "它不是受委托的正式肖像，而是一幅表现人物神态的'tronjie'（头像习作），因此少女无需有真实身份。",
+            },
+            {
+                "q": "画中的珍珠耳环实际上用了大约几笔？",
+                "options": ["几十笔精细刻画", "两个笔触", "一层厚涂颜料", "贴真的珍珠"],
+                "answer": 1,
+                "explain": "维米尔仅用一点亮部与一点暗部（外加反射光）就暗示出完整的珍珠——极简的光学魔法。",
+            },
+            {
+                "q": "维米尔作画可能借助了什么光学仪器？",
+                "options": ["望远镜", "放大镜", "暗箱 (camera obscura)", "显微镜"],
+                "answer": 2,
+                "explain": "学者根据其画中独特的光晕与景深推测他使用了暗箱，一种早期投影成像装置。",
+            },
+        ],
+    },
+]
+
+MASTERPIECES_BY_ID = {m["id"]: m for m in MASTERPIECES}
+
+
+def list_masterpieces() -> list[dict[str, Any]]:
+    """Catalog entries without heavy narrative payloads."""
+    out = []
+    for m in MASTERPIECES:
+        out.append(
+            {
+                "id": m["id"],
+                "title": m["title"],
+                "title_en": m["title_en"],
+                "artist": m["artist"],
+                "year": m["year"],
+                "movement": m["movement"],
+                "summary": m["summary"],
+                "hero_palette": m["hero_palette"],
+                "layer_count": len(m["layers"]),
+                "chapter_count": len(m["chapters"]),
+            }
+        )
+    return out
+
+
+def get_masterpiece(mid: str) -> dict[str, Any] | None:
+    return MASTERPIECES_BY_ID.get(mid)
