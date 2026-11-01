@@ -1,0 +1,182 @@
+{
+  "id": "chibi-battle",
+  "title": "赤壁之战",
+  "subtitle": "一场大火烧出的三分天下",
+  "era": "东汉末年",
+  "year_start": "208年",
+  "year_end": "208年",
+  "scale": "region",
+  "cover": "🔥",
+  "summary": "公元208年，曹操统一北方后挥师南下，意图一举吞并江南。刘备与孙权在危局中结成联盟，于长江赤壁以火攻大破曹军。这是中国历史上以少胜多、以弱胜强的著名战役，奠定了魏蜀吴三国鼎立的格局。",
+  "spirit_core": "弱者联合则强：在绝对力量面前，智慧、勇气与联盟可以扭转乾坤。",
+  "map": {
+    "scale": "region",
+    "center": [113.5, 31.5],
+    "zoom": 9.0,
+    "graticule": false,
+    "areas": [
+      { "nation": "wei", "points": [[104, 40], [117, 40], [117.5, 33], [113.8, 32.2], [111.5, 33.5], [104, 36]] },
+      { "nation": "shu", "points": [[104, 30.5], [110.5, 32.5], [111.5, 30.8], [108, 28.5], [103.5, 28.5]] },
+      { "nation": "wu", "points": [[112.5, 30.2], [117, 32.3], [121, 31.5], [121, 26.5], [115, 25.5], [111.5, 27.5], [112, 29.5]] }
+    ]
+  },
+  "nations": [
+    { "id": "wei", "name": "曹魏（曹操）", "color": "#c0392b", "side": "进攻方", "description": "曹操挟天子以令诸侯，统一北方后拥兵二十余万南下，号称八十万，欲一举荡平江南。" },
+    { "id": "shu", "name": "刘备军", "color": "#27ae60", "side": "抵抗方", "description": "刘备携民渡江，屡败屡战，寄寓荆州，仅有残部数千，却始终不肯放弃兴复汉室的理想。" },
+    { "id": "wu", "name": "东吴（孙权）", "color": "#2980b9", "side": "抵抗方", "description": "孙权据有江东已历三世，兵精粮足，水师冠绝天下，却在战与降之间面临生死抉择。" }
+  ],
+  "steps": [
+    {
+      "id": 1,
+      "date": "208年7月",
+      "title": "曹操挥师南下",
+      "narrative": "统一北方后的曹操亲率大军自邺城南下，直指荆州。荆州牧刘表病危，八郡人心浮动，江南的大门正在缓缓打开。",
+      "background": "官渡之战后，曹操陆续平定河北，北方基本统一。建安十三年秋，他废三公自任丞相，权势达到顶点，南方仅存的割据势力刘表、刘备、孙权成为最后的障碍。",
+      "spirit": "权力的膨胀往往伴随野心的膨胀——历史在此刻按下了南方命运的快进键。",
+      "significance": "曹军南下使荆州成为天下争夺的焦点，三方势力被推入同一张棋盘。",
+      "camera": [113.0, 33.5],
+      "camera_zoom": 9.0,
+      "actors": [
+        { "id": "cao-main", "nation": "wei", "name": "曹操主力", "kind": "army", "position": [113.9, 35.2], "strength": 220 },
+        { "id": "liu-xinye", "nation": "shu", "name": "刘备部（新野）", "kind": "army", "position": [112.4, 32.5], "strength": 15 },
+        { "id": "sun-jiangdong", "nation": "wu", "name": "孙权军（江东）", "kind": "fleet", "position": [118.8, 32.0], "strength": 70 }
+      ],
+      "arrows": [
+        { "label": "曹军主力南下", "points": [[114.6, 36.3], [113.5, 34.5], [112.6, 32.9]], "color": "#c0392b", "width": 1.3 }
+      ],
+      "highlights": [
+        { "position": [113.85, 34.04], "radius": 4.0, "color": "#e74c3c", "label": "许昌（汉都）" }
+      ],
+      "markers": []
+    },
+    {
+      "id": 2,
+      "date": "208年9月",
+      "title": "刘琮举州而降",
+      "narrative": "刘表病死，其次子刘琮不战而降，献出荆州八郡。驻守樊城的刘备猝不及防，只得携十余万百姓南撤，日行仅十余里。",
+      "background": "荆州乃用武之国，刘表生前坐观成败，其子刘琮年幼惧战。蔡氏家族把持州政，暗中与曹操接洽，荆州未发一矢便易了主人。",
+      "spirit": "「以人为本」不是口号——刘备宁失战机而不弃百姓，仁德由此深得荆襄之心。",
+      "significance": "刘备携民渡江虽败犹荣，民心成为他日后立足益州最深的根基。",
+      "camera": [112.3, 31.2],
+      "camera_zoom": 10.0,
+      "actors": [
+        { "id": "cao-main", "nation": "wei", "name": "曹操主力（襄阳）", "kind": "army", "position": [112.12, 32.0], "strength": 230 },
+        { "id": "liu-retreat", "nation": "shu", "name": "刘备军民", "kind": "army", "position": [112.3, 31.4], "strength": 12 },
+        { "id": "sun-jiangdong", "nation": "wu", "name": "孙权军（江东）", "kind": "fleet", "position": [118.8, 32.0], "strength": 70 }
+      ],
+      "arrows": [
+        { "label": "刘备携民南撤", "points": [[112.44, 32.5], [112.3, 31.4], [112.2, 30.4]], "color": "#27ae60", "width": 1.0 }
+      ],
+      "highlights": [
+        { "position": [112.12, 32.01], "radius": 5.0, "color": "#f1c40f", "label": "襄阳（不战而降）" }
+      ],
+      "markers": [
+        { "id": "m-xiangyang", "kind": "city", "position": [112.12, 32.01], "label": "襄阳归曹", "color": "#e67e22" }
+      ]
+    },
+    {
+      "id": 3,
+      "date": "208年10月",
+      "title": "长坂坡之战",
+      "narrative": "曹操亲率五千虎豹骑昼夜疾追，一日一夜行三百里，在当阳长坂追上刘备。赵云七进七出救出阿斗，张飞据水断桥一声怒喝，刘备残部退往夏口，与刘琦万余人会合。",
+      "background": "刘备南撤目标本是江陵军资重镇，但十余万百姓拖慢了行军。曹操深知江陵不可失，弃辎重轻兵急追，在长坂坡一举击溃刘备部众。",
+      "spirit": "绝境中最见人心：赵子龙单骑救主、张翼德横矛立马，忠义在乱军中熠熠生辉。",
+      "significance": "刘备虽然惨败，却保存了核心班底并退保夏口，为孙刘联盟保留了火种。",
+      "camera": [112.5, 30.7],
+      "camera_zoom": 12.0,
+      "actors": [
+        { "id": "cao-chase", "nation": "wei", "name": "虎豹骑", "kind": "army", "position": [112.2, 30.8], "strength": 60 },
+        { "id": "liu-retreat", "nation": "shu", "name": "刘备残部", "kind": "army", "position": [114.2, 30.6], "strength": 6 },
+        { "id": "sun-jiangdong", "nation": "wu", "name": "孙权军（江东）", "kind": "fleet", "position": [118.8, 32.0], "strength": 70 }
+      ],
+      "arrows": [
+        { "label": "虎豹骑昼夜追击", "points": [[112.12, 32.0], [112.15, 31.4], [112.2, 30.8]], "color": "#c0392b", "width": 1.2 },
+        { "label": "刘备败退夏口", "points": [[112.2, 30.8], [113.2, 30.6], [114.25, 30.6]], "color": "#27ae60", "width": 1.0 }
+      ],
+      "highlights": [
+        { "position": [112.2, 30.8], "radius": 4.5, "color": "#e74c3c", "label": "长坂坡" }
+      ],
+      "markers": [
+        { "id": "m-changban", "kind": "battle", "position": [112.2, 30.8], "label": "长坂坡之战", "color": "#e74c3c" }
+      ]
+    },
+    {
+      "id": 4,
+      "date": "208年10月末",
+      "title": "孙刘联盟缔结",
+      "narrative": "败军之际，诸葛亮自请出使江东，舌战群儒、智激孙权。鲁肃、周瑜力主抗曹，孙权拔剑斫案：『孤与老贼，誓不两立！』孙刘联盟就此缔成。",
+      "background": "曹操投书孙权，号称水步军八十万，江东震动。张昭等主降，鲁肃一语点醒孙权：『众人皆可降曹，唯将军不可。』周瑜析曹军弊端：北军不习水战、舍鞍马仗舟楫、隆冬无草料。孙权决意联刘抗曹。",
+      "spirit": "天下大势，分久必合；弱者之道，合纵连横——真正的勇气，是在恐惧中依然做出正确的选择。",
+      "significance": "孙刘联盟使曹操面临两线水战，赤壁的天平开始倾斜。",
+      "camera": [116.0, 30.3],
+      "camera_zoom": 10.0,
+      "actors": [
+        { "id": "cao-main", "nation": "wei", "name": "曹军（江陵集结）", "kind": "fleet", "position": [112.18, 30.35], "strength": 220 },
+        { "id": "liu-xiakou", "nation": "shu", "name": "刘备·刘琦部（夏口）", "kind": "army", "position": [114.3, 30.6], "strength": 15 },
+        { "id": "zhou-yu", "nation": "wu", "name": "周瑜水师（柴桑）", "kind": "fleet", "position": [115.97, 29.7], "strength": 60 }
+      ],
+      "arrows": [
+        { "label": "诸葛亮出使柴桑", "points": [[114.3, 30.6], [115.2, 30.1], [115.97, 29.7]], "color": "#f1c40f", "dashed": true, "width": 0.8 }
+      ],
+      "highlights": [
+        { "position": [115.97, 29.71], "radius": 5.0, "color": "#2980b9", "label": "柴桑（孙权行营）" },
+        { "position": [114.3, 30.6], "radius": 4.0, "color": "#27ae60", "label": "夏口" }
+      ],
+      "markers": [
+        { "id": "m-alliance", "kind": "treaty", "position": [115.3, 30.1], "label": "孙刘联盟", "color": "#f1c40f" }
+      ]
+    },
+    {
+      "id": 5,
+      "date": "208年冬",
+      "title": "火烧赤壁",
+      "narrative": "周瑜率三万水师与曹军隔江对峙于赤壁。曹军士卒疫病流行，船舰首尾以铁索相连。黄盖献诈降之计，借东南风以十艘艨艟装载浸油柴草，冲入曹营纵火——『谈笑间，樯橹灰飞烟灭』。",
+      "background": "曹军多为北方人，不习水战且军中大疫。为平稳船身，曹军以铁环连锁战船，恰被黄盖看中破绽。冬至前后长江偶有东南风，天时地利人和皆在孙刘一侧。",
+      "spirit": "以智取胜、以弱胜强——洞察对手的软肋，比硬拼更接近胜利；而所谓奇迹，不过是准备遇上了机会。",
+      "significance": "赤壁一战击碎了曹操短期统一全国的希望，中国历史从此驶入三国鼎立的航道。",
+      "camera": [113.6, 29.8],
+      "camera_zoom": 13.0,
+      "actors": [
+        { "id": "cao-chibi", "nation": "wei", "name": "曹军船阵（乌林）", "kind": "fleet", "position": [113.5, 29.95], "strength": 200 },
+        { "id": "lian-jun", "nation": "wu", "name": "孙刘联军（赤壁）", "kind": "fleet", "position": [113.62, 29.6], "strength": 70 }
+      ],
+      "arrows": [
+        { "label": "周瑜水师进驻赤壁", "points": [[115.97, 29.7], [115.0, 29.6], [113.62, 29.6]], "color": "#2980b9", "width": 1.1 },
+        { "label": "黄盖火攻（诈降突击）", "points": [[113.62, 29.6], [113.55, 29.8], [113.5, 29.95]], "color": "#e67e22", "width": 1.6 }
+      ],
+      "highlights": [
+        { "position": [113.62, 29.72], "radius": 6.0, "color": "#e74c3c", "label": "赤壁（火攻战场）" }
+      ],
+      "markers": [
+        { "id": "m-chibi", "kind": "battle", "position": [113.62, 29.72], "label": "火烧赤壁", "color": "#e74c3c" }
+      ]
+    },
+    {
+      "id": 6,
+      "date": "208年冬末",
+      "title": "华容道北归 · 三分雏形",
+      "narrative": "曹操自乌林沿华容道狼狈北撤，泥泞中令羸兵负草填路，人马自相践踏。退守江陵后留曹仁驻守，自还北方。长江天险从此横亘在南北之间，三国鼎立的雏形在硝烟中显现。",
+      "background": "赤壁惨败后曹操士气崩溃，退路泥泞难行。他留曹仁守江陵、乐进守襄阳，形成南郡防线，自己引军北还，转而经营关中与西北，再无力大举南下。",
+      "spirit": "胜败乃兵家常事，但一次惨败往往比十场大胜更能塑造此后的世界——失败者也在这张沙盘上留下了自己的转折。",
+      "significance": "赤壁之后，刘备趁机夺取荆南四郡、后取益州，孙权巩固江东，三分天下的格局在战后十年间逐步定型。",
+      "camera": [113.2, 30.6],
+      "camera_zoom": 9.0,
+      "actors": [
+        { "id": "cao-north", "nation": "wei", "name": "曹操北归军", "kind": "army", "position": [112.45, 34.62], "strength": 140 },
+        { "id": "liu-jingnan", "nation": "shu", "name": "刘备军（南收四郡）", "kind": "army", "position": [112.9, 28.8], "strength": 30 },
+        { "id": "sun-consolidate", "nation": "wu", "name": "周瑜军（围攻江陵）", "kind": "fleet", "position": [112.3, 30.3], "strength": 60 }
+      ],
+      "arrows": [
+        { "label": "曹操华容道北撤", "points": [[113.5, 29.95], [112.9, 29.8], [112.18, 30.35], [113.5, 33.0], [112.45, 34.62]], "color": "#95a5a6", "dashed": true, "width": 1.0 },
+        { "label": "刘备收取荆南四郡", "points": [[114.3, 30.6], [113.2, 29.5], [112.9, 28.8]], "color": "#27ae60", "width": 0.9 }
+      ],
+      "highlights": [
+        { "position": [112.9, 29.8], "radius": 4.0, "color": "#95a5a6", "label": "华容道" }
+      ],
+      "markers": [
+        { "id": "m-huarong", "kind": "battle", "position": [112.9, 29.8], "label": "华容道", "color": "#95a5a6" },
+        { "id": "m-sanfen", "kind": "treaty", "position": [113.5, 31.5], "label": "三分格局雏形", "color": "#f1c40f" }
+      ]
+    }
+  ]
+}

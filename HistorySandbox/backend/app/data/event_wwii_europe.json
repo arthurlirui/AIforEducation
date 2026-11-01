@@ -1,0 +1,187 @@
+{
+  "id": "wwii-europe",
+  "title": "第二次世界大战 · 欧洲战场",
+  "subtitle": "从闪电战到柏林红旗",
+  "era": "1939—1945",
+  "year_start": "1939年9月",
+  "year_end": "1945年5月",
+  "scale": "region",
+  "cover": "🕊️",
+  "summary": "1939年德国闪击波兰，战火燃遍欧洲；1941年德国入侵苏联、日本偷袭珍珠港，战争升级为全球反法西斯战争。从斯大林格勒到诺曼底，从北非到柏林，这场人类历史上最大的战争以法西斯的彻底失败告终，留下和平与国际秩序重建的沉重遗产。",
+  "spirit_core": "和平不是理所当然：当侵略践踏文明底线时，跨越国界的联合抵抗是人类对黑暗最有力的回答。",
+  "map": {
+    "scale": "region",
+    "center": [15, 50],
+    "zoom": 3.4,
+    "graticule": false,
+    "areas": []
+  },
+  "nations": [
+    { "id": "axis", "name": "轴心国（德意）", "color": "#c0392b", "side": "侵略方", "description": "纳粹德国以闪电战与种族灭绝战争碾压欧洲，将世界拖入深渊；其扩张野心终在两线作战中耗尽。" },
+    { "id": "allies", "name": "同盟国", "color": "#2980b9", "side": "抵抗方", "description": "英国苦撑、苏联血战、美国参战、自由法国不屈——不同制度的国家为共同的反法西斯目标联合起来。" },
+    { "id": "neutral", "name": "中立国", "color": "#95a5a6", "side": "中立", "description": "瑞典、瑞士、西班牙等国在战火边缘维持脆弱的中立，战争没有真正的旁观者。" }
+  ],
+  "steps": [
+    {
+      "id": 1,
+      "date": "1939年9月",
+      "title": "闪击波兰 · 战争爆发",
+      "narrative": "9月1日，德国以『闪电战』空地协同突袭波兰；9月3日，英法对德宣战。9月17日苏军自东进入波兰，华沙在轰炸中陷落——第二次世界大战全面爆发。",
+      "background": "《凡尔赛和约》的严苛、大萧条的冲击与绥靖政策的纵容，让纳粹德国步步试探而未遇抵抗：重占莱茵兰、吞并奥地利、攫取苏台德，直到波兰成为压垮和平的最后一根稻草。",
+      "spirit": "绥靖换不来和平，退让只会喂大野心——这是二十世纪最沉重的一课。",
+      "significance": "欧洲集体安全体系彻底崩溃，一场席卷全球的总体战拉开帷幕。",
+      "camera": [19, 52],
+      "camera_zoom": 6.0,
+      "actors": [
+        { "id": "wehrmacht-pl", "nation": "axis", "name": "德国国防军", "kind": "army", "position": [16.5, 52.3], "strength": 200 },
+        { "id": "poland-army", "nation": "allies", "name": "波兰军队", "kind": "army", "position": [20.0, 52.2], "strength": 60 }
+      ],
+      "arrows": [
+        { "label": "德军钳形攻势", "points": [[12.0, 54.2], [15.5, 53.3], [18.5, 52.5], [20.5, 52.2]], "color": "#c0392b", "width": 1.4 },
+        { "label": "德军南翼突击", "points": [[16.6, 49.6], [18.8, 50.8], [21.0, 51.2]], "color": "#c0392b", "width": 1.2 }
+      ],
+      "highlights": [
+        { "position": [16.93, 52.4], "radius": 5.0, "color": "#e74c3c", "label": "华沙（9月27日陷落）" },
+        { "position": [18.65, 52.26], "radius": 3.5, "color": "#95a5a6", "label": "比得哥什（走廊争夺）" }
+      ],
+      "markers": [
+        { "id": "m-warsaw-39", "kind": "battle", "position": [20.0, 52.2], "label": "波兰战役", "color": "#e74c3c" }
+      ]
+    },
+    {
+      "id": 2,
+      "date": "1940年5—6月",
+      "title": "法国沦陷 · 敦刻尔克撤退",
+      "narrative": "德军绕过马其诺防线，穿越阿登森林直插英吉利海峡，将四十万英法联军压缩在敦刻尔克滩头。『发电机行动』动员八百余艘民船撤回三十三万余人，为反攻保存了火种。6月22日，法国签署停战协定。",
+      "background": "德军主力出其不意地经『不可通行』的阿登山地突破色当，联军战略误判酿成大溃败。敦刻尔克的奇迹由渔船、游艇与平民水手共同完成，伦敦上空即将迎来最艰难的考验。",
+      "spirit": "撤退也可以是胜利——拯救三十三万个『明天』，比守住一座城市更能延续希望。",
+      "significance": "欧陆仅剩英国独自抗战，丘吉尔『我们决不投降』的声音成为抵抗运动的精神灯塔。",
+      "camera": [3, 49.5],
+      "camera_zoom": 6.5,
+      "actors": [
+        { "id": "panzer-fr", "nation": "axis", "name": "德军装甲集群", "kind": "army", "position": [3.2, 49.3], "strength": 240 },
+        { "id": "bef", "nation": "allies", "name": "英国远征军", "kind": "army", "position": [2.36, 51.03], "strength": 90 }
+      ],
+      "arrows": [
+        { "label": "阿登突贯（曼施坦因计划）", "points": [[6.5, 50.4], [5.0, 49.9], [3.8, 49.6], [2.6, 49.9]], "color": "#c0392b", "width": 1.6 },
+        { "label": "敦刻尔克海上撤退", "points": [[2.36, 51.03], [1.58, 51.15], [1.0, 51.2]], "color": "#2980b9", "dashed": true, "width": 1.1 }
+      ],
+      "highlights": [
+        { "position": [2.38, 51.03], "radius": 4.0, "color": "#2980b9", "label": "敦刻尔克" },
+        { "position": [4.85, 49.87], "radius": 3.5, "color": "#e74c3c", "label": "色当突破点" },
+        { "position": [2.35, 48.86], "radius": 4.0, "color": "#95a5a6", "label": "巴黎（6月14日陷落）" }
+      ],
+      "markers": [
+        { "id": "m-dunkirk", "kind": "battle", "position": [2.38, 51.03], "label": "敦刻尔克大撤退", "color": "#2980b9" }
+      ]
+    },
+    {
+      "id": 3,
+      "date": "1940年7月—1941年6月",
+      "title": "不列颠空战 · 巴巴罗萨",
+      "narrative": "纳粹空军对英伦狂轰滥炸，皇家空军以雷达与少胜多赢得不列颠空战。希特勒转身向东：1941年6月22日，三百余万德军分三路入侵苏联，基辅围歼战俘虏六十余万苏军，兵锋直指莫斯科。",
+      "background": "征服英国无望后，希特勒执意发动蓄谋已久的『生存空间』战争。苏联以空间换时间，工业东迁乌拉尔，在斯摩棱斯克与基辅以巨大牺牲迟滞德军攻势。",
+      "spirit": "自由的天空没有陷落；而在东方，一个民族用血肉在自己的土地上筑起了新的长城。",
+      "significance": "战争扩展至两线，英国得喘息、苏联入战局，全球反法西斯同盟的雏形开始成形。",
+      "camera": [30, 52],
+      "camera_zoom": 4.0,
+      "actors": [
+        { "id": "luftwaffe", "nation": "axis", "name": "德国空军", "kind": "fleet", "position": [0.5, 51.5], "strength": 150 },
+        { "id": "raf", "nation": "allies", "name": "皇家空军", "kind": "fleet", "position": [-0.5, 51.4], "strength": 80 },
+        { "id": "heeresgruppe-mitte", "nation": "axis", "name": "德军中央集团军群", "kind": "army", "position": [32.5, 54.5], "strength": 260 }
+      ],
+      "arrows": [
+        { "label": "巴巴罗萨三路入侵", "points": [[22.0, 53.5], [27.5, 54.0], [32.5, 54.5], [37.0, 55.5]], "color": "#c0392b", "width": 1.6 },
+        { "label": "南方突击（基辅）", "points": [[24.0, 49.0], [28.5, 49.5], [30.5, 50.45]], "color": "#c0392b", "width": 1.3 }
+      ],
+      "highlights": [
+        { "position": [30.52, 50.45], "radius": 5.0, "color": "#e74c3c", "label": "基辅（史上最大围歼战）" },
+        { "position": [37.62, 55.75], "radius": 5.5, "color": "#f1c40f", "label": "莫斯科（台风行动目标）" }
+      ],
+      "markers": [
+        { "id": "m-bob", "kind": "battle", "position": [-0.13, 51.5], "label": "不列颠空战（英胜）", "color": "#2980b9" },
+        { "id": "m-barbarossa", "kind": "battle", "position": [30.0, 54.0], "label": "巴巴罗萨行动", "color": "#e74c3c" }
+      ]
+    },
+    {
+      "id": 4,
+      "date": "1942年7月—1943年2月",
+      "title": "斯大林格勒 · 转折点",
+      "narrative": "德军第六集团军攻入斯大林格勒，逐屋争夺的『老鼠战争』持续五个月。1942年11月苏军发起『天王星行动』合围三十三万德军，1943年2月保卢斯元帅投降——欧洲战场的转折点到来了。",
+      "background": "斯大林格勒扼守伏尔加河与高加索油田的门户，希特勒与斯大林都不肯后退一步。城市废墟中每个车间、每层楼都反复易手，苏军以『贴身战术』抵消德军空炮优势，冬季攻势则一举逆转。",
+      "spirit": "一座以一位元帅名字命名、却由无数无名士兵守住的城市——『他们在绝境中一步不退』，是这场战争精神的缩影。",
+      "significance": "轴心国首次遭受战略级歼灭性失败，主动权转入同盟国之手，此后德军再无力发动战略性进攻。",
+      "camera": [44.5, 48.7],
+      "camera_zoom": 8.0,
+      "actors": [
+        { "id": "6th-army", "nation": "axis", "name": "德国第六集团军", "kind": "army", "position": [44.5, 48.7], "strength": 120 },
+        { "id": "stalingrad-def", "nation": "allies", "name": "苏军第62集团军", "kind": "army", "position": [44.52, 48.73], "strength": 100 }
+      ],
+      "arrows": [
+        { "label": "天王星行动（双翼合围）", "points": [[42.0, 47.5], [43.2, 48.2], [44.3, 48.6]], "color": "#2980b9", "width": 1.4 },
+        { "label": "北翼合围", "points": [[46.5, 50.0], [45.5, 49.4], [44.4, 48.9]], "color": "#2980b9", "width": 1.4 }
+      ],
+      "highlights": [
+        { "position": [44.52, 48.73], "radius": 6.5, "color": "#e74c3c", "label": "斯大林格勒（1943.2.2 投降）" }
+      ],
+      "markers": [
+        { "id": "m-stalingrad", "kind": "battle", "position": [44.52, 48.73], "label": "斯大林格勒战役（转折点）", "color": "#e74c3c" }
+      ]
+    },
+    {
+      "id": 5,
+      "date": "1944年6月",
+      "title": "诺曼底登陆 · 第二战场",
+      "narrative": "6月6日『D日』，同盟国以史上最大规模的两栖作战在诺曼底五个滩头登陆，近十六万将士当日踏上法国土地。8月巴黎解放，东西两线的铁钳开始向德国合拢。",
+      "background": "德军误判加莱为主攻方向，盟军的『坚忍行动』欺敌计划大获成功。艾森豪威尔提前写好失败担责的信，最终历史记下的是奥马哈滩头的血与胜利。",
+      "spirit": "自由是靠一代人主动扛起来、涉水冲上滩头换来的——将军的担责与士兵的勇气同样值得铭记。",
+      "significance": "第二战场开辟，德国陷入两线夹击，战争进入收官阶段。",
+      "camera": [-0.5, 49.3],
+      "camera_zoom": 6.5,
+      "actors": [
+        { "id": "allied-expeditionary", "nation": "allies", "name": "盟军远征部队", "kind": "army", "position": [-0.6, 49.35], "strength": 300 },
+        { "id": "atlantic-wall", "nation": "axis", "name": "大西洋壁垒守军", "kind": "army", "position": [-0.5, 49.4], "strength": 80 }
+      ],
+      "arrows": [
+        { "label": "五路滩头登陆", "points": [[-1.1, 50.2], [-0.9, 49.6], [-0.6, 49.35]], "color": "#2980b9", "width": 1.6 },
+        { "label": "南岸助攻", "points": [[-0.9, 49.35], [-0.55, 49.33]], "color": "#2980b9", "width": 1.4 },
+        { "label": "盟军向巴黎推进", "points": [[-0.6, 49.35], [0.2, 48.9], [1.5, 48.7], [2.35, 48.86]], "color": "#2980b9", "width": 1.2 }
+      ],
+      "highlights": [
+        { "position": [-0.97, 49.37], "radius": 4.0, "color": "#e74c3c", "label": "奥马哈滩头" },
+        { "position": [2.35, 48.86], "radius": 5.0, "color": "#f1c40f", "label": "巴黎解放（8月25日）" }
+      ],
+      "markers": [
+        { "id": "m-dday", "kind": "battle", "position": [-0.6, 49.35], "label": "D日诺曼底登陆", "color": "#2980b9" }
+      ]
+    },
+    {
+      "id": 6,
+      "date": "1945年4—5月",
+      "title": "攻克柏林 · 欧战胜利",
+      "narrative": "苏军二百五十万人发起柏林战役，4月30日红旗插上国会大厦穹顶，希特勒自杀。5月8日德国无条件投降，欧洲战场的战火终于熄灭——而奥斯维辛的烟囱与六百万犹太亡魂，成为人类永不淡忘的警钟。",
+      "background": "易北河畔美苏两军会师，将欧洲一分为二。战争的终结伴随着纽伦堡审判的筹备与国际秩序的重建：联合国在旧金山成立，『永不再战』写进了宪章。",
+      "spirit": "胜利属于所有为自由而战的人；铭记则属于所有人——对和平的守护，始于对黑暗的直视。",
+      "significance": "欧洲战场终结，冷战格局与联合国秩序在废墟上奠基，战后国际体系影响直至今日。",
+      "camera": [13.4, 52.5],
+      "camera_zoom": 6.5,
+      "actors": [
+        { "id": "red-army-berlin", "nation": "allies", "name": "苏军柏林战役集群", "kind": "army", "position": [13.4, 52.52], "strength": 250 },
+        { "id": "western-allies", "nation": "allies", "name": "西线盟军（易北河会师）", "kind": "army", "position": [12.0, 51.9], "strength": 200 }
+      ],
+      "arrows": [
+        { "label": "苏军三面向柏林合击", "points": [[14.6, 52.7], [13.9, 52.6], [13.4, 52.52]], "color": "#2980b9", "width": 1.5 },
+        { "label": "南翼突击", "points": [[13.6, 51.8], [13.35, 52.2], [13.3, 52.5]], "color": "#2980b9", "width": 1.3 },
+        { "label": "西线盟军东进会师", "points": [[7.0, 51.5], [9.5, 51.6], [11.0, 51.8], [12.0, 51.9]], "color": "#16a085", "width": 1.2 }
+      ],
+      "highlights": [
+        { "position": [13.4, 52.52], "radius": 6.0, "color": "#e74c3c", "label": "柏林（5月2日陷落）" },
+        { "position": [12.0, 51.9], "radius": 4.5, "color": "#f1c40f", "label": "易北河会师（4月25日）" }
+      ],
+      "markers": [
+        { "id": "m-berlin", "kind": "battle", "position": [13.4, 52.52], "label": "柏林战役", "color": "#e74c3c" },
+        { "id": "m-veday", "kind": "treaty", "position": [8.7, 49.9], "label": "德国无条件投降（5月8日）", "color": "#f1c40f" }
+      ]
+    }
+  ]
+}
