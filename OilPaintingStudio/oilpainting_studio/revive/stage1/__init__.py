@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 
+from .._imio import imread_, imwrite_
 import logging
 from pathlib import Path
 
@@ -29,7 +30,7 @@ def run_stage1(
     stage1_dir = project_dir / "stage1"
     stage1_dir.mkdir(parents=True, exist_ok=True)
 
-    image = cv2.imread(str(painting_path))
+    image = imread_(str(painting_path))
     h, w = image.shape[:2]
 
     # 1. 多物体分割

@@ -7,6 +7,7 @@ TripoSplat 未安装时退化为从裁剪图 + 深度反投影生成简化 3D �
 """
 from __future__ import annotations
 
+from .._imio import imread_, imwrite_
 import logging
 from pathlib import Path
 
@@ -136,13 +137,13 @@ def generate_object_3dgs(
     from .gs2d_init import surfels_to_ply
 
     # 加载裁剪图
-    crop = cv2.imread(str(obj.crop_path))
+    crop = imread_(str(obj.crop_path))
     if crop is None:
         raise FileNotFoundError(f"无法读取裁剪图: {obj.crop_path}")
     crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
 
     # 加载深度图并裁剪到物体区域
-    depth_u16 = cv2.imread(str(depth_path), cv2.IMREAD_UNCHANGED)
+    depth_u16 = imread_(str(depth_path), cv2.IMREAD_UNCHANGED)
     depth = depth_u16.astype(np.float32) / 65535.0 * settings.depth_max
     x0, y0, x1, y1 = obj.bbox
     depth_crop = depth[y0:y1, x0:x1]
@@ -201,9 +202,9 @@ def generate_background_2dgs(
     """
     from .gs2d_init import depth_to_pointcloud, pointcloud_to_surfels, surfels_to_ply
 
-    image = cv2.imread(str(background_path))
+    image = imread_(str(background_path))
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    depth_u16 = cv2.imread(str(depth_path), cv2.IMREAD_UNCHANGED)
+    depth_u16 = imread_(str(depth_path), cv2.IMREAD_UNCHANGED)
     depth = depth_u16.astype(np.float32) / 65535.0 * settings.depth_max
 
     # 降采样（控制点数，背景 ~50k 点）

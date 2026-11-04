@@ -7,6 +7,7 @@ YOLO 未安装时退化为基于颜色聚类的 mock 分割（连通域 + 上下
 """
 from __future__ import annotations
 
+from .._imio import imread_, imwrite_
 import logging
 from pathlib import Path
 
@@ -205,7 +206,7 @@ def run_segmentation(
 
     返回 (objects, background_mask_path, background_path, detector_name)。
     """
-    image = cv2.imread(str(painting_path))
+    image = imread_(str(painting_path))
     if image is None:
         raise FileNotFoundError(f"无法读取图像: {painting_path}")
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -239,7 +240,7 @@ def run_segmentation(
         mask = det["mask"]
         object_masks.append(mask)
         mask_path = output_dir / f"mask_obj{i:02d}_{det['label']}.png"
-        cv2.imwrite(str(mask_path), mask)
+        imwrite_(str(mask_path), mask)
 
         # 裁剪物体区域（背景透明）
         x0, y0, x1, y1 = det["bbox"]
@@ -248,7 +249,7 @@ def run_segmentation(
         # mask 外区域设为白
         crop[~(mask_crop > 0)] = 255
         crop_path = output_dir / f"crop_obj{i:02d}_{det['label']}.png"
-        cv2.imwrite(str(crop_path), cv2.cvtColor(crop, cv2.COLOR_RGB2BGR))
+        imwrite_(str(crop_path), cv2.cvtColor(crop, cv2.COLOR_RGB2BGR))
 
         category = _label_to_category(det["label"])
         near, far = settings.depth_range_for(category.value)
@@ -267,8 +268,8 @@ def run_segmentation(
     bg_mask, bg_image = _create_background(image_rgb, object_masks)
     bg_mask_path = output_dir / "mask_background.png"
     bg_path = output_dir / "background.png"
-    cv2.imwrite(str(bg_mask_path), bg_mask)
-    cv2.imwrite(str(bg_path), cv2.cvtColor(bg_image, cv2.COLOR_RGB2BGR))
+    imwrite_(str(bg_mask_path), bg_mask)
+    imwrite_(str(bg_path), cv2.cvtColor(bg_image, cv2.COLOR_RGB2BGR))
 
     logger.info("分割完成: %d 个物体 + 背景 (detector=%s)", len(objects), detector)
     return objects, bg_mask_path, bg_path, detector

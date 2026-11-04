@@ -7,6 +7,7 @@
 """
 from __future__ import annotations
 
+from .._imio import imread_, imwrite_
 import logging
 from pathlib import Path
 
@@ -23,7 +24,7 @@ def _load_and_align(line_path: Path, target_h: int, target_w: int) -> Path | Non
     if not line_path.exists():
         logger.warning("线稿不存在: %s", line_path)
         return None
-    img = cv2.imread(str(line_path), cv2.IMREAD_GRAYSCALE)
+    img = imread_(str(line_path), cv2.IMREAD_GRAYSCALE)
     if img is None:
         logger.warning("无法读取线稿: %s", line_path)
         return None
@@ -32,7 +33,7 @@ def _load_and_align(line_path: Path, target_h: int, target_w: int) -> Path | Non
         img = cv2.resize(img, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
         logger.info("线稿缩放: %s (%dx%d → %dx%d)", line_path.name, w, h, target_w, target_h)
     aligned = line_path.parent / f"{line_path.stem}_aligned.png"
-    cv2.imwrite(str(aligned), img)
+    imwrite_(str(aligned), img)
     return aligned
 
 
@@ -48,7 +49,7 @@ def parse_controls(
         object_lineart_path: 物体轮廓线稿（指引模块 3 的物体重定位）
         keyframe_lineart_paths: 关键帧线稿列表（指引模块 4 的动画）
     """
-    image = cv2.imread(str(painting_path))
+    image = imread_(str(painting_path))
     h, w = image.shape[:2]
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -62,7 +63,7 @@ def parse_controls(
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         edges = cv2.Canny(gray, 50, 150)
         aligned_edge = output_dir / "auto_canny_edge.png"
-        cv2.imwrite(str(aligned_edge), edges)
+        imwrite_(str(aligned_edge), edges)
 
     # 关键帧线稿
     aligned_kfs: list[Path] = []

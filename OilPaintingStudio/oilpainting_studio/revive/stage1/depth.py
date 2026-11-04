@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+from .._imio import imread_, imwrite_
 import logging
 from pathlib import Path
 
@@ -49,7 +50,7 @@ def normalize_depth_by_objects(
     """按物体类别做深度归一化，使各物体深度范围可控。"""
     normalized = depth.copy()
     for obj in objects:
-        mask = cv2.imread(str(obj.mask_path), cv2.IMREAD_GRAYSCALE)
+        mask = imread_(str(obj.mask_path), cv2.IMREAD_GRAYSCALE)
         if mask is None:
             continue
         region = mask > 0
@@ -74,7 +75,7 @@ def run_depth_estimation(
     settings: Settings,
 ) -> Path:
     """执行深度估计 + 物体级归一化，输出 16-bit PNG 深度图。"""
-    image = cv2.imread(str(image_path))
+    image = imread_(str(image_path))
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     try:
@@ -90,12 +91,12 @@ def run_depth_estimation(
     d_min, d_max = depth.min(), depth.max()
     depth_u16 = ((depth - d_min) / (d_max - d_min + 1e-8) * 65535).astype(np.uint16)
     depth_path = output_dir / "depth.png"
-    cv2.imwrite(str(depth_path), depth_u16)
+    imwrite_(str(depth_path), depth_u16)
     logger.info("深度图已保存: %s", depth_path)
     return depth_path
 
 
 def load_depth(depth_path: Path) -> np.ndarray:
     """加载深度图，返回 float32（归一化到 [0,1]）。"""
-    d = cv2.imread(str(depth_path), cv2.IMREAD_UNCHANGED)
+    d = imread_(str(depth_path), cv2.IMREAD_UNCHANGED)
     return d.astype(np.float32) / 65535.0
