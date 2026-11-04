@@ -1,0 +1,51 @@
+/* PaintingStudio 暗色工作台主题 (设计文档 §2.1 自研轻量组件) */
+:root {
+  --bg: #101318; --panel: #191e26; --panel2: #222835; --bd: #2d3547;
+  --tx: #e9edf4; --dim: #8b95a8;
+  --acc: #5b8cff; --grn: #3fbf7f; --yel: #e6b54c; --red: #e0655a; --pur: #9d7bff; --cy: #45c8d8;
+}
+* { box-sizing: border-box; margin: 0; }
+html, body, #app { height: 100%; }
+body {
+  font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 13px; color: var(--tx); background: var(--bg);
+}
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+input, select, textarea { font: inherit; color: var(--tx); background: var(--panel2); border: 1px solid var(--bd); border-radius: 6px; padding: 5px 8px; }
+input[type=range] { accent-color: var(--acc); padding: 0; border: none; background: none; }
+img { display: block; }
+
+.btn { height: 28px; padding: 0 12px; border-radius: 7px; background: var(--panel2); color: var(--dim); display: inline-flex; align-items: center; gap: 6px; }
+.btn:hover { color: var(--tx); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn.pri { background: var(--acc); color: #fff; font-weight: 500; }
+.btn.danger { color: var(--red); }
+
+.badge { font-size: 10px; padding: 2px 7px; border-radius: 10px; background: var(--panel2); color: var(--dim); white-space: nowrap; }
+.badge.ok { background: rgba(63,191,127,.15); color: var(--grn); }
+.badge.warn { background: rgba(230,181,76,.15); color: var(--yel); }
+.badge.bad { background: rgba(224,101,90,.15); color: var(--red); }
+.badge.run { background: rgba(91,140,255,.15); color: var(--acc); }
+
+.pbar { height: 5px; border-radius: 4px; background: #313a4d; overflow: hidden; }
+.pbar i { display: block; height: 100%; background: var(--acc); transition: width .3s; }
+
+.mini { font-size: 11px; color: var(--dim); }
+.kv { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; gap: 8px; }
+.kv span { color: var(--dim); }
+.kv b { font-weight: 500; text-align: right; word-break: break-all; }
+
+.toast {
+  position: fixed; right: 16px; bottom: 42px; z-index: 50;
+  background: var(--panel2); border: 1px solid var(--bd); border-radius: 9px;
+  padding: 10px 14px; display: flex; gap: 10px; align-items: center; font-size: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.45); max-width: 420px;
+}
+.toast .st { width: 8px; height: 8px; border-radius: 50%; background: var(--acc); flex: none; }
+.toast.err .st { background: var(--red); }
+.toast.ok .st { background: var(--grn); }
+
+.empty {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; color: var(--dim); padding: 40px;
+}
