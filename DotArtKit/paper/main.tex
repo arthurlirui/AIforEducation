@@ -60,40 +60,25 @@ via Monocular Vision and Three-Layer Voronoi Stippling}
 
 \begin{abstract}
 We present \emph{Depth-as-Radius}, a non-photorealistic rendering
-pipeline that translates a single RGB image into a Yayoi
-Kusama--style polka dot composition in which dot size---rather
-than luminance---encodes scene depth. The key idea is a simple
-yet expressive depth-to-radius mapping: a per-pixel monocular
-depth estimate is normalized over the foreground region and
-passed through a power-law falloff with multiplicative Gaussian
-jitter, so that near surfaces receive large, prominent dots
-while distant content dissolves into fields of fine specks.
-Combined with a semantic segmentation mask, the same pipeline
-assigns distinct dot colors to foreground and background,
-producing a figure--ground separation that echoes Kusama's
-installation practice.
-
-Algorithmically, the pipeline couples a modern unified vision
-backbone (YOLO26, used for both depth estimation and semantic
-segmentation) with a three-layer Weighted Voronoi stippling
-architecture. A fine-stipple layer provides dense texture; a
-depth-emphasis layer places large dots only in near regions;
-an edge-and-background layer completes the horror-vacui
-coverage. A dedicated cross-layer overlap-pruning step
-guarantees that large dots remain visually distinct from the
-fine texture, which is essential at the extreme radius range
-(roughly 1--15\,px) that our depth mapping demands.
-
-Experiments on three natural images and five Kusama palettes
-show that the method produces controllable depth encoding
-(radius span 0.5--15.4\,px within a single composition),
-preserves dot separation (maximum blob ratio below 0.65\%
-of canvas), and supports intuitive artistic control through
-a small set of interpretable parameters. Our results suggest
-that pretrained monocular vision models---originally trained
-for autonomous driving---can serve as practical artistic
-primitives, supplying geometric and semantic control signals
-that purely luminance-based stippling cannot express.
+pipeline that turns a single RGB image into a Yayoi
+Kusama--style polka dot composition in which dot size, rather than
+luminance, encodes scene depth. A monocular depth estimate is
+normalized over the foreground region and passed through a power-law
+falloff with multiplicative Gaussian jitter, so that near surfaces
+receive large dots while distant content dissolves into fine specks.
+Semantic segmentation from the same backbone (YOLO26) assigns distinct
+dot colors to foreground and background, producing a figure--ground
+separation characteristic of Kusama's installations. Because the
+required radius range (roughly 1--15\,px) exceeds what a single
+stipple layer can support without merging, the renderer decomposes
+the output into three layers---fine stipple, depth-emphasis, and
+edge/background---unified by a cross-layer overlap-pruning step.
+Experiments on three natural images and five palettes show
+controllable depth encoding (radius span 0.5--15.4\,px within one
+composition), preserved dot separation (maximum blob ratio below
+0.65\% of the canvas), and interpretable artistic control. Pretrained
+monocular vision models thus supply geometric and semantic control
+signals that purely luminance-based stippling cannot express.
 \end{abstract}
 
 % =====================================================================

@@ -267,3 +267,61 @@ def test_simulate_endpoint_422():
         "event_id": "chibi-battle", "step_id": 1, "command": "hypothetical",
         "question": "   "})
     assert r.status_code == 422
+
+
+# ------------------------------------------------------------------- terrain
+
+TERRAIN_TYPES = {"mountain", "river", "city", "fort", "forest", "desert", "wasteland"}
+
+
+def test_chibi_terrain_schema_and_coverage():
+    """赤壁剧本的地形数据必须通过 Terrain schema 校验，且七类地形齐全。"""
+    from app.models import Terrain
+
+    ev = get_event("chibi-battle")
+    assert ev is not None
+    terrain = ev.map.terrain
+    assert terrain, "赤壁剧本必须包含地形数据"
+
+    # every instance round-trips through the strict Terrain model
+    for t in terrain:
+        assert isinstance(t, Terrain)
+        assert t.type in TERRAIN_TYPES
+        assert t.points, f"{t.type} {t.name} 缺少坐标"
+
+    kinds = {t.type for t in terrain}
+    missing = TERRAIN_TYPES - kinds
+    assert not missing, f"赤壁剧本缺少地形类型：{missing}"
+
+    # 几何语义：山脉/河流为折线（>=2 点），城池/要塞为单点，树林需半径
+    for t in terrain:
+        if t.type in ("mountain", "river"):
+            assert len(t.points) >= 2, f"{t.name} 折线至少需要 2 个点"
+        if t.type in ("city", "fort"):
+            assert len(t.points) >= 1
+        if t.type == "forest":
+            assert t.radius > 0, f"树林 {t.name} 必须有分布半径"
+
+    # 古地名标注可读
+    labels = {t.label for t in terrain if t.label}
+    assert {"长江", "汉水", "江陵", "赤壁"} <= labels
+
+
+def test_terrain_served_by_api():
+    """地形数据必须经 /api/events/{id} 完整下发到前端渲染层。"""
+    r = client.get("/api/events/chibi-battle")
+    assert r.status_code == 200
+    terrain = r.json()["map"]["terrain"]
+    assert len(terrain) >= 7
+    assert {t["type"] for t in terrain} == TERRAIN_TYPES
+    sample = next(t for t in terrain if t["type"] == "river")
+    assert len(sample["points"]) >= 2
+    assert sample["label"] == "长江"
+
+
+def test_all_events_terrain_valid():
+    """所有剧本若声明地形，都必须通过校验（允许为空以保持向后兼容）。"""
+    for ev in list_events():
+        for t in ev.map.terrain:
+            assert t.type in TERRAIN_TYPES
+            assert t.points

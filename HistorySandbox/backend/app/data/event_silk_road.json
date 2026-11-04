@@ -11,18 +11,490 @@
   "spirit_core": "文明因交流而多彩：一条路连接的不仅是城市，更是人类彼此学习的勇气与好奇心。",
   "map": {
     "scale": "world",
-    "center": [70, 38],
+    "center": [
+      70,
+      38
+    ],
     "zoom": 2.6,
     "graticule": true,
     "areas": [
-      { "nation": "han", "points": [[100, 42], [122, 40.5], [121, 30], [113, 22], [103, 22.5], [92, 35], [98, 42]] },
-      { "nation": "xiongnu", "points": [[85, 52], [115, 50], [112, 41], [92, 40], [80, 46]] }
+      {
+        "nation": "han",
+        "points": [
+          [
+            100,
+            42
+          ],
+          [
+            122,
+            40.5
+          ],
+          [
+            121,
+            30
+          ],
+          [
+            113,
+            22
+          ],
+          [
+            103,
+            22.5
+          ],
+          [
+            92,
+            35
+          ],
+          [
+            98,
+            42
+          ]
+        ]
+      },
+      {
+        "nation": "xiongnu",
+        "points": [
+          [
+            85,
+            52
+          ],
+          [
+            115,
+            50
+          ],
+          [
+            112,
+            41
+          ],
+          [
+            92,
+            40
+          ],
+          [
+            80,
+            46
+          ]
+        ]
+      }
+    ],
+    "terrain": [
+      {
+        "type": "mountain",
+        "name": "葱岭（帕米尔）",
+        "label": "葱岭",
+        "size": 1.4,
+        "points": [
+          [
+            73.5,
+            39.0
+          ],
+          [
+            74.5,
+            38.5
+          ],
+          [
+            75.5,
+            37.8
+          ]
+        ],
+        "note": "丝绸之路最险峻的西部门户"
+      },
+      {
+        "type": "mountain",
+        "name": "天山",
+        "label": "天山",
+        "size": 1.3,
+        "points": [
+          [
+            78.0,
+            42.6
+          ],
+          [
+            81.5,
+            42.8
+          ],
+          [
+            85.0,
+            43.0
+          ],
+          [
+            88.0,
+            43.3
+          ]
+        ]
+      },
+      {
+        "type": "mountain",
+        "name": "昆仑山",
+        "label": "昆仑",
+        "size": 1.3,
+        "points": [
+          [
+            77.0,
+            36.3
+          ],
+          [
+            81.0,
+            36.0
+          ],
+          [
+            85.0,
+            36.2
+          ],
+          [
+            88.5,
+            36.6
+          ]
+        ]
+      },
+      {
+        "type": "mountain",
+        "name": "祁连山",
+        "label": "祁连山",
+        "size": 1.2,
+        "points": [
+          [
+            97.0,
+            38.2
+          ],
+          [
+            99.5,
+            38.4
+          ],
+          [
+            101.8,
+            37.9
+          ]
+        ]
+      },
+      {
+        "type": "river",
+        "name": "黄河",
+        "label": "黄河",
+        "size": 1.2,
+        "points": [
+          [
+            103.8,
+            36.1
+          ],
+          [
+            105.8,
+            37.5
+          ],
+          [
+            107.2,
+            38.8
+          ],
+          [
+            108.9,
+            40.6
+          ],
+          [
+            110.5,
+            39.5
+          ]
+        ]
+      },
+      {
+        "type": "river",
+        "name": "塔里木河",
+        "label": "塔里木河",
+        "size": 1.0,
+        "points": [
+          [
+            78.5,
+            40.2
+          ],
+          [
+            82.0,
+            40.6
+          ],
+          [
+            86.0,
+            40.7
+          ],
+          [
+            89.5,
+            40.3
+          ]
+        ]
+      },
+      {
+        "type": "river",
+        "name": "渭水",
+        "label": "渭水",
+        "size": 0.9,
+        "points": [
+          [
+            104.5,
+            34.8
+          ],
+          [
+            106.5,
+            34.5
+          ],
+          [
+            108.9,
+            34.3
+          ]
+        ]
+      },
+      {
+        "type": "city",
+        "name": "长安",
+        "label": "长安",
+        "size": 1.4,
+        "points": [
+          [
+            108.9,
+            34.27
+          ]
+        ],
+        "note": "丝路东端起点，汉唐帝都"
+      },
+      {
+        "type": "city",
+        "name": "洛阳",
+        "label": "洛阳",
+        "size": 1.1,
+        "points": [
+          [
+            112.45,
+            34.62
+          ]
+        ]
+      },
+      {
+        "type": "city",
+        "name": "敦煌",
+        "label": "敦煌",
+        "size": 1.2,
+        "points": [
+          [
+            94.66,
+            40.14
+          ]
+        ],
+        "note": "华戎所交一大都会，两关枢纽"
+      },
+      {
+        "type": "city",
+        "name": "龟兹",
+        "label": "龟兹",
+        "size": 1.0,
+        "points": [
+          [
+            82.93,
+            41.72
+          ]
+        ],
+        "note": "西域都护府治所，佛教东传重镇"
+      },
+      {
+        "type": "city",
+        "name": "疏勒",
+        "label": "疏勒",
+        "size": 0.95,
+        "points": [
+          [
+            75.99,
+            39.47
+          ]
+        ]
+      },
+      {
+        "type": "city",
+        "name": "撒马尔罕",
+        "label": "撒马尔罕",
+        "size": 1.1,
+        "points": [
+          [
+            66.97,
+            39.65
+          ]
+        ],
+        "note": "粟特绿洲明珠，东西商旅辐辏"
+      },
+      {
+        "type": "city",
+        "name": "木鹿",
+        "label": "木鹿",
+        "size": 0.9,
+        "points": [
+          [
+            62.19,
+            37.66
+          ]
+        ]
+      },
+      {
+        "type": "fort",
+        "name": "玉门关",
+        "label": "玉门关",
+        "size": 1.1,
+        "points": [
+          [
+            93.87,
+            40.36
+          ]
+        ],
+        "note": "西出阳关无故人——汉家西陲门户"
+      },
+      {
+        "type": "fort",
+        "name": "阳关",
+        "label": "阳关",
+        "size": 1.0,
+        "points": [
+          [
+            94.05,
+            39.93
+          ]
+        ]
+      },
+      {
+        "type": "fort",
+        "name": "铁门关",
+        "label": "铁门关",
+        "size": 1.0,
+        "points": [
+          [
+            67.9,
+            40.0
+          ]
+        ],
+        "note": "粟特与吐火罗之间的咽喉"
+      },
+      {
+        "type": "forest",
+        "name": "龟兹绿洲林",
+        "label": "龟兹绿洲",
+        "radius": 0.7,
+        "size": 1.0,
+        "points": [
+          [
+            83.2,
+            41.5
+          ]
+        ]
+      },
+      {
+        "type": "forest",
+        "name": "敦煌胡杨林",
+        "label": "胡杨林",
+        "radius": 0.6,
+        "size": 0.95,
+        "points": [
+          [
+            94.9,
+            40.6
+          ]
+        ]
+      },
+      {
+        "type": "forest",
+        "name": "撒马尔罕果林",
+        "label": "撒马尔罕果林",
+        "radius": 0.65,
+        "size": 1.0,
+        "points": [
+          [
+            66.5,
+            39.4
+          ]
+        ]
+      },
+      {
+        "type": "desert",
+        "name": "塔克拉玛干沙漠",
+        "label": "塔克拉玛干",
+        "radius": 2.2,
+        "size": 1.5,
+        "points": [
+          [
+            83.0,
+            38.8
+          ]
+        ],
+        "note": "「进去出不来」的死亡之海，丝路南北道绕行其缘"
+      },
+      {
+        "type": "desert",
+        "name": "库姆塔格沙海",
+        "label": "库姆塔格",
+        "radius": 1.0,
+        "size": 1.1,
+        "points": [
+          [
+            92.5,
+            39.9
+          ]
+        ]
+      },
+      {
+        "type": "wasteland",
+        "name": "罗布泊盐漠",
+        "label": "罗布泊",
+        "radius": 1.5,
+        "size": 1.2,
+        "points": [
+          [
+            90.2,
+            40.5
+          ]
+        ],
+        "note": "古蒲昌海，楼兰故地，今成盐壳荒原"
+      },
+      {
+        "type": "wasteland",
+        "name": "戈壁荒原",
+        "label": "戈壁",
+        "radius": 1.8,
+        "size": 1.2,
+        "points": [
+          [
+            99.5,
+            41.8
+          ]
+        ]
+      },
+      {
+        "type": "wasteland",
+        "name": "河西戈壁",
+        "label": "河西戈壁",
+        "radius": 1.2,
+        "size": 1.1,
+        "points": [
+          [
+            97.5,
+            40.0
+          ]
+        ]
+      }
     ]
   },
   "nations": [
-    { "id": "han", "name": "汉朝", "color": "#e6b422", "side": "开拓者", "description": "汉武帝欲联大月氏夹击匈奴，派张骞出使西域，无意间开启了一个伟大的时代。" },
-    { "id": "xiongnu", "name": "匈奴", "color": "#8e44ad", "side": "阻断者", "description": "草原霸主，控制河西走廊与西域诸国，是丝路商队最大的威胁与绕不开的邻居。" },
-    { "id": "explorer", "name": "商队与使者", "color": "#d35400", "side": "连接者", "description": "驼铃声声中，无数无名商旅、僧侣与使节背负货物与信仰，在绿洲与荒漠之间接力。" }
+    {
+      "id": "han",
+      "name": "汉朝",
+      "color": "#e6b422",
+      "side": "开拓者",
+      "description": "汉武帝欲联大月氏夹击匈奴，派张骞出使西域，无意间开启了一个伟大的时代。"
+    },
+    {
+      "id": "xiongnu",
+      "name": "匈奴",
+      "color": "#8e44ad",
+      "side": "阻断者",
+      "description": "草原霸主，控制河西走廊与西域诸国，是丝路商队最大的威胁与绕不开的邻居。"
+    },
+    {
+      "id": "explorer",
+      "name": "商队与使者",
+      "color": "#d35400",
+      "side": "连接者",
+      "description": "驼铃声声中，无数无名商旅、僧侣与使节背负货物与信仰，在绿洲与荒漠之间接力。"
+    }
   ],
   "steps": [
     {
@@ -33,17 +505,83 @@
       "background": "汉初饱受匈奴侵扰，和亲纳贡不过换来喘息。汉武帝听闻大月氏与匈奴有世仇，欲遣使联兵夹击，这是一次战略侦察，也是一次文明的相互发现。",
       "spirit": "「凿空」二字重逾千钧——在没有路的地方走出路，凭的是十年不失的汉节与不灭的信念。",
       "significance": "张骞第一次带回了西域三十六国的准确信息，中国人的世界地图向西豁然铺开。",
-      "camera": [95, 40],
+      "camera": [
+        95,
+        40
+      ],
       "camera_zoom": 4.0,
       "actors": [
-        { "id": "zhang-qian", "nation": "explorer", "name": "张骞使团", "kind": "person", "position": [97.0, 40.5], "strength": 10 }
+        {
+          "id": "zhang-qian",
+          "nation": "explorer",
+          "name": "张骞使团",
+          "kind": "person",
+          "position": [
+            97.0,
+            40.5
+          ],
+          "strength": 10
+        }
       ],
       "arrows": [
-        { "label": "张骞出使路线", "points": [[108.9, 34.3], [102, 37.5], [97, 41], [89, 42.5], [75, 42.5]], "color": "#d35400", "width": 1.2 },
-        { "label": "被匈奴扣留十年（前129年脱身）", "points": [[97, 41], [93, 44], [90, 43.5]], "color": "#8e44ad", "dashed": true, "width": 0.8 }
+        {
+          "label": "张骞出使路线",
+          "points": [
+            [
+              108.9,
+              34.3
+            ],
+            [
+              102,
+              37.5
+            ],
+            [
+              97,
+              41
+            ],
+            [
+              89,
+              42.5
+            ],
+            [
+              75,
+              42.5
+            ]
+          ],
+          "color": "#d35400",
+          "width": 1.2
+        },
+        {
+          "label": "被匈奴扣留十年（前129年脱身）",
+          "points": [
+            [
+              97,
+              41
+            ],
+            [
+              93,
+              44
+            ],
+            [
+              90,
+              43.5
+            ]
+          ],
+          "color": "#8e44ad",
+          "dashed": true,
+          "width": 0.8
+        }
       ],
       "highlights": [
-        { "position": [108.9, 34.27], "radius": 3.5, "color": "#e6b422", "label": "长安（起点）" }
+        {
+          "position": [
+            108.9,
+            34.27
+          ],
+          "radius": 3.5,
+          "color": "#e6b422",
+          "label": "长安（起点）"
+        }
       ],
       "markers": []
     },
@@ -55,20 +593,82 @@
       "background": "卫青、霍去病漠北决战大破匈奴，『匈奴远遁，漠南无王庭』。河西走廊从匈奴牧场变为汉朝通道，玉门关与阳关先后立起，成为丝路上最著名的两道门户。",
       "spirit": "国家强盛是文明交流的底气——通道的每一寸，都由戍卒的骸骨与商队的驼铃共同守护。",
       "significance": "河西四郡的设立标志着丝绸之路东段正式贯通，贸易网络开始以国家力量护航。",
-      "camera": [98, 39],
+      "camera": [
+        98,
+        39
+      ],
       "camera_zoom": 5.5,
       "actors": [
-        { "id": "huo-qubing", "nation": "han", "name": "霍去病军团", "kind": "army", "position": [100.5, 38.8], "strength": 100 },
-        { "id": "caravan-1", "nation": "explorer", "name": "丝路商队", "kind": "trade", "position": [95, 40.8], "strength": 30 }
+        {
+          "id": "huo-qubing",
+          "nation": "han",
+          "name": "霍去病军团",
+          "kind": "army",
+          "position": [
+            100.5,
+            38.8
+          ],
+          "strength": 100
+        },
+        {
+          "id": "caravan-1",
+          "nation": "explorer",
+          "name": "丝路商队",
+          "kind": "trade",
+          "position": [
+            95,
+            40.8
+          ],
+          "strength": 30
+        }
       ],
       "arrows": [
-        { "label": "霍去病夺取河西走廊", "points": [[106, 36], [101.5, 38.5], [97, 40.5], [93.5, 42]], "color": "#e6b422", "width": 1.4 }
+        {
+          "label": "霍去病夺取河西走廊",
+          "points": [
+            [
+              106,
+              36
+            ],
+            [
+              101.5,
+              38.5
+            ],
+            [
+              97,
+              40.5
+            ],
+            [
+              93.5,
+              42
+            ]
+          ],
+          "color": "#e6b422",
+          "width": 1.4
+        }
       ],
       "highlights": [
-        { "position": [94.66, 40.14], "radius": 3.0, "color": "#f1c40f", "label": "敦煌（两关枢纽）" }
+        {
+          "position": [
+            94.66,
+            40.14
+          ],
+          "radius": 3.0,
+          "color": "#f1c40f",
+          "label": "敦煌（两关枢纽）"
+        }
       ],
       "markers": [
-        { "id": "m-dunhuang", "kind": "city", "position": [94.66, 40.14], "label": "敦煌设郡", "color": "#f1c40f" }
+        {
+          "id": "m-dunhuang",
+          "kind": "city",
+          "position": [
+            94.66,
+            40.14
+          ],
+          "label": "敦煌设郡",
+          "color": "#f1c40f"
+        }
       ]
     },
     {
@@ -79,22 +679,123 @@
       "background": "前60年西域都护府设立，郑吉首任都护，西域正式纳入汉朝版图。葱岭以西，安息（帕提亚）帝国垄断转手贸易，中国丝绸经其手流入罗马，价格堪比黄金。",
       "spirit": "贸易是最古老的外交——当驼铃代替战鼓，绿洲便成了文明的客厅。",
       "significance": "丝路贸易常态化，欧亚大陆两端第一次被稳定的商品流连接起来。",
-      "camera": [75, 40],
+      "camera": [
+        75,
+        40
+      ],
       "camera_zoom": 3.6,
       "actors": [
-        { "id": "caravan-2", "nation": "explorer", "name": "东西商队", "kind": "trade", "position": [72, 40.5], "strength": 50 },
-        { "id": "duhu", "nation": "han", "name": "西域都护府", "kind": "city", "position": [82.9, 41.7], "strength": 80 }
+        {
+          "id": "caravan-2",
+          "nation": "explorer",
+          "name": "东西商队",
+          "kind": "trade",
+          "position": [
+            72,
+            40.5
+          ],
+          "strength": 50
+        },
+        {
+          "id": "duhu",
+          "nation": "han",
+          "name": "西域都护府",
+          "kind": "city",
+          "position": [
+            82.9,
+            41.7
+          ],
+          "strength": 80
+        }
       ],
       "arrows": [
-        { "label": "商队西行（丝去）", "points": [[108.9, 34.3], [96, 40], [82, 41.5], [70, 40], [58, 38]], "color": "#d35400", "width": 1.2 },
-        { "label": "香料宝石东来", "points": [[58, 38], [70, 40], [82, 41.5], [96, 40], [108.9, 34.3]], "color": "#16a085", "dashed": true, "width": 0.9 }
+        {
+          "label": "商队西行（丝去）",
+          "points": [
+            [
+              108.9,
+              34.3
+            ],
+            [
+              96,
+              40
+            ],
+            [
+              82,
+              41.5
+            ],
+            [
+              70,
+              40
+            ],
+            [
+              58,
+              38
+            ]
+          ],
+          "color": "#d35400",
+          "width": 1.2
+        },
+        {
+          "label": "香料宝石东来",
+          "points": [
+            [
+              58,
+              38
+            ],
+            [
+              70,
+              40
+            ],
+            [
+              82,
+              41.5
+            ],
+            [
+              96,
+              40
+            ],
+            [
+              108.9,
+              34.3
+            ]
+          ],
+          "color": "#16a085",
+          "dashed": true,
+          "width": 0.9
+        }
       ],
       "highlights": [
-        { "position": [69.24, 41.3], "radius": 3.0, "color": "#f1c40f", "label": "撒马尔罕（绿洲明珠）" },
-        { "position": [82.93, 41.72], "radius": 3.0, "color": "#e6b422", "label": "西域都护府" }
+        {
+          "position": [
+            69.24,
+            41.3
+          ],
+          "radius": 3.0,
+          "color": "#f1c40f",
+          "label": "撒马尔罕（绿洲明珠）"
+        },
+        {
+          "position": [
+            82.93,
+            41.72
+          ],
+          "radius": 3.0,
+          "color": "#e6b422",
+          "label": "西域都护府"
+        }
       ],
       "markers": [
-        { "id": "m-duhufu", "kind": "city", "position": [82.93, 41.72], "label": "西域都护府设立", "color": "#e6b422" }
+        {
+          "id": "m-duhufu",
+          "kind": "city",
+          "position": [
+            82.93,
+            41.72
+          ],
+          "label": "西域都护府设立",
+          "color": "#e6b422"
+        }
       ]
     },
     {
@@ -105,21 +806,99 @@
       "background": "前53年卡莱之战，罗马军团在安息人的丝绸军旗前惨败，丝绸自此闻名罗马。罗马贵族以着丝绸为荣，元老院甚至曾试图禁而不止——需求是这条道路最顽强的生命力。",
       "spirit": "对美好事物的向往跨越一切疆界——一件衣裳唤起的渴望，比十万大军更能连接世界。",
       "significance": "丝路延伸至地中海，长安与罗马这两座当时世界最大的都市被纳入同一贸易网络。",
-      "camera": [40, 38],
+      "camera": [
+        40,
+        38
+      ],
       "camera_zoom": 3.2,
       "actors": [
-        { "id": "caravan-3", "nation": "explorer", "name": "丝路商队", "kind": "trade", "position": [44, 33], "strength": 40 },
-        { "id": "rome", "nation": "explorer", "name": "罗马帝国", "kind": "city", "position": [12.5, 41.9], "strength": 100 }
+        {
+          "id": "caravan-3",
+          "nation": "explorer",
+          "name": "丝路商队",
+          "kind": "trade",
+          "position": [
+            44,
+            33
+          ],
+          "strength": 40
+        },
+        {
+          "id": "rome",
+          "nation": "explorer",
+          "name": "罗马帝国",
+          "kind": "city",
+          "position": [
+            12.5,
+            41.9
+          ],
+          "strength": 100
+        }
       ],
       "arrows": [
-        { "label": "丝绸流入罗马", "points": [[58, 38], [48, 34], [44, 33], [37, 36.5], [26, 38.5], [16, 40.5]], "color": "#c0392b", "width": 1.3 }
+        {
+          "label": "丝绸流入罗马",
+          "points": [
+            [
+              58,
+              38
+            ],
+            [
+              48,
+              34
+            ],
+            [
+              44,
+              33
+            ],
+            [
+              37,
+              36.5
+            ],
+            [
+              26,
+              38.5
+            ],
+            [
+              16,
+              40.5
+            ]
+          ],
+          "color": "#c0392b",
+          "width": 1.3
+        }
       ],
       "highlights": [
-        { "position": [44.4, 33.3], "radius": 3.5, "color": "#e74c3c", "label": "安息（帕提亚）转手贸易" },
-        { "position": [12.48, 41.89], "radius": 3.5, "color": "#f1c40f", "label": "罗马（丝路西端）" }
+        {
+          "position": [
+            44.4,
+            33.3
+          ],
+          "radius": 3.5,
+          "color": "#e74c3c",
+          "label": "安息（帕提亚）转手贸易"
+        },
+        {
+          "position": [
+            12.48,
+            41.89
+          ],
+          "radius": 3.5,
+          "color": "#f1c40f",
+          "label": "罗马（丝路西端）"
+        }
       ],
       "markers": [
-        { "id": "m-carrhae", "kind": "battle", "position": [41.5, 35.5], "label": "卡莱之战（前53年）", "color": "#e74c3c" }
+        {
+          "id": "m-carrhae",
+          "kind": "battle",
+          "position": [
+            41.5,
+            35.5
+          ],
+          "label": "卡莱之战（前53年）",
+          "color": "#e74c3c"
+        }
       ]
     },
     {
@@ -130,19 +909,103 @@
       "background": "东汉初年丝路一度中断，匈奴再控西域。班超以极小兵力借势纵横，重建汉朝威信；甘英虽止步于海，却是中原使者抵达的最西端。",
       "spirit": "个人也能在历史的关键节点上托举时代——三十六个人守住了一条文明通道。",
       "significance": "丝路在东汉重焕生机，为佛教东传与魏晋隋唐的丝路盛世铺平了道路。",
-      "camera": [80, 40],
+      "camera": [
+        80,
+        40
+      ],
       "camera_zoom": 4.2,
       "actors": [
-        { "id": "ban-chao", "nation": "han", "name": "班超（西域都护）", "kind": "person", "position": [76.15, 39.5], "strength": 40 },
-        { "id": "gan-ying", "nation": "explorer", "name": "甘英使团", "kind": "person", "position": [48, 30], "strength": 10 }
+        {
+          "id": "ban-chao",
+          "nation": "han",
+          "name": "班超（西域都护）",
+          "kind": "person",
+          "position": [
+            76.15,
+            39.5
+          ],
+          "strength": 40
+        },
+        {
+          "id": "gan-ying",
+          "nation": "explorer",
+          "name": "甘英使团",
+          "kind": "person",
+          "position": [
+            48,
+            30
+          ],
+          "strength": 10
+        }
       ],
       "arrows": [
-        { "label": "班超平定西域五十余国", "points": [[90, 41], [84, 41.5], [76, 39.5], [79, 37]], "color": "#e6b422", "width": 1.2 },
-        { "label": "甘英出使大秦（至波斯湾）", "points": [[76, 39.5], [58, 38], [48, 33], [48, 30]], "color": "#d35400", "dashed": true, "width": 0.9 }
+        {
+          "label": "班超平定西域五十余国",
+          "points": [
+            [
+              90,
+              41
+            ],
+            [
+              84,
+              41.5
+            ],
+            [
+              76,
+              39.5
+            ],
+            [
+              79,
+              37
+            ]
+          ],
+          "color": "#e6b422",
+          "width": 1.2
+        },
+        {
+          "label": "甘英出使大秦（至波斯湾）",
+          "points": [
+            [
+              76,
+              39.5
+            ],
+            [
+              58,
+              38
+            ],
+            [
+              48,
+              33
+            ],
+            [
+              48,
+              30
+            ]
+          ],
+          "color": "#d35400",
+          "dashed": true,
+          "width": 0.9
+        }
       ],
       "highlights": [
-        { "position": [76.16, 39.53], "radius": 3.0, "color": "#e6b422", "label": "它乾城（都护治所）" },
-        { "position": [48, 30], "radius": 3.0, "color": "#2980b9", "label": "波斯湾（甘英止步处）" }
+        {
+          "position": [
+            76.16,
+            39.53
+          ],
+          "radius": 3.0,
+          "color": "#e6b422",
+          "label": "它乾城（都护治所）"
+        },
+        {
+          "position": [
+            48,
+            30
+          ],
+          "radius": 3.0,
+          "color": "#2980b9",
+          "label": "波斯湾（甘英止步处）"
+        }
       ],
       "markers": []
     },
@@ -154,19 +1017,91 @@
       "background": "陆路长期为安息所中介，罗马人转而探索海路。自红海经印度洋、马六甲至交趾的海上航线渐兴，这批『使者』更像是精明的商人，但他们的到来被东汉正式记录在册。",
       "spirit": "三百年的接力终于让世界彼此照面——文明交流的意义不在一夕之利，而在为后代铺就相识之路。",
       "significance": "欧亚海陆双通道成型，为日后海上丝绸之路与更广阔的文明互动埋下伏笔。",
-      "camera": [55, 25],
+      "camera": [
+        55,
+        25
+      ],
       "camera_zoom": 2.8,
       "actors": [
-        { "id": "roman-envoy", "nation": "explorer", "name": "大秦使者", "kind": "person", "position": [112.45, 34.62], "strength": 5 }
+        {
+          "id": "roman-envoy",
+          "nation": "explorer",
+          "name": "大秦使者",
+          "kind": "person",
+          "position": [
+            112.45,
+            34.62
+          ],
+          "strength": 5
+        }
       ],
       "arrows": [
-        { "label": "罗马—洛阳海上航线", "points": [[12.5, 41.9], [32, 31], [43, 12.8], [55, 7], [72, 6], [90, 12], [105.7, 18.8], [108, 21], [112.45, 34.62]], "color": "#2980b9", "width": 1.4 }
+        {
+          "label": "罗马—洛阳海上航线",
+          "points": [
+            [
+              12.5,
+              41.9
+            ],
+            [
+              32,
+              31
+            ],
+            [
+              43,
+              12.8
+            ],
+            [
+              55,
+              7
+            ],
+            [
+              72,
+              6
+            ],
+            [
+              90,
+              12
+            ],
+            [
+              105.7,
+              18.8
+            ],
+            [
+              108,
+              21
+            ],
+            [
+              112.45,
+              34.62
+            ]
+          ],
+          "color": "#2980b9",
+          "width": 1.4
+        }
       ],
       "highlights": [
-        { "position": [112.45, 34.62], "radius": 4.0, "color": "#e6b422", "label": "洛阳（东汉都城）" }
+        {
+          "position": [
+            112.45,
+            34.62
+          ],
+          "radius": 4.0,
+          "color": "#e6b422",
+          "label": "洛阳（东汉都城）"
+        }
       ],
       "markers": [
-        { "id": "m-luoyang", "kind": "treaty", "position": [112.45, 34.62], "label": "大秦使者入洛阳", "color": "#f1c40f" }
+        {
+          "id": "m-luoyang",
+          "kind": "treaty",
+          "position": [
+            112.45,
+            34.62
+          ],
+          "label": "大秦使者入洛阳",
+          "color": "#f1c40f"
+        }
       ]
     }
   ]

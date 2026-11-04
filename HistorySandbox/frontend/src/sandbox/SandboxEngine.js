@@ -60,10 +60,12 @@ export class SandboxEngine {
 
     // groups
     this._worldGroup = new THREE.Group()   // static terrain
+    this._terrainGroup = new THREE.Group() // ancient-Chinese-style scenario terrain
     this._nationGroup = new THREE.Group()  // scenario areas
     this._actorGroup = new THREE.Group()   // chess pieces
     this._fxGroup = new THREE.Group()      // arrows / highlights / markers
-    this.scene.add(this._worldGroup, this._nationGroup, this._actorGroup, this._fxGroup)
+    this.scene.add(this._worldGroup, this._terrainGroup, this._nationGroup,
+                   this._actorGroup, this._fxGroup)
 
     this._actors = new Map()      // actorId -> { mesh, base }
     this._time = 0
@@ -234,15 +236,351 @@ export class SandboxEngine {
 
   // ---------------------------------------------------------- scenario map
 
+  // ------------------------------------------------- ancient-Chinese terrain
+  //
+  // Seven stylized feature types rendered in the manner of traditional Chinese
+  // map painting (山海经/舆图): mountain ridges, river ribbons, walled cities,
+  // pass gates, tree clusters, desert shallows and wasteland marshes.
+
+  _buildTerrain(terrainList) {
+    this._clearGroup(this._terrainGroup)
+    this._terrainLabels = []
+    for (const t of terrainList || []) {
+      if (!t || !Array.isArray(t.points) || !t.points.length) continue
+      switch (t.type) {
+        case 'mountain': this._buildMountain(t); break
+        case 'river': this._buildRiver(t); break
+        case 'city': this._buildCity(t); break
+        case 'fort': this._buildFort(t); break
+        case 'forest': this._buildForest(t); break
+        case 'desert': this._buildFlat(t, '#d9b779', 0.55); break
+        case 'wasteland': this._buildFlat(t, '#6b6347', 0.6); break
+        default: break
+      }
+      if (t.label) {
+        const p = lonLatToWorld(t.points[0][0], t.points[0][1])
+        this._terrainLabels.push({
+          text: t.label,
+          pos: p,
+          type: t.type,
+          note: t.note || '',
+        })
+      }
+    }
+  }
+
+  /** 山脉：沿折线脊线竖起一排锥形山峰，山体越高越陡。 */
+  _buildMountain(t) {
+    const size = t.size || 1
+    const pts = t.points.map(([lon, lat]) => lonLatToWorld(lon, lat))
+    const curve = pts.length > 1
+      ? new THREE.CatmullRomCurve3(pts.map((p) => p.clone().setY(0)), false, 'catmullrom', 0.3)
+      : null
+
+    const ridge = curve ? curve.getPoints(Math.max(8, pts.length * 6)) : pts
+    const rock = new THREE.MeshStandardMaterial({
+      color: t.color || '#6f6a5c', roughness: 0.95, metalness: 0.05, flatShading: true,
+    })
+    const snow = new THREE.MeshStandardMaterial({
+      color: '#cfd8dc', roughness: 0.8, flatShading: true,
+    })
+
+    // deterministic pseudo-random so a scenario looks identical every load
+    let seedv = 1337
+    const rnd = () => ((seedv = (seedv * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff)
+
+    for (let i = 0; i < ridge.length; i += 2) {
+      const base = ridge[i]
+      const h = (2.2 + rnd() * 2.0) * size
+      const r = (0.75 + rnd() * 0.55) * size
+      const peak = new THREE.Mesh(new THREE.ConeGeometry(r, h, 5), rock)
+      peak.position.set(base.x + (rnd() - 0.5) * 0.8, h / 2, base.z + (rnd() - 0.5) * 0.8)
+      peak.rotation.y = rnd() * Math.PI
+      this._terrainGroup.add(peak)
+
+      // 雪顶 / 远山高光
+      if (h > 3.4 * size) {
+        const cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.42, h * 0.3, 5), snow)
+        cap.position.copy(peak.position).setY(h * 0.85)
+        cap.rotation.y = peak.rotation.y
+        this._terrainGroup.add(cap)
+      }
+    }
+
+    // 山脊线（像古地图上的「山」字形笔触）
+    if (ridge.length > 1) {
+      const lineGeo = new THREE.BufferGeometry().setFromPoints(
+        ridge.map((p) => new THREE.Vector3(p.x, 0.45, p.z)),
+      )
+      this._terrainGroup.add(new THREE.Line(
+        lineGeo,
+        new THREE.LineBasicMaterial({ color: t.color || '#8d8878', transparent: true, opacity: 0.8 }),
+      ))
+    }
+  }
+
+  /** 河流：CatmullRom 河道 + 半透明水带，越宽越显。 */
+  _buildRiver(t) {
+    const pts = t.points.map(([lon, lat]) => lonLatToWorld(lon, lat))
+    if (pts.length < 2) return
+    const curve = new THREE.CatmullRomCurve3(
+      pts.map((p) => p.clone().setY(0.18)), false, 'catmullrom', 0.4,
+    )
+    const width = 0.9 * (t.size || 1)
+
+    // 水面管带
+    const water = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, Math.max(40, pts.length * 12), width, 8, false),
+      new THREE.MeshStandardMaterial({
+        color: t.color || '#3d7fb8',
+        emissive: new THREE.Color(t.color || '#3d7fb8').multiplyScalar(0.35),
+        roughness: 0.18, metalness: 0.45,
+        transparent: true, opacity: 0.82,
+      }),
+    )
+    this._terrainGroup.add(water)
+
+    // 河岸线
+    for (const off of [width * 1.15, -width * 1.15]) {
+      const bankPts = curve.getPoints(120).map((p, i, arr) => {
+        const prev = arr[Math.max(0, i - 1)]
+        const next = arr[Math.min(arr.length - 1, i + 1)]
+        const dx = next.x - prev.x, dz = next.z - prev.z
+        const len = Math.hypot(dx, dz) || 1
+        return new THREE.Vector3(p.x - (dz / len) * off, 0.22, p.z + (dx / len) * off)
+      })
+      this._terrainGroup.add(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(bankPts),
+        new THREE.LineBasicMaterial({
+          color: t.color || '#7fb8e8', transparent: true, opacity: 0.5,
+        }),
+      ))
+    }
+  }
+
+  /** 城池：方形城墙 + 四角塔楼 + 中心楼阁（古舆图城符号）。 */
+  _buildCity(t) {
+    const size = 1.0 * (t.size || 1)
+    const [lon, lat] = t.points[0]
+    const c = lonLatToWorld(lon, lat)
+    const group = new THREE.Group()
+    group.position.copy(c)
+
+    const wallMat = new THREE.MeshStandardMaterial({
+      color: t.color || '#b08a5a', roughness: 0.85, metalness: 0.1, flatShading: true,
+    })
+    const roofMat = new THREE.MeshStandardMaterial({
+      color: '#8e3b32', roughness: 0.7, flatShading: true,
+    })
+    const towerMat = new THREE.MeshStandardMaterial({
+      color: '#c9a070', roughness: 0.8, flatShading: true,
+    })
+
+    const half = 1.35 * size
+    const wallH = 0.55 * size
+    const wallT = 0.22 * size
+    // 四面墙
+    for (const [dx, dz, w, d] of [
+      [0, -half, half * 2, wallT],
+      [0, half, half * 2, wallT],
+      [-half, 0, wallT, half * 2],
+      [half, 0, wallT, half * 2],
+    ]) {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(w, wallH, d), wallMat)
+      wall.position.set(dx, wallH / 2, dz)
+      group.add(wall)
+    }
+    // 四角塔楼
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      const tower = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.26 * size, 0.32 * size, 1.05 * size, 6), towerMat,
+      )
+      tower.position.set(sx * half, 0.52 * size, sz * half)
+      group.add(tower)
+      const roof = new THREE.Mesh(
+        new THREE.ConeGeometry(0.42 * size, 0.4 * size, 6), roofMat,
+      )
+      roof.position.set(sx * half, 1.24 * size, sz * half)
+      group.add(roof)
+    }
+    // 中心楼阁（飞檐）
+    const hall = new THREE.Mesh(new THREE.BoxGeometry(0.75 * size, 0.6 * size, 0.75 * size), towerMat)
+    hall.position.y = 0.3 * size
+    group.add(hall)
+    const hallRoof = new THREE.Mesh(new THREE.ConeGeometry(0.72 * size, 0.55 * size, 4), roofMat)
+    hallRoof.position.y = 0.88 * size
+    hallRoof.rotation.y = Math.PI / 4
+    group.add(hallRoof)
+
+    this._terrainGroup.add(group)
+  }
+
+  /** 要塞：两座敌楼对峙 + 中间关门的「关隘」形制。 */
+  _buildFort(t) {
+    const size = 1.0 * (t.size || 1)
+    const [lon, lat] = t.points[0]
+    const c = lonLatToWorld(lon, lat)
+    const group = new THREE.Group()
+    group.position.copy(c)
+
+    const stoneMat = new THREE.MeshStandardMaterial({
+      color: t.color || '#7d7466', roughness: 0.92, metalness: 0.12, flatShading: true,
+    })
+    const flagMat = new THREE.MeshStandardMaterial({
+      color: '#c0392b', roughness: 0.6, side: THREE.DoubleSide,
+    })
+
+    // 两座敌楼
+    for (const sx of [-1, 1]) {
+      const block = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5 * size, 1.5 * size, 0.75 * size), stoneMat,
+      )
+      block.position.set(sx * 0.72 * size, 0.75 * size, 0)
+      group.add(block)
+      // 垛口
+      const merlon = new THREE.Mesh(
+        new THREE.BoxGeometry(0.62 * size, 0.16 * size, 0.85 * size), stoneMat,
+      )
+      merlon.position.set(sx * 0.72 * size, 1.58 * size, 0)
+      group.add(merlon)
+    }
+    // 关门横梁
+    const lintel = new THREE.Mesh(
+      new THREE.BoxGeometry(1.5 * size, 0.32 * size, 0.4 * size), stoneMat,
+    )
+    lintel.position.y = 1.35 * size
+    group.add(lintel)
+    // 门洞地面标示
+    const gate = new THREE.Mesh(
+      new THREE.BoxGeometry(0.95 * size, 0.06 * size, 0.6 * size),
+      new THREE.MeshBasicMaterial({ color: '#3a3630' }),
+    )
+    gate.position.y = 0.05
+    group.add(gate)
+    // 旗杆
+    const pole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.05 * size, 0.05 * size, 2.3 * size, 5),
+      new THREE.MeshStandardMaterial({ color: '#4a443a' }),
+    )
+    pole.position.set(-0.72 * size, 1.15 * size, 0)
+    group.add(pole)
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.62 * size, 0.36 * size), flagMat)
+    flag.position.set(-0.4 * size, 2.0 * size, 0)
+    group.add(flag)
+
+    this._terrainGroup.add(group)
+  }
+
+  /** 树林：以中心点为核心随机散布锥形松树。 */
+  _buildForest(t) {
+    const [lon, lat] = t.points[0]
+    const c = lonLatToWorld(lon, lat)
+    const radius = (t.radius || 0.6) * SCALE
+    const size = t.size || 1
+
+    let seedv = 4242 + Math.round(lon * 100) + Math.round(lat * 100)
+    const rnd = () => ((seedv = (seedv * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff)
+
+    const trunkMat = new THREE.MeshStandardMaterial({ color: '#5a4632', roughness: 0.95 })
+    const leafMat = new THREE.MeshStandardMaterial({
+      color: t.color || '#2f6b3a', roughness: 0.88, flatShading: true,
+    })
+
+    const count = Math.max(6, Math.min(26, Math.round(radius * 7)))
+    for (let i = 0; i < count; i++) {
+      const a = rnd() * Math.PI * 2
+      const r = Math.sqrt(rnd()) * radius
+      const x = c.x + Math.cos(a) * r
+      const z = c.z + Math.sin(a) * r
+      const h = (1.0 + rnd() * 0.9) * size
+
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.06, 0.09, h * 0.42, 5), trunkMat,
+      )
+      trunk.position.set(x, h * 0.21, z)
+      this._terrainGroup.add(trunk)
+
+      const crown = new THREE.Mesh(new THREE.ConeGeometry(0.36 * size, h, 6), leafMat)
+      crown.position.set(x, h * 0.42 + h * 0.5, z)
+      crown.rotation.y = rnd() * Math.PI
+      this._terrainGroup.add(crown)
+    }
+  }
+
+  /** 沙漠 / 荒原：半透明面片。>=3 点成多边形，否则以中心点画圆盘。 */
+  _buildFlat(t, defaultColor, opacity) {
+    const color = t.color || defaultColor
+    const mat = new THREE.MeshStandardMaterial({
+      color, roughness: 0.95, metalness: 0.02,
+      transparent: true, opacity,
+      side: THREE.DoubleSide, depthWrite: false, flatShading: true,
+    })
+
+    if (t.points.length >= 3) {
+      const pts = t.points.map(([lon, lat]) => lonLatToWorld(lon, lat))
+      const shape = new THREE.Shape()
+      shape.moveTo(pts[0].x, pts[0].z)
+      for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i].x, pts[i].z)
+      shape.closePath()
+      const geo = new THREE.ShapeGeometry(shape)
+      geo.rotateX(Math.PI / 2)
+      const mesh = new THREE.Mesh(geo, mat)
+      mesh.position.y = 0.12
+      this._terrainGroup.add(mesh)
+    } else {
+      const [lon, lat] = t.points[0]
+      const c = lonLatToWorld(lon, lat)
+      const r = (t.radius || 0.6) * SCALE * (t.size || 1)
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(r, 28), mat)
+      disc.rotation.x = -Math.PI / 2
+      disc.position.set(c.x, 0.12, c.z)
+      this._terrainGroup.add(disc)
+
+      // 荒原上的稀疏枯草/碎石记号
+      if (t.type === 'wasteland') {
+        let seedv = 777 + Math.round(lon * 100)
+        const rnd = () => ((seedv = (seedv * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff)
+        const tuftMat = new THREE.MeshStandardMaterial({ color: '#8a8265', roughness: 1 })
+        for (let i = 0; i < 10; i++) {
+          const a = rnd() * Math.PI * 2
+          const rr = Math.sqrt(rnd()) * r
+          const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.3, 4), tuftMat)
+          tuft.position.set(c.x + Math.cos(a) * rr, 0.25, c.z + Math.sin(a) * rr)
+          this._terrainGroup.add(tuft)
+        }
+      } else {
+        // 沙漠沙丘波纹
+        let seedv = 999 + Math.round(lon * 100)
+        const rnd = () => ((seedv = (seedv * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff)
+        const duneMat = new THREE.MeshStandardMaterial({
+          color: '#efd39b', roughness: 0.9, flatShading: true,
+        })
+        for (let i = 0; i < 5; i++) {
+          const a = rnd() * Math.PI * 2
+          const rr = Math.sqrt(rnd()) * r * 0.8
+          const dune = new THREE.Mesh(new THREE.SphereGeometry(0.22 + rnd() * 0.2, 7, 5), duneMat)
+          dune.scale.y = 0.35
+          dune.position.set(c.x + Math.cos(a) * rr, 0.16, c.z + Math.sin(a) * rr)
+          this._terrainGroup.add(dune)
+        }
+      }
+    }
+  }
+
   setScenario(event) {
     // clear per-scenario groups
+    this._clearGroup(this._terrainGroup)
     this._clearGroup(this._nationGroup)
     this._clearGroup(this._actorGroup)
     this._clearGroup(this._fxGroup)
     this._actors.clear()
+    this._terrainLabels = []
 
     this.event = event
     this.nations = event.nations || []
+
+    // 中国古代舆图风格地形层（山川/河流/城池/要塞/树林/沙漠/荒原）
+    this._buildTerrain(event.map?.terrain || [])
 
     // nation plates
     for (const area of event.map?.areas || []) {
