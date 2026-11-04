@@ -116,44 +116,32 @@ for Painting Animation}
 %  Abstract  (rewritten for IJCAI 2027: idea-centric, no model names)
 % =====================================================================
 \begin{abstract}
-Animating static artworks---oil paintings, ink-wash scrolls, and
-frescoes---into explorable, narratively coherent videos is a long-standing
-goal at the intersection of computer vision, generative modeling, and digital
-cultural heritage. Existing approaches remain bifurcated: image-to-video
-diffusion models produce visually fluent motion but collapse three-dimensional
-structure under viewpoint change, while feed-forward 3D reconstruction
-pipelines capture geometry at the cost of obliterating painterly texture,
-impasto, and brushstroke identity. The root cause is a fundamental
-\emph{objective tension}: artistic style fidelity and 3D scene structure are
-governed by incompatible optimization targets, and no single end-to-end model
-satisfies both, especially when the task demands object-level manipulation.
-We propose \textbf{Canvas3D}, a framework that resolves this tension through
-a \emph{modular decomposition of concerns}. Rather than training a monolithic
-network, Canvas3D factors the painting-to-video problem into four
-independently optimized, mutually reinforcing sub-problems:
-\emph{(i) perceptual grouping} of a painting into semantically meaningful
-foreground objects and a preserved background, jointly with monocular
-depth-derived layer ordering; \emph{(ii) per-object geometric lifting} that
-converts each 2D region into a metric-scaled 3D representation and assembles
-a reusable, retrievable object-level model library; \emph{(iii) line-art
-scene composition} in which hand-drawn sketches serve as \emph{spatial
-constraints} rather than stylistic hints, solved by a contour-based rigid
-registration that places each 3D object at its sketched location and a
-depth-conditioned inpainting module that restores disoccluded background
-texture in a geometry-aware manner; and \emph{(iv) geometry-grounded video
-synthesis} that renders the composited 3D scene into multi-view keyframes
-and injects depth and edge cues as dual control signals into a video
-diffusion backbone, anchoring temporal motion to explicit 3D structure
-rather than learned heuristics. The key insight is that \emph{separating
-perceptual, geometric, compositional, and temporal concerns} turns an
-ill-posed, conflicting joint problem into four well-posed sub-problems,
-each addressable by an off-the-shelf specialist, while their interaction
-yields capabilities---arbitrary object repositioning, multi-view
-explorability, and style-anchored animation---that no single-modality
-pipeline offers. On a curated benchmark of classical paintings, Canvas3D
-achieves state-of-the-art style fidelity, perceptual quality, and temporal
-coherence, with user studies confirming strong preference for artistic
-authenticity, motion naturalness, and compositional-intent alignment.
+Animating classical paintings into explorable videos requires both
+artistic fidelity and three-dimensional scene structure, yet existing
+methods offer only one or the other. Image-to-video diffusion models
+produce fluent motion but cannot maintain consistent 3D structure under
+viewpoint change, whereas 3D reconstruction pipelines capture geometry
+at the cost of painterly texture. We observe that the two objectives
+are hard to satisfy jointly because they favor conflicting
+representations, and propose \textbf{Canvas3D}, a framework that
+instead factors the problem into four sequentially composed
+sub-problems, each handled by a specialist. \emph{PaintParse}
+decomposes the painting into foreground objects and a background layer,
+ordered by monocular depth; \emph{MonoSplat} lifts each object into a
+metric-scaled 3D Gaussian representation and assembles a reusable
+object library; \emph{SketchComp} treats hand-drawn line art as a
+spatial constraint, placing each 3D object by contour-based rigid
+registration and filling disocclusions with depth-conditioned
+inpainting; and \emph{ArtiFlow} renders the composited scene along a
+camera trajectory and injects depth and edge cues as dual control
+signals into a video diffusion backbone, anchoring motion to explicit
+geometry. The decomposition supports object repositioning, multi-view
+exploration, and style-preserving animation---capabilities that
+per-frame conditioning cannot provide. On a benchmark of 50 classical
+paintings, Canvas3D outperforms image-to-video, reconstruction, and
+painting-specific baselines in style fidelity, perceptual quality, and
+temporal coherence, and user studies confirm a clear preference for its
+outputs.
 \end{abstract}
 
 % =====================================================================

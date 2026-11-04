@@ -38,18 +38,22 @@ held-out test paintings on which all reported results are computed.
 
 \paragraph{Implementation.}
 All components are implemented in PyTorch. PaintParse employs a
-one-stage instance segmentation backbone with low-rank art-domain
-adaptation followed by full mask-head fine-tuning, paired with a
-ViT-L monocular depth estimator. MonoSplat accesses a feed-forward
-single-image 3D predictor through its official API. SketchComp's
-contour registration is optimized by gradient descent with iterative
-re-rendering, and disocclusion inpainting uses a latent inpainting
-diffusion model augmented with a depth-conditioned control branch.
-ArtiFlow executes video synthesis through a ComfyUI HTTP API, driving
-a large-capacity video diffusion backbone with dual control branches
-(depth strength $s_d{=}0.85$, edge strength $s_e{=}0.6$) and
-first-frame latent anchoring. The keyframe count is fixed to $T=25$
-(i.e., $8N{+}1$ with $N{=}3$).
+one-stage instance segmentation backbone~\cite{jocher2023yolov8} with
+low-rank art-domain adaptation~\cite{hu2022lora} followed by full
+mask-head fine-tuning, paired with a ViT-L monocular depth
+estimator~\cite{yang2024depthanything}. MonoSplat accesses a
+feed-forward single-image 3D predictor~\cite{tripo2025tritosplat}
+through its official API. SketchComp's contour registration is
+optimized by gradient descent with iterative re-rendering, and
+disocclusion inpainting uses a latent inpainting diffusion
+model~\cite{rombach2022ldm,lugmayr2022repaint} augmented with a
+depth-conditioned control branch~\cite{zhang2023controlnet}. Edge maps
+are extracted with HED~\cite{xie2015hed}. ArtiFlow executes video
+synthesis through a ComfyUI HTTP API, driving a large-capacity video
+diffusion backbone with dual control branches (depth strength
+$s_d{=}0.85$, edge strength $s_e{=}0.6$) and first-frame latent
+anchoring. The keyframe count is fixed to $T=25$ (i.e., $8N{+}1$ with
+$N{=}3$).
 
 \paragraph{Hardware.}
 All experiments run on a single 48\,GB GPU. Per-stage peak memory is
@@ -76,10 +80,11 @@ each work.
 
 \paragraph{Metrics.}
 We report \textbf{CLIP-I} (CLIP image cosine similarity between
-generated frames and the original painting) for style fidelity;
-\textbf{LPIPS}~\cite{zhang2018lpips} for perceptual quality;
-\textbf{FVD} (Fr\'echet Video Distance~\cite{balaji2019fvd}, computed
-with a video-trained I3D backbone) for temporal coherence;
+generated frames and the original painting, using the CLIP
+space of \citeauthor{radford2021clip}~\cite{radford2021clip}) for style
+fidelity; \textbf{LPIPS}~\cite{zhang2018lpips} for perceptual quality;
+\textbf{FVD} (Fr\'echet Video Distance~\cite{unterthiner2019fvd},
+computed with a video-trained I3D backbone) for temporal coherence;
 \textbf{Disocclusion PSNR} for inpainted gap quality against a
 manually inpainted reference; and \textbf{Composition IoU}, the
 average bounding-box overlap between objects detected in generated

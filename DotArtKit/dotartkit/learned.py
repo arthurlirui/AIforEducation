@@ -8,13 +8,18 @@
 但其余流派 (seurat / kusama_basic / stipple_pure 等) 不受影响.
 
 网络结构:
-    输入 (4 通道): 归一化深度 d̂, 亮度 I_gray, 深度梯度 |∇d̂|, 亮度梯度 |∇I|
+    输入 (6 通道): 归一化深度 d̂, 亮度 I_gray, 深度梯度 |∇d̂|,
+                   亮度梯度 |∇I|, 平均曲率 κ (符号), 高斯曲率符号
     输出 (2 通道): 半径 r ∈ [r_min, r_max], 密度权重 w ∈ [0,1]
-    4 conv 层, <50K 参数, 保持可解释性.
+    4 conv 层, <60K 参数, 保持可解释性.
 
 训练模式:
     1. 监督: 从艺术家标注的点分布学习 (如有)
-    2. 自监督: 优化感知质量目标 (蓝噪声频谱 + 深度梯度对齐 + 覆盖率目标)
+    2. 自监督: 优化几何感知感知目标:
+       - 深度对齐 (近景大点)
+       - 曲率对齐: 凸面 (κ>0, 球顶) 半径放大, 凹/鞍面缩小
+       - 凹面密度加密: 密度头在 κ<0 处输出更高密度 (顺应表面转折)
+       - 蓝噪声频谱 + 覆盖率 + 半径直方图
 """
 
 from __future__ import annotations
@@ -51,7 +56,7 @@ if _HAS_TORCH:
         def __init__(self,
                      r_min: float = 1.0,
                      r_max: float = 18.0,
-                     in_channels: int = 4,
+                     in_channels: int = 6,
                      hidden_width: int = 32):
             super().__init__()
             self.r_min = r_min
@@ -78,7 +83,11 @@ if _HAS_TORCH:
                           d_norm: np.ndarray,
                           gray: np.ndarray,
                           device: str = "cpu") -> tuple[np.ndarray, np.ndarray]:
-            """numpy 输入 → numpy 输出. 返回 (radius, density), 均 (H,W)."""
+            """numpy 输入 → numpy 输出. 返回 (radius, density), 均 (H,W).
+
+            输入 6 通道: d̂, I_gray, |∇d̂|, |∇I|, κ_mean (符号), K 符号.
+            """
+            from .ops.geometry import geometry_fields
             d_tensor = torch.from_numpy(d_norm).float().unsqueeze(0).unsqueeze(0)
             g_tensor = torch.from_numpy(gray).float().unsqueeze(0).unsqueeze(0)
 
@@ -93,7 +102,13 @@ if _HAS_TORCH:
             d_grad = d_grad / (d_grad.max() + 1e-8)
             g_grad = g_grad / (g_grad.max() + 1e-8)
 
-            x = torch.cat([d_tensor, g_tensor, d_grad, g_grad], dim=1).to(device)
+            # 几何场 (曲率): numpy 计算后拼回张量
+            geo = geometry_fields(d_norm)
+            k_tensor = torch.from_numpy(geo["kappa"]).float().unsqueeze(0).unsqueeze(0)
+            kg_tensor = torch.from_numpy(geo["gauss_sign"]).float().unsqueeze(0).unsqueeze(0)
+
+            x = torch.cat([d_tensor, g_tensor, d_grad, g_grad,
+                           k_tensor, kg_tensor], dim=1).to(device)
             self.eval()
             with torch.no_grad():
                 radius, density = self.forward(x)
@@ -114,11 +129,22 @@ else:
 if _HAS_TORCH:
 
     class StipplePerceptualLoss(nn.Module):
-        """点绘感知损失: 深度梯度对齐 + 蓝噪声频谱 + 覆盖率 + 直方图匹配."""
+        """几何感知点绘损失 v2.
+
+        六项能量:
+        1. depth_align    半径归一后对齐 (1-d̂)        — 近景大点
+        2. curvature_align 半径对齐 0.5+0.5κ (凸=大)   — 曲率响应
+        3. concavity_density 密度对齐 (1-κ)/2 (凹=密)  — 凹面加密顺应表面
+        4. coverage       覆盖率 → target              — horror vacui
+        5. histogram      半径分布 → 目标 (小点长尾)
+        6. smoothness     半径场 TV 正则
+        """
 
         def __init__(self,
                      target_coverage: float = 0.28,
                      depth_alignment_weight: float = 1.0,
+                     curvature_weight: float = 0.8,
+                     concavity_weight: float = 0.4,
                      coverage_weight: float = 0.5,
                      histogram_weight: float = 0.3,
                      target_radius_hist: Optional[np.ndarray] = None,
@@ -126,6 +152,8 @@ if _HAS_TORCH:
             super().__init__()
             self.target_coverage = target_coverage
             self.depth_align_w = depth_alignment_weight
+            self.curv_w = curvature_weight
+            self.concav_w = concavity_weight
             self.coverage_w = coverage_weight
             self.hist_w = histogram_weight
             self.n_bins = n_hist_bins
@@ -140,13 +168,24 @@ if _HAS_TORCH:
                 hist = hist / hist.sum()
                 self.register_buffer('target_hist', torch.from_numpy(hist).float())
 
-        def forward(self, radius, density, d_norm, d_grad):
+        def forward(self, radius, density, d_norm, d_grad, kappa=None):
             losses = {}
             near_weight = 1.0 - d_norm
             r_min = radius.min()
             r_max = radius.max() + 1e-8
             r_norm = (radius - r_min) / (r_max - r_min)
             losses['depth_align'] = F.mse_loss(r_norm, near_weight)
+
+            # 曲率对齐: κ ∈ [-1,1] → 目标 0.5+0.5κ (凸面半径大)
+            if kappa is not None:
+                curv_target = 0.5 + 0.5 * kappa
+                losses['curvature_align'] = F.mse_loss(r_norm, curv_target)
+                # 凹面密度加密: κ<0 处密度高 (表面转折复杂 → 更多点)
+                concav_target = torch.clamp(0.5 - 0.5 * kappa, 0.05, 1.0)
+                losses['concavity_density'] = F.mse_loss(density, concav_target)
+            else:
+                losses['curvature_align'] = torch.zeros((), device=radius.device)
+                losses['concavity_density'] = torch.zeros((), device=radius.device)
 
             approx_coverage = (density * torch.pi * radius ** 2).mean()
             losses['coverage'] = (approx_coverage - self.target_coverage) ** 2
@@ -162,6 +201,8 @@ if _HAS_TORCH:
 
             losses['total'] = (
                 self.depth_align_w * losses['depth_align'] +
+                self.curv_w * losses['curvature_align'] +
+                self.concav_w * losses['concavity_density'] +
                 self.coverage_w * losses['coverage'] +
                 self.hist_w * losses['histogram'] +
                 0.1 * losses['smoothness']
@@ -199,6 +240,7 @@ def train_depth_radius_net(
     criterion = StipplePerceptualLoss(target_coverage=0.28)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
+    from .ops.geometry import geometry_fields
     features = []
     for d_norm, gray in train_images:
         d_t = torch.from_numpy(d_norm).float().unsqueeze(0).unsqueeze(0)
@@ -211,17 +253,21 @@ def train_depth_radius_net(
         g_gy = F.pad(g_t[:, :, 1:, :] - g_t[:, :, :-1, :], (0, 0, 0, 1))
         g_g = torch.sqrt(g_gx ** 2 + g_gy ** 2)
         g_g = g_g / (g_g.max() + 1e-8)
-        x = torch.cat([d_t, g_t, d_g, g_g], dim=1).to(device)
-        features.append((x, d_t.to(device), d_g.to(device)))
+        geo = geometry_fields(d_norm)
+        k_t = torch.from_numpy(geo["kappa"]).float().unsqueeze(0).unsqueeze(0)
+        kg_t = torch.from_numpy(geo["gauss_sign"]).float().unsqueeze(0).unsqueeze(0)
+        x = torch.cat([d_t, g_t, d_g, g_g, k_t, kg_t], dim=1).to(device)
+        features.append((x, d_t.to(device), d_g.to(device),
+                         k_t.to(device)))
 
     print(f"[train_depth_radius_net] {len(features)} imgs, {epochs} epochs, lr={lr}, device={device}")
     for epoch in range(epochs):
         model.train()
         total_loss = 0.0
-        for x, d_n, d_gr in features:
+        for x, d_n, d_gr, k in features:
             optimizer.zero_grad()
             radius, density = model(x)
-            losses = criterion(radius, density, d_n, d_gr)
+            losses = criterion(radius, density, d_n, d_gr, kappa=k)
             losses['total'].backward()
             optimizer.step()
             total_loss += losses['total'].item()

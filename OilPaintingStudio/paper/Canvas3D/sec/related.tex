@@ -1,118 +1,101 @@
 % =====================================================================
-%  Section: Related Work  (IJCAI 2027 revision: distilled lineage)
+%  Section: Related Work  (IJCAI 2027 revision)
 % =====================================================================
 \section{Related Work}
 \label{sec:related}
 
-We organize prior work along the four axes that motivate our modular
-decomposition, tracing the developmental lineage of each thread and
-positioning Canvas3D at their intersection.
+We review prior work along the four threads that motivate our
+decomposition and position Canvas3D at their intersection.
 
 \subsection{From Pixel-Level Stylization to Painting Animation}
 
-The earliest approaches to painting animation treat the input as a
-\emph{pixel grid to be stylized over time}. Static image style transfer,
-pioneered by feature-correlation methods~\cite{gatys2016image} and extended
-by fast feed-forward networks~\cite{johnson2016perceptual,huang2017arbitrary}
-and transformer-based stylizers~\cite{deng2021stytr2}, established that
-artistic appearance can be re-injected into arbitrary content. Video style
-transfer then addressed temporal coherence through optical-flow
-regularization~\cite{ruder2016artistic,chen2017coherent,wang2020consistent},
-multi-channel correlation~\cite{deng2021arbitrary}, and content deformation
-fields~\cite{ouyang2024codef}. A second lineage pursues
-\emph{stroke-level synthesis}---reproducing the physical painting process as
-a time-lapse~\cite{zhao2020painting,zou2021stylized,liu2021neuralstrokes}---but
-such methods reconstruct \emph{how a painting was made} rather than
-\emph{how its subjects could move}. A third, narrower thread drives
-\emph{portrait motion} on painted faces~\cite{guo2024liveportrait,tan2024edtalk}
-but cannot animate full-body figures or background elements. The diffusion
-era introduced inversion-based stylization~\cite{zhang2023inversion} and
-video-consistent editing~\cite{ceylan2023pix2video,chai2023stablevideo,geyer2023tokenflow,liang2024flowvid},
-which preserve appearance under text-driven edits but provide no geometric
-handle on object pose. The recent InkSpirit~\cite{zhang2025inkspirit} and
-StyleMaster~\cite{ye2025stylemaster} push appearance fidelity further yet
-remain confined to 2D image translation. Across this lineage, the persistent
-gap is the absence of \emph{object-level, 3D-grounded motion control}:
-appearance is preserved, but spatial structure is not.
+Early painting animation treats the input as a pixel grid to be
+stylized over time. Static style
+transfer~\cite{gatys2016image,johnson2016perceptual,huang2017arbitrary,park2019arbitrary,deng2021stytr2}
+established that artistic appearance can be re-injected into arbitrary
+content; its video extensions addressed temporal coherence via
+optical-flow regularization~\cite{ruder2016artistic,chen2017coherent,huang2017realtime,wang2020consistent,deng2021arbitrary}
+and content deformation fields~\cite{ouyang2024codef}. A second lineage
+synthesizes the painting \emph{process} itself, as stroke-level
+time-lapses~\cite{zhao2020painting,zou2021stylized,liu2021neuralstrokes,madono2023data},
+but reconstructs how a painting was made rather than how its subjects
+could move; a narrower thread animates painted
+faces~\cite{guo2024liveportrait,tan2024edtalk} only. Diffusion-era
+methods---inversion-based
+stylization~\cite{zhang2023inversion,chen2024artadapter}, video
+editing~\cite{ceylan2023pix2video,chai2023stablevideo,geyer2024tokenflow,liang2024flowvid},
+and recent video stylizers~\cite{ye2025stylemaster,li2026echostyle,jones2026refvfx}---preserve
+appearance under text-driven edits but provide no geometric handle on
+object pose. Domain-specific systems for Chinese ink
+painting~\cite{liang2021instance,he2023bitgan,liu2026chipdiff,zhang2025inkspirit}
+follow the same pattern. Across all of these lines, appearance is
+preserved while spatial structure is not: no method offers
+object-level, 3D-grounded motion control.
 
 \subsection{3D Scene Representations and Single-Image Lifting}
 
-Three-dimensional representations evolved from implicit radiance
-fields~\cite{mildenhall2020nerf} to explicit primitives. 3D Gaussian
-Splatting~\cite{kerbl20233dgs} represents a scene as a set of anisotropic
-Gaussians with differentiable rasterization, enabling real-time
-photorealistic rendering; 2D Gaussian Splatting~\cite{huang20242dgs}
-collapses the third scale dimension into a surface normal, improving
-geometric fidelity for surface-like content. Crucially, the field has
-recently shifted from \emph{per-scene optimization} to \emph{feed-forward
-single-image lifting}: generative-prior methods~\cite{tang2024dreamgaussian}
-predict 3D assets from one image, while state-of-the-art feed-forward
-predictors~\cite{wang2024triposplat,charatan2024pixelsplat,jiang2025anysplat}
-regress Gaussian parameters directly, with two-view and unconstrained-view
-variants broadening the input regime. These advances make it feasible to
-lift individual painting regions into 3D, but none addresses the downstream
-challenge of \emph{composing multiple such objects into a coherent,
-artistically controllable scene}---exactly the gap our framework targets.
+Scene representations evolved from implicit radiance
+fields~\cite{mildenhall2020nerf} to explicit primitives: 3D Gaussian
+Splatting~\cite{kerbl20233dgs} renders anisotropic Gaussians in real
+time, and 2D Gaussian Splatting~\cite{huang20242dgs} improves surface
+accuracy. More relevant to us is the shift from per-scene optimization
+to feed-forward prediction: DreamGaussian~\cite{tang2024dreamgaussian}
+generates 3D assets with generative priors, while
+pixelSplat~\cite{charatan2024pixelsplat}, AnySplat~\cite{jiang2025anysplat},
+and TripoSplat~\cite{tripo2025tritosplat} regress Gaussian parameters
+directly from one or few images. These predictors make it feasible to
+lift individual painting regions into 3D, but none addresses the
+composition of multiple lifted objects into a coherent, artistically
+controllable scene.
 
-\subsection{Sketch and Line-Art as a Composition Interface}
+\subsection{Sketch and Line Art as a Composition Interface}
 
-Hand-drawn sketches have a long history as an intuitive interface for shape
-prototyping~\cite{olson2011sketch}. Recent work demonstrates that
-contour-level spatial reasoning is tractable with modern vision models:
-ShadowDraw~\cite{luo2026shadowdraw} generates compositional shadow art from
-object inputs, LineArt~\cite{wang2024lineart} performs training-free
-appearance transfer onto design drawings via diffusion, and region-aware
+Sketches have long served as an interface for shape
+prototyping~\cite{olson2009sketch}. Recent systems use them for
+generative ends: ShadowDraw~\cite{luo2025shadowdraw} synthesizes
+compositional shadow art, LineArt~\cite{wang2025lineart} transfers
+appearance onto design drawings, and region-aware
 simplification~\cite{nguyen2024region} and volumetric animation
-toolkits~\cite{foxgieg2024lightning} illustrate the expressive potential of
-hand-drawn control. In diffusion-based generation, sketches typically serve
-as a \emph{stylistic} or \emph{boundary} condition (e.g., ControlNet-style
-edge injection~\cite{zhang2023controlnet}). Canvas3D departs from this
-convention by treating line-art as a \emph{spatial constraint} that
-resolves the which-object-where problem in 3D scene assembly: a sketch is
-not merely an appearance hint but a target silhouette that a 3D object is
-geometrically registered to.
+toolkits~\cite{foxgieg2024lightning} demonstrate the expressive range
+of hand-drawn control. In diffusion pipelines, sketches typically act
+as appearance or boundary conditions, as in ControlNet-style edge
+injection~\cite{zhang2023controlnet}. Canvas3D instead treats line art
+as a \emph{spatial constraint}: the sketch is a target silhouette to
+which a 3D object is geometrically registered, resolving the
+which-object-where problem in scene assembly.
 
 \subsection{Controllable Image-to-Video Generation}
 
-The leap from text-to-image to text-to-video was powered by diffusion
-transformers~\cite{peebles2023dit} and video diffusion
-models~\cite{ho2022vdm,ho2022video}. A family of scalable
-backbones~\cite{yang2025cogvideox,wan2025,ltxvideo2024,blattmann2023svd}
-now supports high-fidelity image-to-video synthesis. Controllability has
-been pursued through auxiliary conditioning:
-ControlNet~\cite{zhang2023controlnet} injects edge, depth, and pose maps
-into the diffusion U-Net, with video extensions~\cite{wang2024easycontrol}
-and efficiency-oriented variants~\cite{peng2024controlnext} broadening its
-applicability. Cinematic shot design~\cite{xing2025motioncanvas} and
-clipart animation~\cite{wu2025aniclipart} demonstrate compelling 3D-aware
-control without explicit 3D supervision. Despite these advances, existing
-I2V control methods are confined to \emph{per-frame conditioning
-signals}: they cannot reason about 3D object identity, depth ordering, or
-occlusion across frames, and consequently drift under viewpoint change.
-Canvas3D addresses this by grounding all control signals in an explicit,
-object-level 3D scene that is composited, rendered, and then fed into the
-video diffusion backbone.
+Diffusion transformers~\cite{peebles2023dit} and video diffusion
+models~\cite{ho2022vdm,ho2022video} underpin a family of scalable I2V
+backbones~\cite{blattmann2023svd,wan2025,guo2023animatediff,yang2025cogvideox}.
+Controllability is usually pursued by auxiliary conditioning:
+ControlNet~\cite{zhang2023controlnet} injects edge, depth, and pose
+maps, with video extensions~\cite{wang2025easycontrol} and efficient
+variants~\cite{peng2024controlnext}; cinematic shot
+design~\cite{xing2025motioncanvas} and clipart
+animation~\cite{wu2025aniclipart} achieve compelling results without
+explicit 3D supervision. All of these condition \emph{per frame}: they
+cannot reason about object identity, depth ordering, or occlusion
+across frames, and drift under viewpoint change. Canvas3D grounds its
+control signals in an explicit, object-level 3D scene that is
+composited and rendered before synthesis.
 
 \subsection{Painting-Specific Animation Pipelines}
 
-A small but growing body of work targets paintings directly. Domain-adapted
-detectors~\cite{chen2025pldsyolo} and art-segmentation
-datasets~\cite{saleh2016metric} establish that natural-image segmentation
+A small body of work targets paintings directly. Domain-adapted
+detectors~\cite{chen2025pldsyolo} and art
+datasets~\cite{saleh2016metric} show that natural-image
 backbones~\cite{jocher2023yolov8,wang2024yolov9,wang2024yolov10,tian2025yolov12}
-and foundation segmentation models~\cite{kirillov2023sam,ravi2024sam2}
-require art-specific fine-tuning due to brushstroke texture and intentional
-boundary blending. Chinese ink-wash style transfer has been explored via
-instance-aware coherence~\cite{liang2021instance} and staged diffusion
-guidance~\cite{liu2026chipdiff}. Most relevant to our setting,
-``Printing the Underdetermined''~\cite{ming2026printing} translates
-paintings to 3D representations via video generative models but operates
-on the entire image jointly rather than at the object level, while
-OilPaintingRevive~\cite{oilpaintingrevive2026} proposes a multi-stage
-pipeline combining 2DGS with video refinement, but its skeleton-binding
-network requires per-scene optimization that limits compositional
-flexibility. Canvas3D advances beyond these works along four
-axes---\emph{object-level} rather than image-level manipulation,
-\emph{line-art} as a compositional control interface,
-\emph{depth-aware inpainting} for disocclusion, and
-\emph{multi-modal geometric conditioning} for video synthesis---yielding
-stronger 3D consistency and explicit compositional control.
+and segmentation foundation
+models~\cite{kirillov2023sam,ravi2024sam2} require art-specific
+fine-tuning, due to brushstroke texture and intentional boundary
+blending. Closest to our setting, ``Printing the
+Underdetermined''~\cite{ming2026printing} translates paintings to 3D
+via video generative models but processes the image as a whole, and
+OilPaintingRevive~\cite{oilpaintingrevive2026} combines 2DGS with
+video refinement yet relies on per-scene skeleton binding that limits
+compositional flexibility. Canvas3D differs on four counts:
+object-level rather than image-level manipulation, line art as the
+composition interface, depth-aware inpainting for disocclusion, and
+multi-modal geometric conditioning for video synthesis.

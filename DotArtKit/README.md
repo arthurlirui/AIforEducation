@@ -15,6 +15,18 @@
 | `kusama_depth` | 草间弥生 (深度) | ultralytics + GPU | YOLO26 深度 + 三层架构 + 语义双色 |
 | `learned` (扩展) | 可学习映射 | + torch | CNN 替代固定幂律 (IJCAI 论文) |
 
+## 桌面端编辑器
+
+```bash
+py -m dotartkit.gui inputs/pumpkin.jpg
+```
+
+tkinter 桌面应用: 加载图片 → 选择深度估计后端 (YOLO26 / 亮度伪深度) /
+深度映射激活函数 (power / linear / sigmoid / sqrt) / 波点滤除算法
+(overlap / min_dist / density / none) / 配色方案 (5 套) → 生成 →
+画布上手动编辑 (选择移动 / 添加 / 擦除 / 改半径, Ctrl+Z 撤销) → 导出 PNG.
+详见 [docs/波点编辑器.md](docs/波点编辑器.md).
+
 ## 快速开始
 
 ### 安装

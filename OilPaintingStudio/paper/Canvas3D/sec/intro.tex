@@ -1,134 +1,103 @@
 % =====================================================================
-%  Section: Introduction  (IJCAI 2027 revision: idea-centric)
+%  Section: Introduction  (IJCAI 2027 revision)
 % =====================================================================
 \section{Introduction}
 \label{sec:intro}
 
-Classical paintings---whether oil on canvas, ink on silk, or pigment on
-fresco---are cultural artifacts that encode centuries of human visual
-imagination~\cite{lowenthal2015heritage}. From van Gogh's swirling
-\textit{Starry Night} to Zhang Zeduan's panoramic \textit{Along the
-River During the Qingming Festival}, these works imply motion, narrative,
-and spatial depth that their static medium can only suggest. Animating
-such paintings as \emph{explorable} videos---sequences in which the
-viewer's viewpoint can move, and in which painted subjects can be
-repositioned according to the animator's compositional intent---has
-therefore emerged as a compelling research goal at the intersection of
-computer vision, generative modeling, and digital cultural
-heritage~\cite{zhang2024artgallery,dong2024enhancingpainting}.
+Classical paintings---oil on canvas, ink on silk, pigment on
+fresco---depict motion, narrative, and spatial depth that their static
+medium can only imply~\cite{lowenthal2015heritage}. Animating them as
+\emph{explorable} videos, in which the viewpoint can move and painted
+subjects can be repositioned, has therefore become an active goal at
+the intersection of computer vision, generative modeling, and digital
+cultural heritage~\cite{dong2024enhancingpainting}.
 
-Recent years have witnessed remarkable progress on two fronts that,
-however, fail to meet on common ground. On one hand, image-to-video
-(I2V) diffusion models~\cite{blattmann2023svd,wan2025,ltxvideo2024,
-yang2025cogvideox}, combined with controllable conditioning
-mechanisms~\cite{zhang2023controlnet,wang2024easycontrol,peng2024controlnext},
-can animate a single photograph into a short clip with plausible
-per-frame dynamics. Yet when applied directly to oil paintings or
-ink-wash artworks, they exhibit two fundamental shortcomings.
-First, they operate entirely in 2D pixel space: the model has no
-geometric understanding of object depth ordering, self-occlusion, or
-relative spatial layout, and consequently can neither synthesize novel
-viewpoints nor maintain consistent 3D structure across frames. Second,
-long-range temporal coherence degrades rapidly beyond 2--4 seconds, as
-latent-space interpolation lacks an explicit geometric constraint to
-anchor the motion trajectory.
+Progress on this goal, however, is split along two lines that do not
+meet. Image-to-video (I2V) diffusion
+models~\cite{blattmann2023svd,wan2025,guo2023animatediff,yang2025cogvideox},
+together with conditioning mechanisms such as
+ControlNet~\cite{zhang2023controlnet,wang2025easycontrol,peng2024controlnext},
+animate a single image into a short clip with plausible per-frame
+dynamics. Applied to paintings, they exhibit two shortcomings: they
+operate purely in 2D pixel space, with no notion of depth ordering,
+self-occlusion, or spatial layout, so they can neither synthesize novel
+viewpoints nor keep 3D structure consistent across frames; and temporal
+coherence degrades quickly beyond a few seconds, since latent
+interpolation has no geometric anchor for the motion trajectory.
+Reconstruction methods~\cite{mildenhall2020nerf,kerbl20233dgs,huang20242dgs}
+provide the missing geometry, and feed-forward monocular
+variants~\cite{tripo2025tritosplat,tang2024dreamgaussian,charatan2024pixelsplat}
+can lift a single image to 3D, but they are optimized for photorealistic
+fidelity: applied to paintings, they replace brushstrokes with geometric
+artifacts, flatten impasto texture, and blur color boundaries under
+novel-view projection.
 
-On the other hand, 3D reconstruction and rendering
-methods~\cite{mildenhall2020nerf,kerbl20233dgs,huang20242dgs} can
-reconstruct explorable 3D scenes from sparse views, and feed-forward
-monocular variants~\cite{wang2024triposplat,tang2024dreamgaussian,
-charatan2024pixelsplat} can even lift a single image to a 3D
-representation. However, these reconstruction pipelines are optimized
-for photorealistic fidelity; when applied to paintings, the rendering
-process replaces expressive brushstrokes with geometric artifacts,
-flattens the impasto texture, and bleeds semantic color boundaries
-under novel-view projection.
-
-The core tension is this: \emph{3D scene structure and artistic style
-fidelity} are governed by incompatible optimization objectives, and no
-single model family---neither pure diffusion nor pure 3D
-reconstruction---satisfactorily achieves both. The tension becomes
-especially acute when the animation task demands
-\textbf{object-level manipulation}: moving a painted figure from one
-compositional position to another while preserving its painterly
-identity and filling the resulting disocclusions with plausible
-background content.
+The underlying difficulty is that \emph{3D structure and artistic style}
+favor conflicting representations, and neither model family achieves
+both. The conflict is most acute when the task demands
+\textbf{object-level manipulation}: moving a painted figure to a new
+compositional position while preserving its painterly identity and
+plausibly filling the disoccluded background.
 
 \smallskip
-\noindent\textbf{Our approach: modular separation of concerns.}
-Rather than training a single monolithic network to jointly optimize
-style and structure---an ill-posed objective whose gradients pull in
-opposite directions---we propose to \emph{factor} the painting-to-video
-problem into four interacting yet independently optimized sub-problems,
-each addressed by a specialist and communicating with the next through
-a small, interpretable handshake representation
-(Figure~\ref{fig:overview}):
+\noindent\textbf{Our approach.}
+Rather than training one network to jointly optimize style and
+structure---an ill-posed objective whose gradients pull in opposite
+directions---we factor the problem into four sub-problems, each
+addressed by a specialist and connected to the next by a small,
+interpretable intermediate representation (Figure~\ref{fig:overview}):
 
 \begin{itemize}
-    \item \textbf{PaintParse} handles \emph{perceptual grouping}:
-    decomposing the input painting into foreground objects and a
-    background layer using an art-domain-adapted segmentation backbone,
-    augmented with monocular depth estimation for metric-scale layer
-    ordering.
-    \item \textbf{MonoSplat} handles \emph{geometric structure}:
-    lifting each segmented foreground region into a high-fidelity 3D
-    representation via feed-forward single-image 3D prediction,
-    assembling an object-level model library with depth-derived metric
-    rescaling.
-    \item \textbf{SketchComp} handles \emph{compositional intent}:
-    accepting hand-drawn line-art sketches specifying target object
-    positions, solving a contour-based rigid registration to place each
-    3D object onto its sketch, and filling disocclusion gaps through a
-    depth-conditioned inpainting module that preserves background
-    artistic texture.
-    \item \textbf{ArtiFlow} handles \emph{temporal rendering}: rendering
-    the composited 3D scene into multi-view keyframes and feeding them
-    into a video diffusion backbone with dual control branches
-    (depth + edge), producing temporally smooth animations with
-    pixel-precise object motion governed by explicit 3D geometry
-    rather than learned heuristics.
+    \item \textbf{PaintParse} performs perceptual grouping: it
+    decomposes the painting into foreground objects and a background
+    layer with an art-domain-adapted segmentation backbone, and orders
+    the layers by monocular depth.
+    \item \textbf{MonoSplat} handles geometry: it lifts each foreground
+    region into a 3D Gaussian representation via feed-forward
+    single-image prediction, rescaled to metric units by the PaintParse
+    depth cue, and assembles an object-level library.
+    \item \textbf{SketchComp} encodes compositional intent: it accepts
+    hand-drawn line art specifying target positions, registers each 3D
+    object to its sketched contour by a rigid transformation, and fills
+    disocclusion gaps with depth-conditioned inpainting.
+    \item \textbf{ArtiFlow} renders the composited scene into
+    multi-view keyframes and drives a video diffusion backbone with
+    dual control branches (depth and edge), so that object motion
+    follows explicit 3D geometry rather than learned heuristics.
 \end{itemize}
 
-This decomposition enables a clean separation of concerns: each
-handshake carries exactly the information the downstream stage requires
-and nothing more, which localizes errors instead of compounding them.
-The result is a system that supports \emph{arbitrary object
-repositioning}, \emph{multi-view explorability}, and
-\emph{style-anchored animation}---capabilities that no prior
+Each intermediate representation carries exactly what the next stage
+needs, which localizes errors instead of compounding them. The result
+is a system supporting object repositioning, multi-view exploration,
+and style-preserving animation---capabilities that no prior
 single-modality pipeline offers.
 
 \smallskip
 \noindent\textbf{Contributions.} Our contributions are:
 \begin{enumerate}
-    \item \textbf{A modular factorization} of the painting-to-video
-    problem into four independently optimized specialists---PaintParse
-    (perceptual grouping), MonoSplat (per-object 3D lifting),
-    SketchComp (line-art composition with depth-aware inpainting), and
-    ArtiFlow (dual-conditioned video synthesis)---that communicate
-    through small, interpretable handshake representations. To our
-    knowledge, this is the first end-to-end pipeline for 3D-aware,
-    artistically controllable painting animation.
-    \item \textbf{An object-level 3D lifting pipeline} (MonoSplat) that
-    couples art-domain-adapted instance segmentation with feed-forward
-    monocular 3D prediction and depth-derived metric rescaling
-    (Eq.~\ref{eq:metric_scale}), yielding a reusable, retrievable
-    library of metric-consistent 3D foreground objects from a single
-    painting.
-    \item \textbf{A sketch-conditioned 3D scene composition algorithm}
-    (SketchComp) whose contour-based rigid registration jointly
-    optimizes region IoU and boundary Chamfer distance
-    (Eq.~\ref{eq:contour_reg}), complemented by a depth-conditioned
-    inpainting module that fills disocclusion gaps
-    (Eq.~\ref{eq:gap}) while preserving the background's artistic
-    texture.
-    \item \textbf{A geometry-grounded video synthesis workflow}
-    (ArtiFlow) whose dual control branches (depth + edge,
-    Eq.~\ref{eq:dual_control}) and first-frame latent anchoring anchor
-    temporal motion to explicit 3D structure with per-object control.
-    \item \textbf{Comprehensive evaluation} on a curated benchmark of
-    50 classical oil paintings and ink-wash works, achieving
-    state-of-the-art style fidelity, perceptual quality, and temporal
-    coherence, with user studies confirming strong preference for
-    artistic authenticity, motion naturalness, and
+    \item A modular factorization of painting-to-video generation into
+    four specialists---PaintParse, MonoSplat, SketchComp, and
+    ArtiFlow---that communicate through small, interpretable
+    intermediate representations; to our knowledge, this is the first
+    end-to-end pipeline for 3D-aware, artistically controllable
+    painting animation.
+    \item An object-level 3D lifting pipeline (MonoSplat) that couples
+    art-domain-adapted segmentation with feed-forward monocular 3D
+    prediction and depth-derived metric rescaling
+    (Eq.~\ref{eq:metric_scale}), yielding a reusable library of
+    metric-consistent 3D objects from a single painting.
+    \item A sketch-conditioned composition algorithm (SketchComp)
+    whose contour-based rigid registration jointly optimizes region IoU
+    and boundary Chamfer distance (Eq.~\ref{eq:contour_reg}), combined
+    with a depth-conditioned inpainting module that fills disocclusion
+    gaps (Eq.~\ref{eq:gap}) while preserving background texture.
+    \item A geometry-grounded video synthesis workflow (ArtiFlow)
+    whose dual control branches (Eq.~\ref{eq:dual_control}) and
+    first-frame latent anchoring bind temporal motion to explicit 3D
+    structure with per-object control.
+    \item A comprehensive evaluation on a benchmark of 50 classical
+    paintings, showing state-of-the-art style fidelity, perceptual
+    quality, and temporal coherence, with user studies confirming
+    preference for artistic authenticity, motion naturalness, and
     compositional-intent alignment.
 \end{enumerate}
