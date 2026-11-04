@@ -74,7 +74,21 @@ from oilpainting_studio.common.llm_client import LLMClient
 from oilpainting_studio.common.comfy.client import ComfyClient
 ```
 
-### 测试
+### GUI 工作台 (PaintingStudio)
+
+可视化交互工作站: 分割审校 → TripoSplat 3D 生成 → 场景组装 → 关键帧线稿 → 视频合成。
+设计文档见 [docs/paintingstudio_gui_design.md](docs/paintingstudio_gui_design.md)。
+
+```bash
+cd gui && npm install && npm run build   # 前端构建 (dist/ 由后端自动托管)
+py -m oilpainting_studio.gui.server      # 启动 http://127.0.0.1:8710
+```
+
+- 后端: `oilpainting_studio/gui/` (FastAPI + GPU 串行任务队列), 复用 revive stage1–5 算法层
+- 前端: `gui/src/` (Vue3 + Three.js 3DGS 视口 + 变换 gizmo + 笔刷/线稿画布)
+- 项目目录自包含 (`projects/<名>/`), project.json/scene.json 与 CLI 产物互通
+
+## 测试
 
 ```bash
 pytest tests/ -v                              # 全部 (52 项)

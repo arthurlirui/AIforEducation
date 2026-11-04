@@ -1,0 +1,23 @@
+{
+  "object_id": 0,
+  "category": "object",
+  "label": "frisbee",
+  "confidence": 0.637193500995636,
+  "bbox": [
+    505,
+    44,
+    575,
+    115
+  ],
+  "depth_range": [
+    1.5,
+    5.0
+  ],
+  "color": "#5b8cff",
+  "rejected": false,
+  "mask_version": 1,
+  "mask_path": "mask.png",
+  "crop_path": "crop.png",
+  "gs_version": 1,
+  "gs_source_ply": "stage2/gs/00_frisbee.v1.ply"
+}

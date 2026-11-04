@@ -21,8 +21,10 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger("paintingstudio")
 
 # projects 根目录: 项目目录自包含, 可整目录拷贝迁移 (§3.2)
-PROJECTS_ROOT = Path(__file__).resolve().parents[3] / "projects"
-DIST_DIR = Path(__file__).resolve().parents[3] / "gui" / "dist"
+# oilpainting_studio/gui/server.py → 上三级 = OilPaintingStudio/
+_ROOT = Path(__file__).resolve().parents[2]
+PROJECTS_ROOT = _ROOT / "projects"
+DIST_DIR = _ROOT / "gui" / "dist"
 
 registry = ProjectRegistry(PROJECTS_ROOT)
 task_queue = get_queue()
@@ -48,6 +50,9 @@ for r in (routers.projects_router, routers.objects_router, routers.segment_route
 
 @app.get("/")
 def root():
+    from fastapi.responses import RedirectResponse
+    if DIST_DIR.is_dir():
+        return RedirectResponse(url="/index.html")
     return {
         "app": "PaintingStudio",
         "version": "0.1.0",

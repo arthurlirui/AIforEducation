@@ -1,0 +1,23 @@
+{
+  "object_id": 1,
+  "category": "object",
+  "label": "stop sign",
+  "confidence": 0.6308843493461609,
+  "bbox": [
+    68,
+    208,
+    152,
+    292
+  ],
+  "depth_range": [
+    1.5,
+    5.0
+  ],
+  "color": "#3fbf7f",
+  "rejected": false,
+  "mask_version": 1,
+  "mask_path": "mask.png",
+  "crop_path": "crop.png",
+  "gs_version": 1,
+  "gs_source_ply": "stage2/gs/01_stop-sign.v1.ply"
+}

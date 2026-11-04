@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "camera": {
+    "position": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "look_at": [
+      0.0,
+      0.0,
+      -1.0
+    ],
+    "fov": 50.0,
+    "locked_to_painting": true
+  },
+  "ground": "auto",
+  "nodes": [
+    {
+      "node_id": "obj-00-frisbee",
+      "kind": "gs_object",
+      "label": "frisbee #0",
+      "source_ply": "stage2/gs/00_frisbee.v1.ply",
+      "parent": null,
+      "transform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation_quat": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "visible": true,
+      "locked": false,
+      "keyframes": {
+        "kf-0": {
+          "translation": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation_quat": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      }
+    },
+    {
+      "node_id": "obj-01-stop-sign",
+      "kind": "gs_object",
+      "label": "stop sign #1",
+      "source_ply": "stage2/gs/01_stop-sign.v1.ply",
+      "parent": null,
+      "transform": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation_quat": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "visible": true,
+      "locked": false,
+      "keyframes": {}
+    }
+  ],
+  "edited_scene_ply_path": null
+}

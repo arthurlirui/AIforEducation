@@ -87,8 +87,14 @@ def _make_project(client, painting_png, name="测试项目"):
 # ────────────────────────── projects ──────────────────────────
 
 def test_root_health(client):
-    r = client.get("/")
-    assert r.status_code == 200 and r.json()["app"] == "PaintingStudio"
+    # dist 构建产物存在时 / 重定向到 /index.html (TestClient 默认跟随→HTML);
+    # 禁用跟随验证 307 本体, API 描述由 /api/health 与 /docs 提供
+    r = client.get("/", follow_redirects=False)
+    assert r.status_code in (200, 307)
+    if r.status_code == 307:
+        assert r.headers["location"] == "/index.html"
+    else:
+        assert r.json()["app"] == "PaintingStudio"
     assert client.get("/api/health").json()["status"] == "ok"
 
 

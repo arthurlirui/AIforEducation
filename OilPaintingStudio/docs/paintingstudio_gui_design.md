@@ -3,7 +3,7 @@
 > 将 `oilpainting_studio.revive` 四模块管线（PaintParse → MonoSplat → SketchComp → ArtiFlow）
 > 从命令行升级为可视化交互工作站：**图片语义分割编辑 → TripoSplat 三维生成 → 场景三维模型组装 → 线稿关键帧 → 视频合成**。
 >
-> 版本 v1.0 · 2026-11-04 · 设计稿（未实现）
+> 版本 v1.0 · 2026-11-04 · **已实现**（后端 `oilpainting_studio/gui/` + 前端 `gui/`，85 项测试全绿，端到端验证通过）
 
 ---
 

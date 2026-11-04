@@ -1,0 +1,11 @@
+[
+  {
+    "keyframe_id": "kf-0",
+    "label": "关键帧 0",
+    "rgb_path": "stage3/keyframes/kf-0_rgb.png",
+    "depth_path": "stage3/keyframes/kf-0_depth.png",
+    "edge_path": "stage3/keyframes/kf-0_edge.png",
+    "lineart_path": "stage3/lineart/kf-0.png",
+    "source": "snapshot"
+  }
+]

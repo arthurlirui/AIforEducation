@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "project_id": "7682b12117e248f998c6331d2dc0c18d",
+  "name": "山水风景",
+  "created_at": "2026-11-04T08:17:18.943040Z",
+  "painting": {
+    "path": "source/painting.png",
+    "width": 640,
+    "height": 400,
+    "md5": "fa2103d124aaa100df454e0831512cd7",
+    "thumb_path": "source/painting.thumb.jpg"
+  },
+  "pipeline_state": {
+    "segment": {
+      "status": "done",
+      "updated": "2026-11-04T08:18:56.534116Z",
+      "artifact": "stage1/stage1.json",
+      "detail": "detector=yolo"
+    },
+    "gs": {
+      "status": "done",
+      "updated": "2026-11-04T08:19:50.543215Z",
+      "artifact": "stage2/stage2.json",
+      "detail": "2/2 物体"
+    },
+    "scene": {
+      "status": "partial",
+      "updated": "2026-11-04T08:17:18.943040Z",
+      "artifact": null,
+      "detail": ""
+    },
+    "keyframe": {
+      "status": "partial",
+      "updated": "2026-11-04T08:21:58.362710Z",
+      "artifact": "stage3/keyframes",
+      "detail": ""
+    },
+    "compose": {
+      "status": "done",
+      "updated": "2026-11-04T08:22:54.743765Z",
+      "artifact": "stage5\\runs\\2026-11-04T16-22-53\\output.mp4",
+      "detail": ""
+    }
+  }
+}

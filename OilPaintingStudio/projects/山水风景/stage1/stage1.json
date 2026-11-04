@@ -1,0 +1,47 @@
+{
+  "painting_path": "D:\\Code\\AIforEducation\\OilPaintingStudio\\projects\\山水风景\\source\\painting.png",
+  "width": 640,
+  "height": 400,
+  "detector": "yolo",
+  "objects": [
+    {
+      "object_id": 0,
+      "category": "object",
+      "label": "frisbee",
+      "confidence": 0.637193500995636,
+      "mask_path": "objects/00/mask.png",
+      "bbox": [
+        505,
+        44,
+        575,
+        115
+      ],
+      "crop_path": "objects/00/crop.png",
+      "depth_range": [
+        1.5,
+        5.0
+      ]
+    },
+    {
+      "object_id": 1,
+      "category": "object",
+      "label": "stop sign",
+      "confidence": 0.6308843493461609,
+      "mask_path": "objects/01/mask.png",
+      "bbox": [
+        68,
+        208,
+        152,
+        292
+      ],
+      "crop_path": "objects/01/crop.png",
+      "depth_range": [
+        1.5,
+        5.0
+      ]
+    }
+  ],
+  "background_mask_path": "background_mask.png",
+  "background_path": "background.png",
+  "depth_path": "depth.png"
+}
