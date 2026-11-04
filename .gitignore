@@ -58,3 +58,8 @@ Thumbs.db
 # ArtRealm3D
 ArtRealm3D/backend/app/data/generated/
 ArtRealm3D/backend/output/
+# LaTeX build copies & test temp dirs
+DotArtKit/paper/main_build.pdf
+OilPaintingStudio/tests/.trash/
+OilPaintingStudio/tests/_tmp_projects/
+**/__pycache__/
