@@ -23,15 +23,17 @@ function notify(text, kind = '') {
 function notifyError(e) { notify(e.message || String(e), 'err') }
 
 const steps = computed(() => {
+  const noProject = !project.value
   const ps = project.value?.pipeline_state || {}
   const seg = ps.segment?.status
   const gs = ps.gs?.status
+  const lock = (v) => noProject ? 'locked' : v
   return [
-    { n: 1, t: '分割审校', s: seg || 'todo', d: 'PaintParse' },
-    { n: 2, t: '3D 生成', s: seg === 'done' ? (gs || 'todo') : 'locked', d: 'TripoSplat' },
-    { n: 3, t: '场景组装', s: gs === 'done' ? 'part' : 'locked', d: 'scene.json' },
-    { n: 4, t: '关键帧线稿', s: 'todo', d: 'SketchComp' },
-    { n: 5, t: '视频合成', s: 'todo', d: 'ArtiFlow' },
+    { n: 1, t: '分割审校', s: lock(seg || 'todo'), d: 'PaintParse' },
+    { n: 2, t: '3D 生成', s: lock(seg === 'done' ? (gs || 'todo') : 'locked'), d: 'TripoSplat' },
+    { n: 3, t: '场景组装', s: lock(gs === 'done' ? 'part' : 'locked'), d: 'scene.json' },
+    { n: 4, t: '关键帧线稿', s: lock('todo'), d: 'SketchComp' },
+    { n: 5, t: '视频合成', s: lock('todo'), d: 'ArtiFlow' },
     { n: 6, t: '论文 Demo', s: 'done', d: 'GPU/CPU/MOCK' },
   ]
 })
@@ -89,7 +91,7 @@ onMounted(async () => {
 
     <div style="flex:1;display:flex;min-height:0">
       <!-- 左侧管线步骤栏 (§4 状态机) -->
-      <nav v-if="project" style="width:180px;background:var(--panel);border-right:1px solid var(--bd);padding:10px 8px;display:flex;flex-direction:column;gap:4px;flex:none">
+      <nav style="width:180px;background:var(--panel);border-right:1px solid var(--bd);padding:10px 8px;display:flex;flex-direction:column;gap:4px;flex:none">
         <button v-for="s in steps" :key="s.n"
           :style="{ display:'flex', alignItems:'center', gap:'10px', padding:'10px', borderRadius:'8px', width:'100%', textAlign:'left',
             color: s.n===step ? 'var(--tx)' : 'var(--dim)',
@@ -108,13 +110,13 @@ onMounted(async () => {
 
       <!-- 工作区 -->
       <main style="flex:1;display:flex;min-width:0;min-height:0">
-        <ProjectHome v-if="!project" @open="openProject" @notify="notify" @notify-error="notifyError" />
+        <DemoView v-if="step===6" />
+        <ProjectHome v-else-if="!project" @open="openProject" @notify="notify" @notify-error="notifyError" />
         <SegmentView v-else-if="step===1" :project="project" @notify="notify" @notify-error="notifyError" @refresh="refreshProject" />
         <GsView v-else-if="step===2" :project="project" @notify="notify" @notify-error="notifyError" @refresh="refreshProject" />
         <SceneView v-else-if="step===3" :project="project" @notify="notify" @notify-error="notifyError" @refresh="refreshProject" />
         <KeyframeView v-else-if="step===4" :project="project" @notify="notify" @notify-error="notifyError" @refresh="refreshProject" />
-        <ComposeView v-else-if="step===5" :project="project" @notify="notify" @notify-error="notifyError" @refresh="refreshProject" />
-        <DemoView v-else />
+        <ComposeView v-else :project="project" @notify="notify" @notify-error="notifyError" @refresh="refreshProject" />
       </main>
     </div>
 
