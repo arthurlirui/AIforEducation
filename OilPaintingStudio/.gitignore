@@ -31,3 +31,6 @@ paper/*/paper.bbl
 paper/*/paper.blg
 paper/*/paper.log
 paper/*/paper.out
+
+# Demo 运行时产物 (每次运行生成, 含大体积 png/ply)
+projects/_demo/runs/

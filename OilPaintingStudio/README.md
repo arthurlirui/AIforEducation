@@ -88,6 +88,12 @@ py -m oilpainting_studio.gui.server      # 启动 http://127.0.0.1:8710
 - 前端: `gui/src/` (Vue3 + Three.js 3DGS 视口 + 变换 gizmo + 笔刷/线稿画布)
 - 项目目录自包含 (`projects/<名>/`), project.json/scene.json 与 CLI 产物互通
 
+### 桌面论文 Demo (第 6 步页签)
+
+一键三步演示 (语义分割 → 深度 → 3D 点云), **GPU/CPU/MOCK 三档推理自动回退**:
+`py -m oilpainting_studio.desktop` 开 pywebview 桌面窗口; `PYSTUDIO_DEMO=web` 为浏览器模式 (:8712)。
+设计文档: [docs/paintingstudio_desktop_demo.md](docs/paintingstudio_desktop_demo.md)
+
 ## 测试
 
 ```bash
