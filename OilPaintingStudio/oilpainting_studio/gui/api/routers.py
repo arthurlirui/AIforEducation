@@ -174,6 +174,9 @@ def update_object(oid: int, patch: dict,
     changed = {k: v for k, v in patch.items() if k in allowed}
     if not changed:
         raise HTTPException(400, f"无可更新字段, 允许: {sorted(allowed)}")
+    if isinstance(changed.get("depth_range"), list):
+        # model_copy 不做校验：列表不转元组会触发 pydantic 序列化警告
+        changed["depth_range"] = tuple(changed["depth_range"])
     obj = obj.model_copy(update=changed)
     store.save_object(obj)
     store.push_undo(UndoEntry(op="object.update", target=f"stage1/objects/{oid:02d}/meta.json",

@@ -116,8 +116,9 @@ def _night_sky(pal: list[str], detail: dict[str, Any]) -> Image.Image:
         for rr in range(70, 8, -6):
             a = int(38 * (1 - rr / 70))
             hd.ellipse([80 - rr, 80 - rr * 0.8, 80 + rr, 80 + rr * 0.8], fill=(244, 232, 160, a))
-        img.paste(Image.alpha_composite(Image.new("RGBA", (160, 160), (0, 0, 0, 0)), halo).convert("RGB"),
-                  (x - 80, y - 80))
+        # 以 halo 自身为 mask 粘贴：无 mask 时整个 160×160 方块（含
+        # 透明区转出的纯黑）会盖住天空，留下可见的黑方块
+        img.paste(halo, (x - 80, y - 80), halo)
         dr = ImageDraw.Draw(img)
         dr.ellipse([x - 7, y - 7, x + 7, y + 7], fill=(248, 238, 170))
         dr.ellipse([x - 3, y - 3, x + 3, y + 3], fill=(255, 252, 224))
@@ -323,13 +324,13 @@ def _dark_void(pal: list[str], detail: dict[str, Any]) -> Image.Image:
     img = _gradient_vertical(pal)
     v = float(detail.get("vignette", 0.5))
     if v > 0:
+        # 暗角：mask 在中心亮、边缘暗 → 取反映射后边缘更暗
         mask = Image.new("L", (W, H), 0)
         md = ImageDraw.Draw(mask)
         md.ellipse([-W * 0.25, -H * 0.25, W * 1.25, H * 1.25], fill=int(255 * (1 - v)))
         mask = mask.filter(ImageFilter.GaussianBlur(120))
         dark = Image.new("RGB", (W, H), (6, 7, 10))
         img = Image.composite(img, dark, mask.point(lambda p: 255 - p)).convert("RGB")
-        img = Image.composite(dark, img, mask)
     return _stroke_texture(img, 0.10, seed=31)
 
 
@@ -393,13 +394,12 @@ def _pearl(pal: list[str], detail: dict[str, Any]) -> Image.Image:
     dr = ImageDraw.Draw(img)
     px, py = int(W * 0.615), int(H * 0.545)
     soft = _hex2rgb(pal[2])
-    # halo
+    # halo（以 halo 自身为 mask 粘贴，正确按 alpha 混合）
     for r, a in [(26, 60), (18, 90), (11, 140)]:
         halo = Image.new("RGBA", (120, 120), (0, 0, 0, 0))
         ImageDraw.Draw(halo).ellipse([60 - r, 60 - r, 60 + r, 60 + r],
                                      fill=_hex2rgb(pal[1]) + (a,))
-        img.paste(Image.alpha_composite(Image.new("RGBA", (120, 120), (0, 0, 0, 0)), halo).convert("RGB"),
-                  (px - 60, py - 60))
+        img.paste(halo, (px - 60, py - 60), halo)
     dr = ImageDraw.Draw(img)
     # the pearl: a light stroke, a dark stroke, a reflected gleam
     dr.ellipse([px - 10, py - 10, px + 10, py + 12], fill=soft)

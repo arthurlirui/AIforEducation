@@ -23,6 +23,12 @@ def api_get_masterpiece(mid: str):
     assets = ensure_assets(mid)
     payload = {k: v for k, v in m.items() if k != "layers"}
     payload["layers"] = assets.get("layers", [])
+    # 测验答案与解析不下发：客户端只能在提交答案后从判分结果获知，
+    # 避免通过浏览器 devtools 提前看到正确答案
+    payload["quiz"] = [
+        {k: v for k, v in q.items() if k not in ("answer", "explain")}
+        for q in payload.get("quiz", [])
+    ]
     return payload
 
 

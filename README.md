@@ -1,22 +1,25 @@
 # AIforEducation
 
-面向**艺术教育 + AI 生成**的 monorepo，包含五个子项目：从波点艺术生成、油画动态化，到绘画手势教练和可交互学习平台。共享名画素材库与 IJCAI 论文 LaTeX 资产。
+面向**教育 + AI 生成**的 monorepo，包含七个独立子项目：从波点艺术生成、油画动态化，到三维沉浸名画教学、历史沙盘推演、绘画手势教练和可交互学习平台。共享名画素材库与 IJCAI 论文 LaTeX 资产。
 
 ## 子项目一览
 
 | 目录 | 项目 | 一句话 | 技术栈 |
 |------|------|--------|--------|
-| [`DotArtKit/`](DotArtKit/) | 统一波点艺术生成器 | 8 种流派波点艺术：点彩/Ben-Day/欧普/点绘/叶序/草间弥生（基础+深度感知）/可学习映射 | Python, numpy/PIL, scipy/ultralytics/torch 可选 |
-| [`OilPaintingStudio/`](OilPaintingStudio/) | 经典油画动态艺术生成 | 两条管线：LLM 剧本 → 油画关键帧 → I2V 短片（video）；单画 → YOLO 分割 + 3DGS → 线稿重排 → 动态视频（revive/Canvas3D） | Python, ComfyUI, ControlNet, ffmpeg |
+| [`DotArtKit/`](DotArtKit/) | 统一波点艺术生成器 | 8 种流派波点艺术：点彩/Ben-Day/欧普/点绘/叶序/草间弥生（基础+深度感知）/可学习映射；含桌面波点编辑器 GUI | Python, numpy/PIL, tkinter, scipy/ultralytics/torch 可选 |
+| [`OilPaintingStudio/`](OilPaintingStudio/) | 经典油画动态艺术生成 | 两条管线：LLM 剧本 → 油画关键帧 → I2V 短片（video）；单画 → YOLO 分割 + 3DGS → 线稿重排 → 动态视频（revive/Canvas3D）；含 GUI 工作站 + pywebview 桌面论文 Demo | Python, ComfyUI, ControlNet, ffmpeg, FastAPI, Vue 3, Three.js |
 | [`OilPaintingPlatform/`](OilPaintingPlatform/) | 油画教学 + AI 文生图平台 | 前后端分离网站：12 风格 + 28 提示词模板 + 6 视觉大模型（含免费 Pollinations）+ 教学文章 + 画廊 | FastAPI, Vue 3, Pinia |
+| [`ArtRealm3D/`](ArtRealm3D/) | 艺境 — 名画三维沉浸教学 | 名画解构为多层三维画层，章节式镜头导览 + 程序化渲染零图片依赖 + 测验闭环 | FastAPI, Vue 3, Three.js |
+| [`HistorySandbox/`](HistorySandbox/) | 读史 — 历史三维沙盘推演 | 4 剧本 × 6 幕沙盘推演 + AI 讲解员 + 世界模型交互推演（机动/进攻/结盟/假想） | FastAPI, Vue 3, Three.js |
 | [`TechLearnStudio/`](TechLearnStudio/) | 可交互网页 PPT 学习平台 | 文档/讲义 → Composer(LLM+规则) → frames.json → hyperframe 播放；覆盖 Python/Rust/Go/TS 与信号/无线/大模型专业课 | FastAPI, SQLModel, Vue 3, reveal.js, SVG/SMIL |
-| [`GestureCoach/`](GestureCoach/) *(submodule)* | 绘画手势教练 | MediaPipe 手部跟踪 + 改进 DTW 诊断 + 规则/LLM 双通道反馈 + Krita 插件 + 课堂管理 | Python, FastAPI, React, Krita Python API |
+| [`GestureCoach/`](GestureCoach/) *(submodule)* | 绘画手势教练 | MediaPipe 手部跟踪 + 改进 DTW 诊断 + 规则/LLM 双通道反馈 + 手势指令管线 + Krita 插件 + 课堂管理 | Python, FastAPI, React, Krita Python API |
 
 ## 共享资产
 
 ```
 AIforEducation/
 ├── images/     18 张经典油画高清扫描（各子项目测试素材）
+├── models/     共享模型权重（YOLO 深度/分割等）
 ├── latex/      IJCAI 论文 LaTeX 模板与历史论文源码
 ├── docs/       统一文档中心（架构总览、模块参考、版本策略）
 └── bak/        重组前旧项目存档（已从 git 移除，仅本地保留）
@@ -29,14 +32,25 @@ AIforEducation/
 ```bash
 # 波点艺术（纯 numpy 模式零依赖）
 cd DotArtKit && pip install -e . && dotart demo
+py -m dotartkit.gui                          # 桌面波点编辑器 (tkinter)
 
 # 油画动态化（mock 模式无需 ComfyUI）
 cd OilPaintingStudio && pip install -e .[dev] && pytest
 python -m oilpainting_studio.revive.cli run <油画路径> --no-comfyui
+py -m oilpainting_studio.gui.server          # GUI 工作站 (端口 8710)
+py -m oilpainting_studio.desktop             # 桌面论文 Demo (pywebview)
 
 # 教学平台（内置 Mock Provider，零 Key 可演示）
 cd OilPaintingPlatform/backend && pip install -r requirements.txt && uvicorn app.main:app
 cd OilPaintingPlatform/frontend && npm install && npm run dev
+
+# 名画三维沉浸教学
+cd ArtRealm3D/backend && pip install -r requirements.txt && uvicorn app.main:app --port 8300
+cd ArtRealm3D/frontend && npm install && npm run dev
+
+# 历史沙盘推演
+cd HistorySandbox/backend && pip install -r requirements.txt && python run.py
+cd HistorySandbox/frontend && npm install && npm run dev
 
 # 学习平台
 cd TechLearnStudio && pip install -r backend/requirements.txt && pytest
@@ -59,5 +73,5 @@ cd GestureCoach && pip install -r requirements.txt && pytest
 ## 文档
 
 - [架构总览](docs/architecture.md) — 全局架构与子项目关系
-- [模块参考](docs/README.md) — 逐文件功能说明
+- [模块参考](docs/README.md) — 逐文件功能说明（含 ArtRealm3D / HistorySandbox）
 - [版本管理策略](docs/VERSIONING.md) / [更新日志](docs/CHANGELOG.md) / [贡献指南](docs/CONTRIBUTING.md)

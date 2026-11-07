@@ -13,7 +13,8 @@ defineProps({
     </div>
 
     <div class="step-head">
-      <span class="step-no">第 {{ step.id }} 幕 / {{ event.steps.length }}</span>
+      <!-- 假想推演步的 id 是 900+ 哨兵值（世界模型引擎约定），不能直接当幕号显示 -->
+      <span class="step-no">{{ step.hypothetical ? '✦ 假想推演' : `第 ${step.id} 幕 / ${event.steps.length}` }}</span>
       <span class="step-date" :class="{ hyp: step.hypothetical }">{{ step.date }}</span>
     </div>
     <slot name="badge" />

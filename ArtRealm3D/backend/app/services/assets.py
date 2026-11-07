@@ -31,9 +31,16 @@ def ensure_assets(mid: str) -> dict[str, Any]:
     layer_dir.mkdir(parents=True, exist_ok=True)
 
     manifest_path = layer_dir / "manifest.json"
+    manifest = None
     if manifest_path.exists():
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    else:
+        # 缓存损坏（如写入中途崩溃）时丢弃重渲染，避免接口持续 500
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if not isinstance(manifest, dict) or "layers" not in manifest:
+                manifest = None
+        except (json.JSONDecodeError, OSError):
+            manifest = None
+    if manifest is None:
         rendered = render_layers_sorted(m["layers"])
         manifest = {"layers": []}
         for r in rendered:

@@ -71,10 +71,12 @@ async function runSimulation(cmd) {
     hypStep.value = step
     engine?.applyStep(step)
   } catch (e) {
-    // 409 carries a structured {reason, message} detail with a friendly hint
+    // 409 carries a structured {reason, message} detail with a friendly hint;
+    // FastAPI wraps it as {"detail": {...}}, so look there first
     const m = /\{.*\}/s.exec(e.message)?.[0]
     try {
-      error.value = JSON.parse(m)?.message || `世界模型推演失败：${e.message}`
+      const parsed = JSON.parse(m)
+      error.value = parsed?.detail?.message || parsed?.message || `世界模型推演失败：${e.message}`
     } catch {
       error.value = `世界模型推演失败：${e.message}`
     }
@@ -178,7 +180,8 @@ onBeforeUnmount(() => {
   engine?.dispose()
 })
 
-watch(playing, (v) => { engine && (engine.rig.autoRotate = !v && false) })
+// 暂停时镜头缓慢自动环视，播放时停止
+watch(playing, (v) => { engine && (engine.rig.autoRotate = !v) })
 </script>
 
 <template>

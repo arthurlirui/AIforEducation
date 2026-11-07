@@ -14,16 +14,18 @@ client = TestClient(app)
 # monkeypatch publish._post 到 TestClient
 from publish import client as _publish_client
 from urllib.parse import urlparse
-_orig_publish_post = _publish_client._post
 _orig_post = client.post
 def _mock_post(url, json_data, headers, timeout=30):
     path = urlparse(url).path
     return _orig_post(path, json=json_data, headers=headers)
-_publish_client._post = _mock_post
 
 
 def setup_module(_):
+    global _orig_publish_post
     from app.db import reinit_engine
+    # 在 setup 时才保存当前 _post：导入期保存会把别的测试模块装上的 mock
+    # 误当"原始值"，teardown 恢复后跨模块泄漏（如 e2e 请求被改写到 TestClient）
+    _orig_publish_post = _publish_client._post
     reinit_engine()
     _publish_client._post = _mock_post
 

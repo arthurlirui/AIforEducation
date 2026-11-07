@@ -6,6 +6,71 @@
 
 ---
 
+## [1.2.0] — 2026-11-08
+
+全仓代码审阅 + 运行 bug 修复 + 文档同步。七个子项目测试套件全绿：DotArtKit 80、OilPaintingStudio 85、OilPaintingPlatform 21、ArtRealm3D 22、HistorySandbox 27、TechLearnStudio 46、GestureCoach 332（共 613 项）。
+
+### 新增（子项目，2026-11-01 ~ 11-04 落地、本次入档）
+
+- **ArtRealm3D（艺境）** — 世界名画三维沉浸式教学平台：程序化分层渲染（零图片依赖）+ 章节式导览 + 测验闭环，FastAPI + Vue3 + Three.js
+- **HistorySandbox（读史）** — AI 历史教育三维沙盘推演平台：4 剧本 × 6 幕 + 世界模型交互推演（机动/进攻/结盟/假想）+ AI 讲解员
+- **DotArtKit 桌面波点编辑器 GUI**（tkinter）：polka_document 点列表文档模型 + polka_app 画布编辑（选择/添加/擦除/undo），四类算法注册表（2 深度后端 / 6 激活 / 4 滤除 / 5 配色）
+- **DotArtKit 几何感知特征**：ops/geometry.py 平均曲率场，learned 6 通道 + 曲率损失，depth_curv 激活（E_geo 能量目标）
+- **OilPaintingStudio GUI 工作站**：gui/ 服务端（models/store 原子写/tasks GPU 队列/adapters/routers，13 测）+ Vite/Vue3/Three.js 前端七视图
+- **OilPaintingStudio 桌面论文 Demo**（pywebview）：desktop/ 三步演示（分割→深度→3D 化身），GPU/CPU/MOCK 三档设备自动回退 + 每步计时
+- 文档: `docs/modules/artrealm3d.md`、`docs/modules/historysandbox.md`
+
+### 修复
+
+#### ArtRealm3D
+- Tour.vue「开始沉浸导览」不启动章节定时器（核心功能：导览永不自动推进、进度条卡 0%）——startTour 补 resumeTour
+- 上一章/下一章手动切章后沿用旧章节剩余时长（定时器不重臂）
+- 渲染器星夜图层每颗星周围 160×160 黑方块（halo 无 mask 粘贴，透明区转出纯黑盖住天空）；珍珠光晕同型问题一并修复
+- Three.js 纹理缺 `SRGBColorSpace` 标记导致画面偏灰发白
+- 测验答案随 `GET /api/masterpieces/{id}` 提前泄露（devtools 可见）——详情不再下发 answer/explain，前端改用判分结果的 per_question
+- 少女肖像 `_dark_void` 暗角反向（中心变暗、边缘最亮）
+- manifest 缓存损坏导致接口持续 500 且无自愈——改为丢弃重渲染
+- `_loadLayers` 异步竞态：页面切走后纹理仍追加进 scene（泄漏）
+
+#### HistorySandbox
+- 409 结构化错误提示永远不显示（解析 `JSON.parse(m).message` 漏了 FastAPI 的 `detail` 包装层，友好中文引导形同虚设）
+- 同幕号切换剧本时旁白面板不刷新（watch 只盯 stepId），且首挂载不拉取旁白
+- 假想推演步显示「第 903 幕 / 6 幕」（900+ 哨兵 id 直接当幕号渲染）
+- 推演后 3D 兵力强度条不更新（只在建 mesh 时设 scale）
+- 机动模式出现无效「执行推演」按钮（无对应 handler，点击无响应）
+- `autoRotate = !v && false` 死表达式导致暂停环视功能永久禁用
+- 后端 `_in_area` 只检查势力首个疆域多边形（潜在主场加成误判）
+- README 后端端口错误（写 8000，实际 8100）
+
+#### TechLearnStudio（测试基建）
+- 根目录 `pytest` 只收集 2/46 个测试（pytest.ini testpaths 漏 backend/tests 与 studio/tests）
+- 跨模块 mock 泄漏：test_studio / test_m7 导入期保存 `_post`，收集顺序变化后 teardown 把别的模块的 mock 当"原始值"恢复 → e2e 请求被改写到 TestClient 上 401（改为 setup 时保存/恢复）
+- backend 测试复用 studio 统一 DB 导致状态污染（published ≠ draft）——setup 时显式指回自己的临时 DB 并 reinit_engine
+- e2e 导入期改 `os.environ` 与其它模块的 settings 单例竞争——新增根 conftest.py 统一测试环境，任何收集顺序 46 测全过
+
+#### DotArtKit
+- 编辑器 `_on_wheel` 选中点索引越界（擦除/撤销缩短点列表后滚动滚轮 → IndexError 崩溃）
+
+#### OilPaintingStudio
+- PUT /objects/{oid} 传列表 depth_range 时 pydantic 序列化警告（model_copy 不校验，列表未转元组）
+
+### 变更
+
+- 根 `README.md`：五个子项目 → 七个（补 ArtRealm3D / HistorySandbox），快速开始补 GUI/桌面端启动命令
+- `docs/README.md`：版本 1.2.0，导航与目录树补两个新项目
+- `docs/architecture.md`：项目表/关系图/依赖矩阵/GPU 需求表补 ArtRealm3D + HistorySandbox，测试数刷新
+- `docs/modules/dotartkit.md`、`docs/modules/oilpaintingstudio.md`：补 GUI 编辑器 / 几何特征 / GUI 工作站 / 桌面 Demo 章节
+
+### 子项目版本
+
+- DotArtKit: v1.1.0（+GUI 编辑器、几何感知特征）
+- OilPaintingStudio: v1.1.0（+GUI 工作站、桌面 Demo）
+- ArtRealm3D: v0.1.0（新项目）
+- HistorySandbox: v0.1.0（新项目）
+- GestureCoach: v0.4.0（submodule，v4 手势指令管线 + IJCAI'27 论文返修）
+
+---
+
 ## [1.1.0] — 2026-10-29
 
 ### 新增

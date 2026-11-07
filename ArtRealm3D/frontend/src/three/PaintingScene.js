@@ -99,10 +99,19 @@ export class PaintingScene {
         }),
     )
     const results = await Promise.all(loads)
+    // 页面已切走（dispose 已执行）则直接丢弃，避免向 scene 追加泄漏的网格
+    if (this.disposed) {
+      for (const { tex } of results) if (tex) tex.dispose()
+      return
+    }
     for (const { l, tex } of results) {
       const mat = tex
         ? new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false })
         : new THREE.MeshBasicMaterial({ color: 0x222222, transparent: true, opacity: 0.3 })
+      if (tex) {
+        // three r152+ 不再自动标记贴图色彩空间，缺省会偏灰发白
+        tex.colorSpace = THREE.SRGBColorSpace
+      }
       const mesh = new THREE.Mesh(new THREE.PlaneGeometry(W, H), mat)
       // z position: positive depth (foreground) toward camera
       mesh.position.z = l.depth * 0.42

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, onMounted } from 'vue'
 
 const props = defineProps({
   eventId: String,
@@ -31,7 +31,8 @@ async function typeOut(target, ms = 30) {
   if (token === typeToken) typing.value = false
 }
 
-watch(() => props.stepId, async () => {
+async function fetchNarration() {
+  if (!props.eventId || !props.stepId) return
   const mod = await import('../api.js')
   try {
     const n = await mod.fetchNarration(props.eventId, props.stepId, 'immersive')
@@ -41,7 +42,11 @@ watch(() => props.stepId, async () => {
     typing.value = false
     shown.value = '（讲解服务暂时不可用，请确认后端已启动。）'
   }
-})
+}
+
+// 换事件（stepId 不变时 watch 不触发）与换步骤都要重新拉取旁白
+watch(() => [props.eventId, props.stepId], fetchNarration)
+onMounted(fetchNarration)
 
 async function submit() {
   const q = input.value.trim()

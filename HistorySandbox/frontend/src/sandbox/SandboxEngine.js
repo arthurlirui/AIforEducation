@@ -708,6 +708,12 @@ export class SandboxEngine {
         o.material.color.set(color)
         o.material.emissive.set(color).multiplyScalar(0.35)
       }
+      if (o.isMesh && o.userData.strengthBar) {
+        // 推演可能改变兵力，强度条需跟随当前 strength
+        const s = Math.max(0.08, Math.min(1, (a.strength || 100) / 300))
+        o.scale.x = s
+        o.material.color.set(color)
+      }
     })
     entry.mesh.userData.label = `${a.name}`
   }
@@ -751,6 +757,7 @@ export class SandboxEngine {
       new THREE.MeshBasicMaterial({ color }),
     )
     bar.position.y = 1.6
+    bar.userData.strengthBar = true
     const s = Math.max(0.08, Math.min(1, (a.strength || 100) / 300))
     bar.scale.x = s
     group.add(bar)

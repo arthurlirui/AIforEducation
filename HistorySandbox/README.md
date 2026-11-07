@@ -44,7 +44,7 @@ HistorySandbox/
 # 后端
 cd backend
 pip install -r requirements.txt
-python run.py            # http://127.0.0.1:8000  (API 文档 /docs)
+python run.py            # http://127.0.0.1:8100  (API 文档 /docs)
 
 # 前端
 cd frontend

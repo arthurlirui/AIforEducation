@@ -10,12 +10,11 @@ import sys
 import time
 from pathlib import Path
 
-# 临时 DB
+# 临时 DB（仅子进程 backend 使用，经 setup_module 的 env 显式传入；
+# 不在导入期改 os.environ，避免与其它测试模块的 settings 单例竞争）
 _TMP_DB = Path(__file__).resolve().parent / "_e2e.db"
 if _TMP_DB.exists():
     _TMP_DB.unlink()
-os.environ["TLS_DB_PATH"] = str(_TMP_DB)
-os.environ["TLS_ADMIN_TOKEN"] = "e2e-token"
 
 import httpx
 import subprocess

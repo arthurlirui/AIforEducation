@@ -74,7 +74,8 @@ function submitHyp() {
         已选中「{{ selectedActor?.name }}」— 点击「执行推演」
       </p>
       <div class="row">
-        <button class="primary" :disabled="!selectedActorId || busy || (mode === 'attack' && !hasEnemies)" @click="emit('submit-hypothetical', null, mode)">
+        <!-- move 模式的落点靠点击沙盘完成，不需要「执行推演」按钮 -->
+        <button v-if="mode !== 'move'" class="primary" :disabled="!selectedActorId || busy || (mode === 'attack' && !hasEnemies)" @click="emit('submit-hypothetical', null, mode)">
           {{ busy ? '推演中…' : '执行推演' }}
         </button>
         <button @click="emit('cancel')">返回</button>

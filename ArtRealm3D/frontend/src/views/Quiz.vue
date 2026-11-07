@@ -88,13 +88,13 @@ onMounted(async () => {
             class="opt"
             :class="{
               picked: answers[qi] === oi,
-              correct: submitted && oi === q.answer,
-              wrongPicked: submitted && answers[qi] === oi && oi !== q.answer,
+              correct: submitted && oi === result.per_question[qi].answer,
+              wrongPicked: submitted && answers[qi] === oi && oi !== result.per_question[qi].answer,
             }"
             @click="choose(qi, oi)"
           >{{ opt }}</button>
         </div>
-        <p v-if="submitted" class="explain">💡 {{ q.explain }}</p>
+        <p v-if="submitted" class="explain">💡 {{ result.per_question[qi].explain }}</p>
       </div>
 
       <div class="actions">

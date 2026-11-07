@@ -1,13 +1,15 @@
 # OilPaintingStudio — 模块与文件参考
 
-> **路径**: `OilPaintingStudio/` ｜ **版本**: 1.0.0 ｜ **依赖**: Python ≥ 3.11, httpx, pyyaml, pillow, python-dotenv, click, pydantic, numpy, opencv-python-headless（核心）；ComfyUI / LLM API / ffmpeg / torch（外部，可选，均有 mock 降级）
+> **路径**: `OilPaintingStudio/` ｜ **版本**: 1.1.0 ｜ **依赖**: Python ≥ 3.11, httpx, pyyaml, pillow, python-dotenv, click, pydantic, numpy, opencv-python-headless（核心）；ComfyUI / LLM API / ffmpeg / torch（外部，可选，均有 mock 降级）｜ **测试**: pytest 85 项全绿
 
 ## 项目简介
 
-经典油画动态艺术生成统一项目，整合两条互补管线 + 三份论文初稿：
+经典油画动态艺术生成统一项目，整合两条互补管线 + GUI 工作站 + 桌面论文 Demo + 三份论文初稿：
 
 1. **video**（原 OilPaintingVideo）— LLM 剧本 → ComfyUI 油画关键帧 → I2V 视频 (LTX/Wan2.2) → ffmpeg 自动剪辑
 2. **revive**（原 OilPaintingRevive，即 IJCAI 论文 Canvas3D）— 单幅油画 → YOLO 分割 + 深度 → TripoSplat 3DGS → 线稿引导重排 → 关键帧 → ComfyUI ControlNet 动画
+3. **gui**（2026-11-04 新增）— 画作物体级三维编辑工作站：FastAPI 服务端 + Vue3/Three.js 前端五步工作台（分割审校 → 3DGS → 场景组装 → 关键帧线稿 → 合成）
+4. **desktop**（2026-11-04 新增）— pywebview 桌面论文 Demo：Canvas3D 管线浓缩为一键三步演示（分割→深度→3D 化身），GPU/CPU/MOCK 三档设备自动回退
 
 两管线共享 `common/`（配置、LLM 客户端、ComfyClient、工具函数）。每个外部依赖都有确定性 mock 回退，全流程可在无 GPU/ComfyUI 环境下测试。
 
@@ -29,22 +31,41 @@ OilPaintingStudio/
 │   │   ├── pipeline/           # director(编排)/keyframe/animate/edit(ffmpeg)
 │   │   ├── audio/              # bgm(按情绪) / tts(占位 TODO)
 │   │   └── mesh2video/         # 3D 白模→深度/法线→I2V (独立扩展)
-│   └── revive/                 # 管线 2: Canvas3D 四模块
-│       ├── cli.py              # oilpaint-revive CLI (health/run)
-│       ├── config.py           # revive Settings (revive_settings.yaml)
-│       ├── schemas.py          # Stage1-4Output / ProjectMeta 数据契约
-│       ├── eval.py             # 评估钩子 (风格一致性/边缘对齐/深度忠实)
-│       ├── pipeline/           # director(四模块编排) + checkpoint(断点续跑)
-│       ├── stage1/             # PaintParse: YOLO 分割 + DA-V2 深度 + 控制线稿
-│       ├── stage2/             # MonoSplat: TripoSplat 3DGS + 2DGS 背景 + 组装
-│       ├── stage3/             # SketchComp: 线稿解析 + 重定位 + 修复
-│       ├── stage4/             # 多视角关键帧渲染
-│       └── stage5/             # ArtiFlow: Wan/LTX + ControlNet 动画 (mock 降级)
+│   ├── revive/                 # 管线 2: Canvas3D 四模块
+│   │   ├── cli.py              # oilpaint-revive CLI (health/run)
+│   │   ├── config.py           # revive Settings (revive_settings.yaml)
+│   │   ├── schemas.py          # Stage1-4Output / ProjectMeta 数据契约
+│   │   ├── eval.py             # 评估钩子 (风格一致性/边缘对齐/深度忠实)
+│   │   ├── pipeline/           # director(四模块编排) + checkpoint(断点续跑)
+│   │   ├── stage1/             # PaintParse: YOLO 分割 + DA-V2 深度 + 控制线稿
+│   │   ├── stage2/             # MonoSplat: TripoSplat 3DGS + 2DGS 背景 + 组装
+│   │   ├── stage3/             # SketchComp: 线稿解析 + 重定位 + 修复
+│   │   ├── stage4/             # 多视角关键帧渲染
+│   │   └── stage5/             # ArtiFlow: Wan/LTX + ControlNet 动画 (mock 降级)
+│   ├── gui/                    # 三维编辑工作站服务端 (2026-11-04 新增)
+│   │   ├── models.py           # ProjectMeta/ObjectMeta/UndoEntry/SceneGraph/KeyframeMeta
+│   │   ├── store.py            # 项目仓库: 原子写 (tmp+rename), undo 栈, 项目列表
+│   │   ├── tasks.py            # GPU 长任务队列 (后台线程 + 进度 + 取消)
+│   │   ├── adapters.py         # GUI ↔ revive 管线适配 (SegmentedObject 组装等)
+│   │   ├── imgio.py            # 中文路径安全图像读写 (PIL 回退 cv2)
+│   │   ├── server.py           # FastAPI app + 前端静态托管 (端口 8710)
+│   │   └── api/routers.py      # 项目/物体/场景/关键帧/任务 REST 端点
+│   └── desktop/                # 桌面论文 Demo (2026-11-04 新增)
+│       ├── __main__.py         # py -m oilpainting_studio.desktop 入口
+│       ├── api.py              # 7 端点: 设备探测/三步演示/基准计时/运行历史
+│       ├── device.py           # GPU→CPU→MOCK 三档探测与回退 (DeviceReport/resolve_choice)
+│       └── engine.py           # 三步演示引擎 (分割→深度→3D 化身, 每步计时)
+├── gui/                        # 工作站前端 (Vite + Vue3 + Three.js)
+│   └── src/
+│       ├── App.vue             # 五步工作台 + 步骤栏 + Demo 页签
+│       ├── three.js            # Three.js 场景封装 (视口+gizmo+PLY 加载)
+│       └── components/         # ProjectHome/Segment/Gs/Scene/Keyframe/Compose/Demo 七视图
 ├── config/                     # settings.yaml(video) / revive_settings.yaml / styles.yaml / mesh2video.yaml
 ├── workflows/                  # 用户自定义 ComfyUI 工作流覆盖目录
-├── tests/                      # 58 项 pytest (mock 全链路)
+├── projects/                   # 示例项目 (山水风景全流程 + _demo 星月夜)
+├── tests/                      # 85 项 pytest (mock 全链路)
 ├── paper/                      # Canvas3D(IJCAI'26) + survey + InkFlow
-├── images/                     # 15 张名画测试图
+├── images/ + assets/           # 名画测试图 + 5 幅 demo 素材
 └── scripts/ + tools/           # 辅助脚本
 ```
 
@@ -54,6 +75,9 @@ OilPaintingStudio/
 video:  screenplay.schemas → pipeline.director → keyframe → animate → edit → final.mp4
 revive: Stage1Output → Stage2Output → Stage3Output → Stage4Output (Pydantic 契约)
         checkpoint.meta.json 记录各阶段完成状态, 支持断点续跑
+gui:    前端七视图 → REST(/api/projects...) → store(原子写) → tasks(GPU 队列)
+        → adapters → revive 管线真跑 → PLY 版本翻版 (object_XX_label.vN.ply)
+desktop: probe_device(三档) → engine 三步(每步计时+档位标注) → 前端 DemoView 展示
 ```
 
 ---
@@ -148,6 +172,31 @@ revive: Stage1Output → Stage2Output → Stage3Output → Stage4Output (Pydanti
 
 **职责**: `Camera`/`orbit_camera`（相机轨道）、`WhiteMeshRenderer`（深度/法线/RGB 三路渲染）、`MorphDriver`/`StaticDriver`（动画驱动）、`Mesh2VideoPipeline`（深度/法线引导 I2V）。独立于主剧本管线，需 trimesh（extras）。
 
+### gui/ — 三维编辑工作站服务端 (2026-11-04 新增)
+
+| 文件 | 职责 |
+|------|------|
+| `models.py` | Pydantic v2 全套模型：ProjectMeta（pipeline_state 五阶段状态机）/ ObjectMeta（含 mask_version、gs_version 审校扩展字段）/ UndoEntry / SceneGraph（Transform/CameraRig）/ KeyframeMeta |
+| `store.py` | 项目仓库：project.json + objects/*/meta.json + scene.json + keyframes.json；**原子写**（tmp+rename）；undo 栈（JSON 记 before/after、位图记快照路径）；PLY 版本翻版不覆盖旧版 |
+| `tasks.py` | GPU 长任务后台队列：单工作线程 + 进度/日志/取消标志，避免阻塞 FastAPI |
+| `adapters.py` | GUI 元数据 ↔ revive 管线适配：ObjectMeta → SegmentedObject 组装、场景导出 |
+| `imgio.py` | 中文路径安全图像读写（cv2 失败回退 PIL——Windows cv2 不读中文路径，全仓已知坑） |
+| `server.py` | FastAPI app：挂 api 路由 + 前端静态托管；PROJECTS_ROOT 指向仓库根 projects/；根路径自动重定向到前端 |
+| `api/routers.py` | REST 端点：项目 CRUD/列表、物体查改（rejected/depth_range/color/label）、掩码、场景图、关键帧、任务提交与轮询 |
+
+> 踩坑记录: PUT 物体接口 `model_copy` 不校验——列表 depth_range 需手工转元组，否则 pydantic 序列化警告（2026-11-08 修复）。
+
+### desktop/ — 桌面论文 Demo (2026-11-04 新增)
+
+| 文件 | 职责 |
+|------|------|
+| `device.py` | `probe_device()` 三档探测（torch+CUDA → GPU；torch → CPU；否则 MOCK），`resolve_choice()` 解析用户偏好并如实上报回退原因；Benchmark 推理计时 |
+| `engine.py` | 三步演示引擎：分割（YOLO/K-Means 聚类）→ 深度（DA-V2/梯度）→ 3D 化身（点云着色），每步计时 + 档位标注 |
+| `api.py` | 7 端点：system info / 三步演示 / benchmark / 运行历史（GPU 2449ms vs mock 59ms 对照） |
+| `__main__.py` | pywebview 窗口（复用 gui 前端 DemoView），端口 8712 |
+
+> 踩坑记录: `resolve_choice` 的 auto 映射、pywebview IAB `evaluate_js` 超时需拆步、api.py 中 app 定义顺序（先定义后引用）。
+
 ## 配置文件
 
 | 文件 | 管线 | 内容 |
@@ -170,14 +219,21 @@ oilpaint-video full --theme "..."                 # 一键端到端
 # revive 管线
 oilpaint-revive health                            # ComfyUI 探测
 oilpaint-revive run <油画路径> --no-comfyui        # 一键端到端 (mock)
+
+# GUI 工作站 (端口 8710, 前端已随包构建)
+py -m oilpainting_studio.gui.server
+
+# 桌面论文 Demo (pywebview 窗口, 端口 8712)
+py -m oilpainting_studio.desktop
 ```
 
 ## 测试
 
 ```bash
 cd OilPaintingStudio && pip install -e ".[dev]" && pytest -v
-# 58 项: test_video_screenplay(7) + test_video_integration(25)
+# 85 项: test_video_screenplay(7) + test_video_integration(25)
 #      + test_video_mesh2video(6) + test_revive_pipeline(20)
+#      + test_gui_server(13) + test_desktop_demo(14)
 # 全部 mock 模式, 无需 GPU/ComfyUI/LLM Key
 ```
 

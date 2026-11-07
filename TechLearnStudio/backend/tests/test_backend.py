@@ -16,7 +16,7 @@ import json
 from fastapi.testclient import TestClient
 
 from app.main import create_app
-from app.db import init_db
+from app.db import init_db, reinit_engine
 
 app = create_app()
 client = TestClient(app)
@@ -24,7 +24,13 @@ ADMIN = {"X-Admin-Token": "test-token"}
 
 
 def setup_module(_):
-    init_db()
+    # 其它测试模块（studio/tests）可能已用统一 DB 初始化过 settings/engine，
+    # setup 时把 settings.db_path 指回本模块的临时 DB 并重建 engine，
+    # 保证拿到干净的初始状态
+    from app.config import settings
+    if settings.db_path != _TMP_DB:
+        settings.db_path = _TMP_DB
+    reinit_engine()
 
 
 def teardown_module(_):

@@ -54,7 +54,8 @@ def _in_area(pos: tuple[float, float], event, nation_id: str) -> bool:
     for area in event.map.areas:
         if area.nation != nation_id:
             continue
-        return _point_in_poly(pos, area.points)
+        if _point_in_poly(pos, area.points):
+            return True
     return False
 
 

@@ -43,13 +43,15 @@ function applyChapter(idx) {
 }
 
 function startTour() {
-  playing.value = true
   applyChapter(0)
+  resumeTour()
 }
 
 function nextChapter() {
   if (chapterIndex.value < data.value.chapters.length - 1) {
     applyChapter(chapterIndex.value + 1)
+    // 重臂定时器：沿用旧章节剩余时长会导致进度/切章错拍
+    resumeTour()
   } else {
     stopTour()
     router.push(`/quiz/${data.value.id}`)
@@ -57,7 +59,10 @@ function nextChapter() {
 }
 
 function prevChapter() {
-  if (chapterIndex.value > 0) applyChapter(chapterIndex.value - 1)
+  if (chapterIndex.value > 0) {
+    applyChapter(chapterIndex.value - 1)
+    resumeTour()
+  }
 }
 
 function stopTour() {

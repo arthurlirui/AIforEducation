@@ -171,7 +171,10 @@ class CanvasView(tk.Canvas):
     def _on_wheel(self, event):
         # Windows: event.delta = ±120
         if self.app.selected_dot is not None and self.app.tool.get() == "select":
-            # 选中状态下滚轮直接改半径
+            # 选中状态下滚轮直接改半径（越界防护：擦除/撤销可能已缩短点列表）
+            if self.app.selected_dot >= len(self.app.doc.dots):
+                self.app.selected_dot = None
+                return
             d = self.app.doc.dots[self.app.selected_dot]
             d.r = max(0.3, d.r + 0.25 * (1 if event.delta > 0 else -1))
             self.app.invalidate_render()
