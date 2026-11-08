@@ -8,7 +8,7 @@ AIforEducation 是一个面向 **AI + 教育** 的研究型 monorepo，包含七
 
 | 子项目 | 核心目标 | 技术栈 | 语言 | 测试 |
 |--------|---------|--------|------|------|
-| **DotArtKit** | 统一波点艺术生成器：8 种流派（点彩/Ben-Day/欧普/点绘/叶序/草间弥生基础+深度感知/可学习映射）+ 桌面波点编辑器 GUI（tkinter） | Weighted Voronoi Stippling, YOLO26 (深度+语义分割), NumPy, SciPy(可选), PyTorch(可选), tkinter | Python | pytest (80 项) |
+| **DotArtKit** | 统一波点艺术生成器：8 种流派（点彩/Ben-Day/欧普/点绘/叶序/草间弥生基础+深度感知/可学习映射）+ 桌面波点编辑器 GUI（tkinter） | Weighted Voronoi Stippling, YOLO26 (深度+语义分割), NumPy, SciPy(可选), PyTorch(可选), tkinter | Python | pytest (177 项) |
 | **OilPaintingStudio** | 油画动态生成统一包：video（剧本→关键帧→I2V→剪辑）+ revive/Canvas3D（单画→分割→3DGS→线稿重排→动画）+ GUI 工作站（FastAPI+Vue3+Three.js）+ pywebview 桌面论文 Demo | OpenAI-compatible LLM, ComfyUI (LTX/Wan + ControlNet), YOLO, Depth Anything V2, TripoSplat 3DGS, Pydantic, ffmpeg | Python + JavaScript | pytest (85 项, mock 全链路) |
 | **OilPaintingPlatform** | 油画教学 + AI 文生图网站：12 风格 + 28 提示词模板 + 6 视觉大模型 | FastAPI, Vue 3, Pinia, Provider 注册表抽象 | Python + JavaScript | pytest (21 项) |
 | **ArtRealm3D** | 艺境：世界名画三维沉浸式教学平台——程序化分层渲染（零图片依赖）+ 章节式导览 + 测验闭环 | FastAPI, Vue 3, Three.js, numpy/PIL 程序化渲染 | Python + JavaScript | pytest (22 项) |

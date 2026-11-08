@@ -1,6 +1,6 @@
 # DotArtKit — 模块与文件参考
 
-> **路径**: `DotArtKit/` ｜ **版本**: 1.1.0 ｜ **依赖**: Python ≥ 3.11, NumPy, Pillow, OpenCV（必需）；SciPy / ultralytics / PyTorch（可选分级）｜ **测试**: pytest 80 项全绿
+> **路径**: `DotArtKit/` ｜ **版本**: 1.2.0 ｜ **依赖**: Python ≥ 3.11, NumPy, Pillow, OpenCV（必需）；SciPy / ultralytics / PyTorch（可选分级）｜ **测试**: pytest 177 项全绿
 
 ## 项目简介
 
@@ -50,8 +50,9 @@ DotArtKit/
 │   ├── run_ijcai_experiments.py  # 论文实验
 │   ├── run_gui_e2e.py      # GUI 无头端到端脚本 (E2E 验证用)
 │   └── exp_figures.py      # 论文图表
-├── tests/                  # pytest 测试套件 (80 项)
+├── tests/                  # pytest 测试套件 (177 项)
 │   ├── test_smoke.py       # 8 模式冒烟 + API/CLI
+│   ├── test_remap_editing.py # 再编辑/局部重映射/新映射函数 (2026-11-08)
 │   ├── test_geometry.py    # 曲率场算子 (263 行)
 │   └── test_gui_polka.py   # 文档模型 + GUI 逻辑 (317 行)
 ├── inputs/                 # 测试输入图 (cat.jpg 等)
@@ -105,7 +106,7 @@ gui/polka_app.py (tkinter: 画布缩放平移 + 选择/添加/擦除)
 
 ### ops/depth.py — YOLO26 深度与语义
 
-**职责**: 调 ultralytics YOLO26 做单目深度估计 + 语义分割，供 kusama_depth 三层架构与 GUI 编辑器深度后端使用。ultralytics 缺失时抛清晰 ImportError。含 `DEPTH_PALETTES`（5 套配色）、`normalize_depth_foreground`（前景感知归一化）。
+**职责**: 调 ultralytics YOLO26 做单目深度估计 + 语义分割，供 kusama_depth 三层架构与 GUI 编辑器深度后端使用。ultralytics 缺失时抛清晰 ImportError。含 `DEPTH_PALETTES`（10 套配色，含海军蓝金/祖母绿白等深度感知艺术配色）、`normalize_depth_foreground`（前景感知归一化）。
 
 ### ops/geometry.py — 几何感知特征 (2026-11-04 新增)
 
@@ -158,15 +159,16 @@ gui/polka_app.py (tkinter: 画布缩放平移 + 选择/添加/擦除)
 | 组件 | 说明 |
 |------|------|
 | `DEPTH_BACKENDS` | 2 个深度后端: yolo26 (GPU) / luminance (亮度伪深度, 零模型) |
-| `ACTIVATIONS` | 6 个深度→半径激活: power / linear / sigmoid / sqrt / curvature / depth_curv |
+| `ACTIVATIONS` | 10 个深度→半径激活: power / linear / sigmoid / sqrt / curvature / depth_curv + 再编辑映射 log / cosine / step / inverse |
 | `FILTERS` | 4 个滤除算法: none / overlap / min_dist / density |
 | `PolkaDocument` | load_image → ensure_depth → generate → 编辑操作 → render |
 | 编辑 API | add_dot / delete_dot / delete_dots_in_circle / move_dot / resize_dot / begin_edit+end_edit（拖拽合并一次历史） |
+| 再编辑 API | `remap_radii(activation, feature, r_min, r_max, alpha, sigma, region, seed)`——按激活函数重映射点半径；region=(cx,cy,r) 圆形局部选区（None=全图），入 undo 历史 (2026-11-08) |
 | 生成管线 | 深度估计与采样解耦——换激活函数不重跑深度；曲率场缓存复用 |
 
 ### gui/polka_app.py — 桌面编辑器 (tkinter)
 
-**职责**: 主窗口（工具栏 + 左参数面板 + 右画布 + 状态栏）。CanvasView 提供缩放/平移/滚轮改半径/右键平移；三工具：选择/移动（V）、添加（A，Shift=背景色）、擦除（E，拖动连续擦除）。
+**职责**: 主窗口（工具栏 + 左参数面板 + 右画布 + 状态栏）。CanvasView 提供缩放/平移/滚轮改半径/右键平移；工具：选择/移动（V）、添加（A，Shift=背景色）、擦除（E，拖动连续擦除）、圆形局部选区（Ctrl+拖拽，选区内可重映射编辑并撤销）。
 
 **关键实现**: 生成在后台线程（tkinter 变量非线程安全——UI 线程一次性抓参数快照，worker 不触碰 tkinter，UI 轮询结果）；渲染缓存 `_render_dirty` 标记避免每次编辑全量重绘。
 
@@ -175,7 +177,7 @@ gui/polka_app.py (tkinter: 画布缩放平移 + 选择/添加/擦除)
 ## 测试
 
 ```bash
-cd DotArtKit && py -m pytest tests -q          # 80 项全绿
+cd DotArtKit && py -m pytest tests -q          # 177 项全绿
 py -m dotartkit list                            # CLI 冒烟
 py -m dotartkit.gui                             # 启动桌面编辑器
 py scripts/run_gui_e2e.py                       # GUI 无头 E2E

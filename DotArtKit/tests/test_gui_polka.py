@@ -43,9 +43,10 @@ class TestRegistries:
         assert DEPTH_BACKENDS["luminance"][1] is False
 
     def test_activations(self):
-        # 4 经典 + 2 几何感知 (曲率) = 6
+        # 4 经典 + 2 几何感知 (曲率) + 4 再编辑映射 (log/cosine/step/inverse) = 10
         assert set(ACTIVATIONS) == {"power", "linear", "sigmoid", "sqrt",
-                                    "curvature", "depth_curv"}
+                                    "curvature", "depth_curv",
+                                    "log", "cosine", "step", "inverse"}
         for key, (desc, fn) in ACTIVATIONS.items():
             assert callable(fn) and desc
 

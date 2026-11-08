@@ -6,15 +6,40 @@
 
 ---
 
+## [1.2.1] — 2026-11-08（第二轮：功能完整性验证）
+
+七个子项目**实启动/实跑功能级验证**（不止单测）：Web 后端逐端点实打、studio/调度器实跑、revive mock 全链路出片、桌面回退逻辑、GestureCoach v2 ingest→diagnose 闭环。全部通过。同日覆盖 DotArtKit 波点再编辑 commit（14c3dd3）。
+
+### 新增（入档）
+
+- **DotArtKit 波点再编辑与局部重映射**（commit 14c3dd3）：4 种新尺寸映射（log/cosine/step/inverse）+ 圆形局部选区（Ctrl+拖拽）重映射编辑与撤销（`remap_radii` region 参数）+ 5 套深度感知艺术配色（共 10 套）+ 88 项新测试
+- 文档: dotartkit.md 同步（10 激活 / 10 配色 / remap_radii API / 177 测）
+
+### 修复
+
+- DotArtKit `test_activations` 注册表断言未随 14c3dd3 更新（仍断言 6 个旧激活键）→ 更新为 10 键，177 项全绿
+
+### 验证记录（全部实跑通过）
+
+- ArtRealm3D：3 画作 × 全端点（列表/详情/图层 PNG 服务/quiz 满分判分/400/404/答案不下发）
+- HistorySandbox：4 剧本 × 24 幕 narrate + ask + simulate 全命令（hypothetical/move/attack/retreat/alliance）+ 409 结构化路径
+- OilPaintingPlatform：styles 12 / teaching 6 / gallery 8 / prompts 28 / providers 6 / mock 生成 + SVG 可取回；未知 provider 静默回退 mock 为设计行为（base.py:135 注释明示）
+- TechLearnStudio：实跑 compose→publish→list→frames→search→sandbox（声明为 stub）→anim render（SVG）；M7 调度器 run_once：7 源 → 14 课发布，0 错误
+- OilPaintingStudio：revive CLI mock 全链路《星月夜》→ 16 物体 + 120 帧 24fps 可播放视频；GUI 服务端 6 端点 + 前端托管（307→index.html）；桌面 Demo gpu 请求在 mock 机器正确回退
+- GestureCoach：v2 API health/styles/palette/knowledge + ingest→diagnose 五轴闭环（合成数据）
+- 已知声明项（非 bug）：video TTS 为 stub（audio/tts.py TODO）、TechLearn sandbox 为安全 stub、TripoSplat 集成为 mock 占位、GestureCoach 论文 31 处 TBD 待用户研究
+
+---
+
 ## [1.2.0] — 2026-11-08
 
-全仓代码审阅 + 运行 bug 修复 + 文档同步。七个子项目测试套件全绿：DotArtKit 80、OilPaintingStudio 85、OilPaintingPlatform 21、ArtRealm3D 22、HistorySandbox 27、TechLearnStudio 46、GestureCoach 332（共 613 项）。
+全仓代码审阅 + 运行 bug 修复 + 文档同步。七个子项目测试套件全绿：DotArtKit 80→177、OilPaintingStudio 85、OilPaintingPlatform 21、ArtRealm3D 22、HistorySandbox 27、TechLearnStudio 46、GestureCoach 332。
 
 ### 新增（子项目，2026-11-01 ~ 11-04 落地、本次入档）
 
 - **ArtRealm3D（艺境）** — 世界名画三维沉浸式教学平台：程序化分层渲染（零图片依赖）+ 章节式导览 + 测验闭环，FastAPI + Vue3 + Three.js
 - **HistorySandbox（读史）** — AI 历史教育三维沙盘推演平台：4 剧本 × 6 幕 + 世界模型交互推演（机动/进攻/结盟/假想）+ AI 讲解员
-- **DotArtKit 桌面波点编辑器 GUI**（tkinter）：polka_document 点列表文档模型 + polka_app 画布编辑（选择/添加/擦除/undo），四类算法注册表（2 深度后端 / 6 激活 / 4 滤除 / 5 配色）
+- **DotArtKit 桌面波点编辑器 GUI**（tkinter）：polka_document 点列表文档模型 + polka_app 画布编辑（选择/添加/擦除/undo），四类算法注册表（2 深度后端 / 激活 6→10 / 4 滤除 / 配色 5→10）
 - **DotArtKit 几何感知特征**：ops/geometry.py 平均曲率场，learned 6 通道 + 曲率损失，depth_curv 激活（E_geo 能量目标）
 - **OilPaintingStudio GUI 工作站**：gui/ 服务端（models/store 原子写/tasks GPU 队列/adapters/routers，13 测）+ Vite/Vue3/Three.js 前端七视图
 - **OilPaintingStudio 桌面论文 Demo**（pywebview）：desktop/ 三步演示（分割→深度→3D 化身），GPU/CPU/MOCK 三档设备自动回退 + 每步计时
@@ -63,7 +88,7 @@
 
 ### 子项目版本
 
-- DotArtKit: v1.1.0（+GUI 编辑器、几何感知特征）
+- DotArtKit: v1.2.0（+GUI 编辑器、几何感知特征、再编辑/局部重映射）
 - OilPaintingStudio: v1.1.0（+GUI 工作站、桌面 Demo）
 - ArtRealm3D: v0.1.0（新项目）
 - HistorySandbox: v0.1.0（新项目）
