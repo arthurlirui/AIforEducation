@@ -2,6 +2,7 @@
 // 语义分割审校 (§4.2): mask 叠加 + 笔刷修补 + 误检标记 + 深度视图
 import { ref, computed, onMounted } from 'vue'
 import { api, waitTask } from '../api.js'
+import { t } from '../i18n.js'
 
 const props = defineProps({ project: Object })
 const emit = defineEmits(['notify', 'notify-error', 'refresh'])
@@ -14,7 +15,7 @@ const brushSize = ref(10)
 const running = ref(false)
 const progress = ref(0)
 
-const maskImages = ref({})      // oid -> object URL (当前选中才加载)
+const maskImages = ref({})      // oid -> mask URL (cache-busted by version)
 const overlayOpacity = ref(0.45)
 
 async function loadObjects() {
@@ -36,11 +37,11 @@ async function runSegment() {
   running.value = true; progress.value = 0
   try {
     const { task_id } = await api.runSegment(props.project.project_id)
-    const t = await waitTask(task_id, t => { progress.value = t.progress })
-    if (t.status === 'done') {
-      emit('notify', `分割完成: ${t.result.num_objects} 个物体 (${t.result.detector})`, 'ok')
+    const tk = await waitTask(task_id, x => { progress.value = x.progress })
+    if (tk.status === 'done') {
+      emit('notify', t('segDone', tk.result.num_objects, tk.result.detector), 'ok')
       await loadObjects(); emit('refresh')
-    } else emit('notify', `分割失败: ${t.error || t.status}`, 'err')
+    } else emit('notify', t('segFailed', tk.error || tk.status), 'err')
   } catch (e) { emit('notify-error', e) }
   finally { running.value = false }
 }
@@ -50,7 +51,7 @@ async function toggleRejected(o) {
     const updated = await api.updateObject(props.project.project_id, o.object_id,
                                            { rejected: !o.rejected })
     Object.assign(o, updated)
-    emit('notify', updated.rejected ? `已标记误检: ${o.label}` : `已恢复: ${o.label}`, 'ok')
+    emit('notify', updated.rejected ? t('rejectedToast', o.label) : t('restoredToast', o.label), 'ok')
   } catch (e) { emit('notify-error', e) }
 }
 
@@ -84,7 +85,6 @@ function onUp() {
   commitStrokes()
 }
 async function commitStrokes() {
-  // strokes 坐标基于渲染尺寸; 后端 mask 为原图尺寸 → 按比例换算
   const pid = props.project.project_id
   const o = selected.value
   const c = canvasRef.value
@@ -98,9 +98,8 @@ async function commitStrokes() {
   try {
     const r = await api.paintMask(pid, o.object_id, { strokes: payload })
     o.mask_version = r.mask_version
-    // 刷新 mask 图 (cache bust)
     maskImages.value[o.object_id] = api.maskUrl(pid, o.object_id) + `?v=${o.mask_version}`
-    emit('notify', `mask 已更新 (v${r.mask_version})`, 'ok')
+    emit('notify', t('maskUpdated', r.mask_version), 'ok')
   } catch (e) { emit('notify-error', e) }
 }
 
@@ -119,9 +118,9 @@ onMounted(loadObjects)
     <!-- 物体列表 -->
     <aside style="width:210px;background:var(--panel);border-right:1px solid var(--bd);padding:10px;display:flex;flex-direction:column;gap:4px;flex:none;overflow:auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <b style="font-weight:600">物体 ({{ objects.length }})</b>
+        <b style="font-weight:600">{{ t('objects') }} ({{ objects.length }})</b>
         <button class="btn" style="height:24px;padding:0 8px;font-size:11px" :disabled="running"
-                @click="runSegment">{{ running ? `${Math.round(progress*100)}%` : '重新分割' }}</button>
+                @click="runSegment">{{ running ? `${Math.round(progress*100)}%` : t('resegment') }}</button>
       </div>
       <div v-if="running" class="pbar"><i :style="{width: progress*100+'%'}"></i></div>
       <button v-for="o in objects" :key="o.object_id"
@@ -135,44 +134,41 @@ onMounted(loadObjects)
         <span class="mini" style="margin-left:auto">{{ o.confidence.toFixed(2) }}</span>
       </button>
       <div v-if="!objects.length && !running" class="mini" style="padding:8px">
-        尚无分割结果 — 点击「重新分割」运行 PaintParse (mock/YOLO 自动降级)
+        {{ t('noObjects') }}
       </div>
     </aside>
 
     <!-- 视口 -->
     <div style="flex:1;display:flex;flex-direction:column;min-width:0">
       <div style="height:40px;background:var(--panel);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;padding:0 12px;flex:none">
-        <button v-for="v in [['ov','叠加'],['src','原图'],['msk','纯mask'],['dep','深度图']]" :key="v[0]"
+        <button v-for="v in [['ov','viewOverlay'],['src','viewSource'],['msk','viewMask'],['dep','viewDepth']]" :key="v[0]"
                 class="btn" :style="{height:'26px', color:view===v[0]?'#fff':'var(--dim)', background:view===v[0]?'var(--acc)':'var(--panel2)'}"
-                @click="view=v[0]">{{ v[1] }}</button>
+                @click="view=v[0]">{{ t(v[1]) }}</button>
         <template v-if="view==='ov'">
           <span style="width:1px;height:18px;background:var(--bd)"></span>
           <button class="btn" :style="{height:'26px',color:brushMode==='draw'?'#fff':'var(--dim)',background:brushMode==='draw'?'var(--acc)':'var(--panel2)'}"
-                  @click="brushMode = brushMode==='draw' ? 'none' : 'draw'">笔刷</button>
+                  @click="brushMode = brushMode==='draw' ? 'none' : 'draw'">{{ t('brush') }}</button>
           <button class="btn" :style="{height:'26px',color:brushMode==='erase'?'#fff':'var(--dim)',background:brushMode==='erase'?'var(--acc)':'var(--panel2)'}"
-                  @click="brushMode = brushMode==='erase' ? 'none' : 'erase'">橡皮</button>
+                  @click="brushMode = brushMode==='erase' ? 'none' : 'erase'">{{ t('eraser') }}</button>
           <label class="mini" style="display:flex;align-items:center;gap:6px">
-            半径 <input type="range" min="2" max="30" v-model.number="brushSize" style="width:80px"> {{ brushSize }}
+            {{ t('radius') }} <input type="range" min="2" max="30" v-model.number="brushSize" style="width:80px"> {{ brushSize }}
           </label>
           <label class="mini" style="display:flex;align-items:center;gap:6px">
-            不透明度 <input type="range" min="10" max="90" v-model.number="overlayOpacity" style="width:80px">
+            {{ t('opacity') }} <input type="range" min="10" max="90" v-model.number="overlayOpacity" style="width:80px">
           </label>
         </template>
-        <span class="mini" style="margin-left:auto">每笔提交 = 1 undo 单元 · mask 版本自动 +1</span>
+        <span class="mini" style="margin-left:auto">{{ t('brushHint') }}</span>
       </div>
 
       <div style="flex:1;position:relative;background:#0b0d12;overflow:hidden;display:flex;align-items:center;justify-content:center">
-        <div v-if="!viewSrc" class="empty">运行分割后显示画作</div>
+        <div v-if="!viewSrc" class="empty">{{ t('noObjects') }}</div>
         <template v-else>
-          <!-- 底图 / mask / 深度 -->
-          <img :src="viewSrc" style="max-width:100%;max-height:100%;object-fit:contain" alt="视口底图" />
-          <!-- 叠加: 选中物体 mask -->
+          <img :src="viewSrc" style="max-width:100%;max-height:100%;object-fit:contain" alt="viewport" />
           <img v-if="view==='ov' && selected && maskImages[selected.object_id] && !selected.rejected"
                :src="maskImages[selected.object_id]"
                :style="{ position:'absolute', maxWidth:'100%', maxHeight:'100%', objectFit:'contain',
                          opacity: overlayOpacity/100,
-                         mixBlendMode: 'screen', pointerEvents:'none' }" alt="物体掩码叠加" />
-          <!-- 笔刷画布 (尺寸对齐原图) -->
+                         mixBlendMode: 'screen', pointerEvents:'none' }" alt="mask overlay" />
           <canvas v-show="view==='ov' && brushMode!=='none'"
                   ref="canvasRef"
                   :width="project.painting.width" :height="project.painting.height"
@@ -186,18 +182,20 @@ onMounted(loadObjects)
     <!-- 检查器 -->
     <aside v-if="selected" style="width:236px;background:var(--panel);border-left:1px solid var(--bd);padding:12px;display:flex;flex-direction:column;gap:8px;flex:none;overflow:auto">
       <b style="font-weight:600">{{ selected.label }} #{{ selected.object_id }}</b>
-      <div class="kv"><span>类别</span><b>{{ selected.category }}</b></div>
-      <div class="kv"><span>置信度</span><b>{{ selected.confidence.toFixed(3) }}</b></div>
+      <div class="kv"><span>{{ t('category') }}</span><b>{{ selected.category }}</b></div>
+      <div class="kv"><span>{{ t('confidence') }}</span><b>{{ selected.confidence.toFixed(3) }}</b></div>
       <div class="kv"><span>bbox</span><b class="mini">{{ selected.bbox.join(', ') }}</b></div>
-      <div class="kv"><span>mask 版本</span><b>v{{ selected.mask_version }}</b></div>
-      <div class="kv"><span>3DGS 版本</span><b>{{ selected.gs_version ? 'v'+selected.gs_version : '未生成' }}</b></div>
-      <div class="kv"><span>深度范围</span><b class="mini">{{ selected.depth_range.map(n=>n.toFixed(2)).join(' – ') }}</b></div>
+      <div class="kv"><span>{{ t('maskVersion') }}</span><b>v{{ selected.mask_version }}</b></div>
+      <div class="kv"><span>{{ t('gsVersion') }}</span><b>{{ selected.gs_version ? 'v'+selected.gs_version : t('notGenerated') }}</b></div>
+      <div class="kv"><span>{{ t('depthRange') }}</span><b class="mini">{{ selected.depth_range.map(n=>n.toFixed(2)).join(' – ') }}</b></div>
       <div v-if="selected.gs_source_ply && selected.mask_version > 1 && selected.gs_version"
-           class="badge warn" style="align-self:flex-start">源 mask 已变更 · 建议 <a href="#" @click.prevent="emit('notify','请在 3D 生成页重跑此物体')" style="color:var(--yel)">重跑 3DGS</a></div>
+           class="badge warn" style="align-self:flex-start">
+        {{ t('staleMask') }} <a href="#" @click.prevent="emit('notify', t('rerunGs'))" style="color:var(--yel)">{{ t('rerunGs') }}</a>
+      </div>
       <button class="btn" :class="selected.rejected ? '' : 'danger'" @click="toggleRejected(selected)">
-        {{ selected.rejected ? '恢复物体' : '标记误检 (rejected)' }}
+        {{ selected.rejected ? t('restoreObject') : t('markRejected') }}
       </button>
-      <div class="mini">误检不物理删除, 下游 3DGS 自动跳过, 可随时恢复。</div>
+      <div class="mini">{{ t('rejectedHint') }}</div>
     </aside>
   </div>
 </template>

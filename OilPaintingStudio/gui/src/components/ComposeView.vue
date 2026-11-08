@@ -2,6 +2,7 @@
 // 视频合成 (§4.6): stage5 ComfyUI 工作流提交 + 任务进度
 import { ref, onMounted } from 'vue'
 import { api, waitTask } from '../api.js'
+import { t } from '../i18n.js'
 
 const props = defineProps({ project: Object })
 const emit = defineEmits(['notify', 'notify-error', 'refresh'])
@@ -25,15 +26,15 @@ async function submit() {
       depth_weight: depthWeight.value, canny_weight: cannyWeight.value,
       duration_sec: duration.value,
     })
-    const t = await waitTask(task_id, t => {
-      progress.value = t.progress
-      taskLog.value = t.log.slice(-6)
+    const tk = await waitTask(task_id, x => {
+      progress.value = x.progress
+      taskLog.value = x.log.slice(-6)
     }, 400, 600000)
-    if (t.status === 'done') {
-      lastOutput.value = t.result.output
-      emit('notify', '合成完成 (ComfyUI 不可用时生成占位视频)', 'ok')
+    if (tk.status === 'done') {
+      lastOutput.value = tk.result.output
+      emit('notify', t('composeDone'), 'ok')
       emit('refresh')
-    } else emit('notify', `合成失败: ${t.error || t.status}`, 'err')
+    } else emit('notify', t('composeFailed', tk.error || tk.status), 'err')
   } catch (e) { emit('notify-error', e) }
   finally { submitting.value = false }
 }
@@ -45,50 +46,47 @@ onMounted(() => { prompt.value = 'oil painting style, gentle motion' })
   <div style="flex:1;overflow:auto;padding:16px;display:flex;gap:16px;flex-wrap:wrap;align-content:flex-start">
     <!-- 参数表单 -->
     <div style="flex:1;min-width:300px;max-width:420px;display:flex;flex-direction:column;gap:12px">
-      <b style="font-weight:600">合成参数 (stage5 ArtiFlow)</b>
+      <b style="font-weight:600">{{ t('composeTitle') }}</b>
       <div style="background:var(--panel);border:1px solid var(--bd);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
           <label style="display:flex;flex-direction:column;gap:4px" class="mini">
-            I2V 模型
+            {{ t('i2vModel') }}
             <select v-model="model">
-              <option value="wan2.2">Wan2.2-I2V (高质量)</option>
-              <option value="ltx">LTX-Video (快)</option>
+              <option value="wan2.2">{{ t('modelWan') }}</option>
+              <option value="ltx">{{ t('modelLtx') }}</option>
             </select>
           </label>
           <label style="display:flex;flex-direction:column;gap:4px" class="mini">
-            画幅
+            {{ t('aspectRatio') }}
             <select v-model="aspect"><option>16:9</option><option>9:16</option></select>
           </label>
         </div>
         <label class="mini" style="display:flex;flex-direction:column;gap:4px">
-          Depth ControlNet 权重: {{ depthWeight.toFixed(2) }}
+          {{ t('depthWeight') }}: {{ depthWeight.toFixed(2) }}
           <input type="range" min="0" max="1" step="0.05" v-model.number="depthWeight">
         </label>
         <label class="mini" style="display:flex;flex-direction:column;gap:4px">
-          Canny ControlNet 权重: {{ cannyWeight.toFixed(2) }}
+          {{ t('cannyWeight') }}: {{ cannyWeight.toFixed(2) }}
           <input type="range" min="0" max="1" step="0.05" v-model.number="cannyWeight">
         </label>
         <label class="mini" style="display:flex;flex-direction:column;gap:4px">
-          时长 (秒)
+          {{ t('durationSec') }}
           <input type="number" min="2" max="30" v-model.number="duration" style="width:100%">
         </label>
         <label class="mini" style="display:flex;flex-direction:column;gap:4px">
-          提示词
+          {{ t('promptLabel') }}
           <textarea v-model="prompt" rows="3" style="width:100%;resize:vertical"></textarea>
         </label>
         <button class="btn pri" :disabled="submitting" @click="submit">
-          {{ submitting ? `合成中 ${Math.round(progress*100)}%` : '提交合成' }}
+          {{ submitting ? t('composing', Math.round(progress*100)) : t('submitCompose') }}
         </button>
       </div>
-      <div class="mini">
-        ComfyUI 可用时走 revive.stage5 工作流 (Wan2.2/LTX + depth/canny 双控);
-        不可用时生成占位视频保证流程闭环。产物写 stage5/runs/&lt;时间戳&gt;/。
-      </div>
+      <div class="mini">{{ t('composeHint') }}</div>
     </div>
 
     <!-- 任务面板 -->
     <div style="flex:1;min-width:300px;max-width:420px;display:flex;flex-direction:column;gap:12px">
-      <b style="font-weight:600">任务进度</b>
+      <b style="font-weight:600">{{ t('taskProgress') }}</b>
       <div style="background:var(--panel);border:1px solid var(--bd);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px">
         <template v-if="submitting || taskLog.length">
           <div class="pbar"><i :style="{width: progress*100+'%'}"></i></div>
@@ -96,10 +94,10 @@ onMounted(() => { prompt.value = 'oil painting style, gentle motion' })
             <div v-for="(l, i) in taskLog" :key="i" style="padding:1px 0">▸ {{ l }}</div>
           </div>
         </template>
-        <div v-else class="mini">尚未提交合成任务。</div>
+        <div v-else class="mini">{{ t('noTask') }}</div>
       </div>
       <template v-if="lastOutput">
-        <b style="font-weight:600">输出</b>
+        <b style="font-weight:600">{{ t('outputLabel') }}</b>
         <div class="mini" style="word-break:break-all">{{ lastOutput }}</div>
       </template>
     </div>

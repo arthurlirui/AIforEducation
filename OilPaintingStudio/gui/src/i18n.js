@@ -1,0 +1,231 @@
+// PaintingStudio 轻量 i18n: 中/英双语, localStorage 持久化。
+// 用法: import { t, lang, setLang } from '../i18n.js'
+//       模板里 {{ t('key') }}; lang 是响应式的, 切换即全局重渲染。
+import { ref } from 'vue'
+
+const messages = {
+  zh: {
+    // ── App 骨架 ──
+    undo: '撤销', redo: '重做', refresh: '刷新', closeProject: '关闭项目',
+    langLabel: '语言',
+    footerProject: '项目', footerTagline: 'PaintingStudio v0.1 · FastAPI + Vue3 + Three.js',
+    step1: '分割审校', step2: '3D 生成', step3: '场景组装',
+    step4: '关键帧线稿', step5: '视频合成', step6: '论文 Demo',
+    stepLocked: '待上游完成',
+    connected: '已连接',
+
+    // ── 项目主页 ──
+    library: '画作库',
+    libraryEmpty: '暂无项目 — 在右侧导入一幅画作开始',
+    deleteBtn: '删除',
+    importTitle: '导入画作',
+    projectName: '项目名称', projectNamePh: '如: 星月夜',
+    paintingFile: '画作图片 (PNG/JPG)',
+    createProject: '创建项目', creating: '创建中…',
+    importHint: '创建后生成标准项目目录 (source/ stage1/…stage5/)，project.json 与 CLI 产物互通。',
+    deleteConfirm: (n) => `删除项目「${n}」? (移入回收站, 可手动恢复)`,
+    trashedToast: '已移入回收站',
+
+    // ── 分割审校 ──
+    objects: '物体', resegment: '重新分割',
+    noObjects: '尚无分割结果 — 点击「重新分割」运行 PaintParse (mock/YOLO 自动降级)',
+    viewOverlay: '叠加', viewSource: '原图', viewMask: '纯 mask', viewDepth: '深度图',
+    brush: '笔刷', eraser: '橡皮', radius: '半径', opacity: '不透明度',
+    brushHint: '每笔提交 = 1 undo 单元 · mask 版本自动 +1',
+    category: '类别', confidence: '置信度', maskVersion: 'mask 版本',
+    gsVersion: '3DGS 版本', depthRange: '深度范围', notGenerated: '未生成',
+    markRejected: '标记误检 (rejected)', restoreObject: '恢复物体',
+    rejectedHint: '误检不物理删除, 下游 3DGS 自动跳过, 可随时恢复。',
+    staleMask: '源 mask 已变更 · 建议', rerunGs: '重跑 3DGS',
+    rejectedToast: (l) => `已标记误检: ${l}`, restoredToast: (l) => `已恢复: ${l}`,
+    maskUpdated: (v) => `mask 已更新 (v${v})`,
+    segDone: (n, d) => `分割完成: ${n} 个物体 (${d})`,
+    segFailed: (e) => `分割失败: ${e}`,
+
+    // ── 3D 生成 ──
+    gsTitle: '3D 生成 (TripoSplat)',
+    activeObjects: (n) => `${n} 个活跃物体`, pendingObjects: (n) => `${n} 待生成`,
+    queue: 'GPU 队列',
+    batchGenerate: (n) => `批量生成 (${n})`,
+    generate: '生成', rerun: (v) => `重跑 (v${v})`, rerunPlain: '重跑',
+    stRejected: '已拒绝', stSkipped: '已跳过', stPending: '待生成', stStale: '源已变更',
+    gsEmpty: '先在「分割审校」完成 stage1',
+    gsDone: (n) => `3DGS 生成完成: ${n} 个物体`,
+    gsFailed: (e) => `3DGS 失败: ${e}`,
+
+    // ── 场景组装 ──
+    outline: '大纲树',
+    sceneEmpty: '场景为空 — 在「3D 生成」完成后自动建立节点。',
+    gizmoMove: 'G 移动', gizmoRotate: 'R 旋转', gizmoScale: 'S 缩放',
+    ghostAlign: '原画对齐',
+    ghostHint: '相机锁定为原画内参 · 拖拽结束才写 scene.json',
+    sourcePly: '源 PLY', position: '位置', scale: '缩放', keyframes: '关键帧',
+    addKf: '关键帧+ 记录当前位姿',
+    snapshotBtn: '快照渲染 (RGB+深度+边缘)', snapshotting: '渲染中…',
+    snapshotHint: '快照写入 stage3/keyframes/ 三联图, 供关键帧页与合成使用。',
+    sceneUpdated: (id) => `scene.json 已更新: ${id}`,
+    kfRecorded: '关键帧位姿已记录',
+    snapshotDone: (k, n) => `快照 ${k} 已生成 (${n} 个物体已移动)`,
+    snapshotFailed: (e) => `快照失败: ${e}`,
+
+    // ── 关键帧线稿 ──
+    keyframes: '关键帧',
+    noKf: '暂无关键帧 — 在「场景组装」移动物体后点击「快照渲染」。',
+    legend: '色标', contourLine: '轮廓线', motionLine: '运动线',
+    lineWidth: '线宽', clearCanvas: '清空重画',
+    saveLineart: '保存线稿', savingLineart: '保存中…',
+    srcSnapshot: '快照', srcHandDrawn: '手绘',
+    selectKf: '选择或生成关键帧',
+    lineartSaved: (k) => `线稿已保存: ${k}`,
+
+    // ── 视频合成 ──
+    composeTitle: '合成参数 (stage5 ArtiFlow)',
+    i2vModel: 'I2V 模型', aspectRatio: '画幅',
+    modelWan: 'Wan2.2-I2V (高质量)', modelLtx: 'LTX-Video (快)',
+    depthWeight: 'Depth ControlNet 权重', cannyWeight: 'Canny ControlNet 权重',
+    durationSec: '时长 (秒)', promptLabel: '提示词',
+    submitCompose: '提交合成', composing: (p) => `合成中 ${p}%`,
+    taskProgress: '任务进度', noTask: '尚未提交合成任务。',
+    outputLabel: '输出',
+    composeHint: 'ComfyUI 可用时走 revive.stage5 工作流 (Wan2.2/LTX + depth/canny 双控); 不可用时生成占位视频保证流程闭环。产物写 stage5/runs/<时间戳>/。',
+    composeDone: '合成完成 (ComfyUI 不可用时生成占位视频)',
+    composeFailed: (e) => `合成失败: ${e}`,
+
+    // ── 论文 Demo ──
+    demoTitle: 'PaintingStudio — 论文 Demo',
+    demoSub: 'Canvas3D · 语义分割 → 深度估计 → 3D 化身 · GPU/CPU/MOCK 自动回退',
+    currentTier: '当前档位',
+    cudaMode: (n, g) => `CUDA: ${n} · ${g} GB`,
+    cpuMode: (v) => `torch ${v} · CPU 模式`,
+    mockMode: 'torch 未安装 · mock 模式',
+    inferDevice: '推理设备', autoOpt: '自动', forceGpu: '强制 GPU', forceCpu: '强制 CPU', forceMock: '强制 MOCK',
+    segCard: '语义分割 (PaintParse)', depCard: '深度估计 (MonoDepth)',
+    lastInfer: (ms) => `上次推理 ${ms} ms`,
+    samplePainting: '示例画作',
+    runDemo: '▶ 运行 Demo', demoRunning: '运行中…',
+    totalTime: '总耗时',
+    runHistory: '运行历史',
+    downloadPly: '⬇ 下载场景点云 scene.ply',
+    downloadOverlay: '⬇ 分割叠加图',
+    downloadDepth: '⬇ 深度可视化',
+    noPainting: '暂无示例画作 — 用 curl -F 上传一幅到 /api/demo/paintings',
+    demoFailed: (e) => `demo 失败: ${e}`,
+  },
+
+  en: {
+    undo: 'Undo', redo: 'Redo', refresh: 'Refresh', closeProject: 'Close Project',
+    langLabel: 'Language',
+    footerProject: 'Project', footerTagline: 'PaintingStudio v0.1 · FastAPI + Vue3 + Three.js',
+    step1: 'Segmentation', step2: '3D Generation', step3: 'Scene Assembly',
+    step4: 'Keyframes', step5: 'Synthesis', step6: 'Paper Demo',
+    stepLocked: 'Requires upstream',
+    connected: 'Connected',
+
+    library: 'Painting Library',
+    libraryEmpty: 'No projects yet — import a painting on the right',
+    deleteBtn: 'Delete',
+    importTitle: 'Import Painting',
+    projectName: 'Project name', projectNamePh: 'e.g. Starry Night',
+    paintingFile: 'Painting image (PNG/JPG)',
+    createProject: 'Create Project', creating: 'Creating…',
+    importHint: 'Creates a standard project directory (source/ stage1/…stage5/); project.json stays CLI-compatible.',
+    deleteConfirm: (n) => `Delete project "${n}"? (moved to trash, recoverable)`,
+    trashedToast: 'Moved to trash',
+
+    objects: 'Objects', resegment: 'Re-segment',
+    noObjects: 'No segmentation yet — click "Re-segment" to run PaintParse (mock/YOLO auto fallback)',
+    viewOverlay: 'Overlay', viewSource: 'Original', viewMask: 'Mask', viewDepth: 'Depth',
+    brush: 'Brush', eraser: 'Eraser', radius: 'Radius', opacity: 'Opacity',
+    brushHint: 'Each stroke = 1 undo unit · mask version auto-increments',
+    category: 'Category', confidence: 'Confidence', maskVersion: 'Mask version',
+    gsVersion: '3DGS version', depthRange: 'Depth range', notGenerated: 'Not generated',
+    markRejected: 'Mark as false positive', restoreObject: 'Restore object',
+    rejectedHint: 'False positives are kept on disk; downstream 3DGS skips them and you can restore anytime.',
+    staleMask: 'Source mask changed ·', rerunGs: 're-run 3DGS',
+    rejectedToast: (l) => `Marked as false positive: ${l}`,
+    restoredToast: (l) => `Restored: ${l}`,
+    maskUpdated: (v) => `mask updated (v${v})`,
+    segDone: (n, d) => `Segmentation done: ${n} objects (${d})`,
+    segFailed: (e) => `Segmentation failed: ${e}`,
+
+    gsTitle: '3D Generation (TripoSplat)',
+    activeObjects: (n) => `${n} active objects`, pendingObjects: (n) => `${n} pending`,
+    queue: 'GPU queue',
+    batchGenerate: (n) => `Generate all (${n})`,
+    generate: 'Generate', rerun: (v) => `Re-run (v${v})`, rerunPlain: 'Re-run',
+    stRejected: 'Rejected', stSkipped: 'Skipped', stPending: 'Pending', stStale: 'Source changed',
+    gsEmpty: 'Complete stage 1 (Segmentation) first',
+    gsDone: (n) => `3DGS generation done: ${n} objects`,
+    gsFailed: (e) => `3DGS failed: ${e}`,
+
+    outline: 'Outliner',
+    sceneEmpty: 'Scene is empty — nodes are created after 3D generation.',
+    gizmoMove: 'G Move', gizmoRotate: 'R Rotate', gizmoScale: 'S Scale',
+    ghostAlign: 'Painting align',
+    ghostHint: 'Camera locked to painting intrinsics · scene.json written on drag end',
+    sourcePly: 'Source PLY', position: 'Position', scale: 'Scale', keyframes: 'Keyframes',
+    addKf: 'Keyframe+ record current pose',
+    snapshotBtn: 'Snapshot render (RGB+depth+edge)', snapshotting: 'Rendering…',
+    snapshotHint: 'Snapshots (RGB/depth/edge triplets) are saved to stage3/keyframes/.',
+    sceneUpdated: (id) => `scene.json updated: ${id}`,
+    kfRecorded: 'Keyframe pose recorded',
+    snapshotDone: (k, n) => `Snapshot ${k} created (${n} objects moved)`,
+    snapshotFailed: (e) => `Snapshot failed: ${e}`,
+
+    keyframesTitle: 'Keyframes',
+    keyframes: 'Keyframes',
+    noKf: 'No keyframes — move objects in Scene Assembly, then click Snapshot.',
+    legend: 'Legend', contourLine: 'Contour', motionLine: 'Motion',
+    lineWidth: 'Width', clearCanvas: 'Clear',
+    saveLineart: 'Save line art', savingLineart: 'Saving…',
+    srcSnapshot: 'Snapshot', srcHandDrawn: 'Hand-drawn',
+    selectKf: 'Select or create a keyframe',
+    lineartSaved: (k) => `Line art saved: ${k}`,
+
+    composeTitle: 'Synthesis params (stage5 ArtiFlow)',
+    i2vModel: 'I2V model', aspectRatio: 'Aspect',
+    modelWan: 'Wan2.2-I2V (quality)', modelLtx: 'LTX-Video (fast)',
+    depthWeight: 'Depth ControlNet weight', cannyWeight: 'Canny ControlNet weight',
+    durationSec: 'Duration (s)', promptLabel: 'Prompt',
+    submitCompose: 'Submit', composing: (p) => `Synthesizing ${p}%`,
+    taskProgress: 'Task progress', noTask: 'No synthesis task yet.',
+    outputLabel: 'Output',
+    composeHint: 'Uses the revive.stage5 workflow when ComfyUI is available; otherwise a placeholder video keeps the loop closed. Output goes to stage5/runs/<ts>/.',
+    composeDone: 'Synthesis done (placeholder video when ComfyUI unavailable)',
+    composeFailed: (e) => `Synthesis failed: ${e}`,
+
+    demoTitle: 'PaintingStudio — Paper Demo',
+    demoSub: 'Canvas3D · Segmentation → Depth → 3D Avatar · GPU/CPU/MOCK auto fallback',
+    currentTier: 'Current tier',
+    cudaMode: (n, g) => `CUDA: ${n} · ${g} GB`,
+    cpuMode: (v) => `torch ${v} · CPU mode`,
+    mockMode: 'torch not installed · mock mode',
+    inferDevice: 'Inference device', autoOpt: 'Auto', forceGpu: 'Force GPU', forceCpu: 'Force CPU', forceMock: 'Force MOCK',
+    segCard: 'Segmentation (PaintParse)', depCard: 'Depth (MonoDepth)',
+    lastInfer: (ms) => `last inference ${ms} ms`,
+    samplePainting: 'Sample painting',
+    runDemo: '▶ Run Demo', demoRunning: 'Running…',
+    totalTime: 'Total',
+    runHistory: 'Run history',
+    downloadPly: '⬇ Download scene point cloud scene.ply',
+    downloadOverlay: '⬇ Segmentation overlay',
+    downloadDepth: '⬇ Depth visualization',
+    noPainting: 'No sample paintings — upload one via curl -F to /api/demo/paintings',
+    demoFailed: (e) => `demo failed: ${e}`,
+  },
+}
+
+export const lang = ref(localStorage.getItem('ps_lang') || 'zh')
+
+export function setLang(l) {
+  lang.value = messages[l] ? l : 'zh'
+  localStorage.setItem('ps_lang', lang.value)
+}
+
+/** 取词条; 支持 t('key', arg) 传参 (词条值为函数时调用)。 */
+export function t(key, ...args) {
+  const dict = messages[lang.value] || messages.zh
+  const v = dict[key] ?? messages.zh[key]
+  if (typeof v === 'function') return v(...args)
+  return v ?? key
+}
