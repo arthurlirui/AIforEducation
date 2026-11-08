@@ -43,6 +43,7 @@ from .polka_document import (
     PolkaDocument,
     DEPTH_BACKENDS,
     ACTIVATIONS,
+    FEATURES,
     FILTERS,
 )
 from ..ops.depth import DEPTH_PALETTES
@@ -69,6 +70,7 @@ class CanvasView(tk.Canvas):
         self._overlay_ids: list[int] = []
         self._press = None          # (sx, sy, button, mode)
         self._last_mouse = None     # 最近鼠标位置 (笔刷预览)
+        self._region_press = None   # Ctrl+拖拽选区起点 (doc 坐标)
         self._drag_dot = None       # 拖拽中的点索引
         self._drag_moved = False
         # 事件绑定
@@ -154,6 +156,14 @@ class CanvasView(tk.Canvas):
             self._overlay_ids.append(self.create_oval(
                 mx - sr, my - sr, mx + sr, my + sr,
                 outline="#ffcc00", dash=(4, 3)))
+        # 圆形选区 (局部重映射) 高亮
+        if getattr(app, "_region", None):
+            rx, ry, rr = app._region
+            sx, sy = self.to_screen(rx, ry)
+            sr = rr * self.zoom
+            self._overlay_ids.append(self.create_oval(
+                sx - sr, sy - sr, sx + sr, sy + sr,
+                outline="#ff6644", width=2, dash=(6, 4)))
 
     # ------------------------------------------------------------------
     # 缩放 / 平移
@@ -204,6 +214,11 @@ class CanvasView(tk.Canvas):
         if doc.image is None:
             return
         dx, dy = self.to_doc(event.x, event.y)
+        if event.state & 0x0004:  # Ctrl+左键: 圆形选区 (用于局部重映射)
+            self._region_press = (dx, dy)
+            self.app._region = None
+            self._press = ("region", event.x, event.y)
+            return
         tool = self.app.tool.get()
         if tool == "select":
             hit = doc.find_dot(dx, dy, tol_extra=self.HIT_TOL / self.zoom)
@@ -231,6 +246,14 @@ class CanvasView(tk.Canvas):
         self.app._last_mouse = (event.x, event.y)
         doc = self.app.doc
         if doc.image is None:
+            return
+        if self._press and self._press[0] == "region":
+            # Ctrl 拖拽: 实时更新圆形选区
+            dx0, dy0 = self._region_press
+            dx, dy = self.to_doc(event.x, event.y)
+            self.app._region = (dx0, dy0, float(np.hypot(dx - dx0, dy - dy0)))
+            self._press = ("region", event.x, event.y)
+            self.refresh()
             return
         if self._press and self._press[0] == "erase":
             _, px, py = self._press
@@ -281,6 +304,7 @@ class PolkaApp(tk.Tk):
         self._render_dirty = True
         self.selected_dot: int | None = None
         self._last_mouse = None
+        self._region: tuple | None = None    # 圆形选区 (doc 坐标)
         self._gen_thread = None
         self._gen_result = None
         self._build_ui()
@@ -347,13 +371,22 @@ class PolkaApp(tk.Tk):
             ttk.Radiobutton(panel, text=desc, value=key,
                             variable=self.depth_backend).pack(anchor="w", **pad)
 
-        ttk.Label(panel, text="— 深度映射激活函数 —").pack(anchor="w", padx=6, pady=(8, 0))
+        ttk.Label(panel, text="— 尺寸映射函数 (10 种) —").pack(anchor="w", padx=6, pady=(8, 0))
         self.activation = tk.StringVar(value="power")
         self._act_combo = ttk.Combobox(panel, state="readonly",
                                        values=list(ACTIVATIONS.keys()),
                                        textvariable=self.activation)
         self._act_combo.pack(fill="x", **pad)
         ttk.Label(panel, textvariable=self._act_desc_var(),
+                  wraplength=260, foreground="#666").pack(anchor="w", **pad)
+
+        ttk.Label(panel, text="— 映射特征通道 (6 种) —").pack(anchor="w", padx=6, pady=(8, 0))
+        self.feature = tk.StringVar(value="depth")
+        feat_combo = ttk.Combobox(panel, state="readonly",
+                                  values=list(FEATURES.keys()),
+                                  textvariable=self.feature)
+        feat_combo.pack(fill="x", **pad)
+        ttk.Label(panel, textvariable=self._feat_desc_var(),
                   wraplength=260, foreground="#666").pack(anchor="w", **pad)
 
         ttk.Label(panel, text="— 波点滤除算法 —").pack(anchor="w", padx=6, pady=(8, 0))
@@ -409,6 +442,12 @@ class PolkaApp(tk.Tk):
                     textvariable=self.seed).pack(side="left")
         ttk.Button(panel, text="重新生成 (应用参数)",
                    command=self.start_generate).pack(fill="x", padx=6, pady=8)
+        ttk.Label(panel, text="— 再编辑: 重映射半径 —",
+                  foreground="#844").pack(anchor="w", padx=6, pady=(6, 0))
+        ttk.Button(panel, text="全部点重映射 (不重采样)",
+                   command=self.remap_all).pack(fill="x", padx=6, pady=2)
+        ttk.Button(panel, text="选区重映射 (Ctrl+拖框)",
+                   command=self.remap_region).pack(fill="x", padx=6, pady=2)
 
     # 小工具: 描述/数值联动
     def _act_desc_var(self):
@@ -416,6 +455,14 @@ class PolkaApp(tk.Tk):
         def update(*_):
             var.set(ACTIVATIONS.get(self.activation.get(), ("", None))[0])
         self.activation.trace_add("write", update)
+        update()
+        return var
+
+    def _feat_desc_var(self):
+        var = tk.StringVar()
+        def update(*_):
+            var.set(FEATURES.get(self.feature.get(), ""))
+        self.feature.trace_add("write", update)
         update()
         return var
 
@@ -465,6 +512,43 @@ class PolkaApp(tk.Tk):
         self.update_status(f"已保存 {path}")
 
     # ------------------------------------------------------------------
+    # 再编辑: 半径重映射 (不重采样)
+    # ------------------------------------------------------------------
+
+    def _remap_common(self, region=None) -> None:
+        if self.doc.image is None:
+            messagebox.showinfo("提示", "请先打开一张图片")
+            return
+        try:
+            n = self.doc.remap_radii(
+                activation=self.activation.get(),
+                feature=self.feature.get(),
+                r_min=1.0,
+                r_max=self._sliders["r_max"].get(),
+                alpha=self._sliders["alpha"].get(),
+                sigma=self._sliders["sigma"].get(),
+                region=region,
+                seed=self.seed.get())
+        except Exception as e:
+            messagebox.showerror("重映射失败", str(e))
+            return
+        self.invalidate_render()
+        self.canvas.refresh()
+        self.update_status(f"已重映射 {n} 点半径 "
+                           f"({self.activation.get()} / {self.feature.get()}) — Ctrl+Z 撤销")
+
+    def remap_all(self):
+        """全部点按当前映射函数+特征重算半径 (保留位置与手动编辑)."""
+        self._remap_common(region=None)
+
+    def remap_region(self):
+        """选区重映射: 无选区时提示先框选."""
+        if not self._region:
+            messagebox.showinfo("提示", "请先在画布上 Ctrl+左键拖出一个圆形选区")
+            return
+        self._remap_common(region=self._region)
+
+    # ------------------------------------------------------------------
     # 生成 (后台线程, 防卡 UI)
     # ------------------------------------------------------------------
 
@@ -483,6 +567,7 @@ class PolkaApp(tk.Tk):
             "alpha": self._sliders["alpha"].get(),
             "sigma": self._sliders["sigma"].get(),
             "activation": self.activation.get(),
+            "feature": self.feature.get(),
             "prune": self.prune.get(),
             "prune_gap": self._sliders["prune_gap"].get(),
             "edge_dots": self.edge_dots.get(),
@@ -522,6 +607,7 @@ class PolkaApp(tk.Tk):
                 alpha=params["alpha"],
                 sigma=params["sigma"],
                 activation=params["activation"],
+                feature=params["feature"],
                 prune=params["prune"],
                 prune_gap=params["prune_gap"],
                 edge_dots=params["edge_dots"],

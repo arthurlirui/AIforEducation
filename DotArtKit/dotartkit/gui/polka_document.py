@@ -138,6 +138,58 @@ def _act_depth_curv(d, r_min, r_max, alpha, rng, sigma, kappa=None):
     return np.clip(r, 0.3, r_max * 1.1)
 
 
+def _act_log(d, r_min, r_max, alpha, rng, sigma):
+    """对数压缩: 近场剧烈变化, 远场平缓.
+
+    w = 1 - log(1 + α·d̂) / log(1 + α) — α 控制压缩强度.
+    """
+    a = max(alpha, 0.1)
+    w = 1.0 - np.log1p(a * d) / np.log1p(a)
+    w = np.clip(w, 0.0, 1.0)
+    r = r_min + (r_max - r_min) * w
+    if sigma > 0:
+        r = r * (1.0 + rng.normal(0, sigma, r.shape))
+    return np.clip(r, 0.3, r_max * 1.1)
+
+
+def _act_cosine(d, r_min, r_max, alpha, rng, sigma):
+    """余弦渐变: 平滑的半周期波, 中间带过渡最陡.
+
+    w = 0.5·(1 + cos(π·d̂^α)) — α 扭曲相位分布.
+    """
+    w = 0.5 * (1.0 + np.cos(np.pi * np.power(d, max(alpha, 0.1))))
+    r = r_min + (r_max - r_min) * w
+    if sigma > 0:
+        r = r * (1.0 + rng.normal(0, sigma, r.shape))
+    return np.clip(r, 0.3, r_max * 1.1)
+
+
+def _act_step(d, r_min, r_max, alpha, rng, sigma):
+    """阶梯量化: 半径离散为 n 个台阶 (波普/硬边风格).
+
+    台阶数 n = round(α·4) ∈ [2, 12] — α 控制量化级数.
+    """
+    n = int(np.clip(round(max(alpha, 0.1) * 4), 2, 12))
+    w = np.ceil((1.0 - d) * n) / n
+    w = np.clip(w, 0.0, 1.0)
+    r = r_min + (r_max - r_min) * w
+    if sigma > 0:
+        r = r * (1.0 + rng.normal(0, sigma, r.shape))
+    return np.clip(r, 0.3, r_max * 1.1)
+
+
+def _act_inverse(d, r_min, r_max, alpha, rng, sigma):
+    """反幂律: 远景大点、近景点 (负深度关系, 倒置风格实验).
+
+    w = d̂^(1/α) — 与 power 的方向相反.
+    """
+    w = np.power(d, 1.0 / max(alpha, 0.1))
+    r = r_min + (r_max - r_min) * w
+    if sigma > 0:
+        r = r * (1.0 + rng.normal(0, sigma, r.shape))
+    return np.clip(r, 0.3, r_max * 1.1)
+
+
 ACTIVATIONS = {
     "power":   ("幂律 (1-d̂)^α — 论文默认", _act_power),
     "linear":  ("线性 — 均匀梯度", _act_linear),
@@ -145,7 +197,16 @@ ACTIVATIONS = {
     "sqrt":    ("凹形 √ — 大点为主", _act_sqrt),
     "curvature": ("纯曲率 — 凸面大点/凹面小点 (对照)", _act_curvature),
     "depth_curv": ("几何感知 E_geo — 深度×凸面增益×凹面抑制", _act_depth_curv),
+    "log":     ("对数压缩 — 近场剧烈远场平缓", _act_log),
+    "cosine":  ("余弦渐变 — 平滑半周期", _act_cosine),
+    "step":    ("阶梯量化 — 波普硬边 (α=级数/4)", _act_step),
+    "inverse": ("反幂律 — 远大近小 (倒置)", _act_inverse),
 }
+"""尺寸映射函数注册表: 特征值 ∈ [0,1] → 半径 ∈ [r_min, r_max].
+
+全部接收 (feature, r_min, r_max, alpha, rng, sigma, kappa=None),
+返回半径场. 特征场由 :data:`FEATURES` 决定, 不再绑定深度.
+"""
 
 #: 波点滤除算法键 → 描述
 FILTERS = {
@@ -177,6 +238,21 @@ def _dots_array(dots: list[Dot]):
     return pts, rads
 
 
+# ---------------------------------------------------------------------------
+# 特征通道注册表: 尺寸映射函数作用的目标特征场
+# ---------------------------------------------------------------------------
+
+FEATURES = {
+    "depth":         "归一化深度 d̂ (近=0, 远=1)",
+    "luminance":     "亮度 (亮=0, 暗=1 — 暗处大点)",
+    "curvature":     "平均曲率 κ (凹/鞍=0, 凸=1)",
+    "gradient":      "深度梯度模 |∇d̂| (平坦=0, 转折=1)",
+    "gaussian_curv": "高斯曲率 K (鞍=0, 球顶=1)",
+    "hybrid":        "混合 0.6·(1-d̂) + 0.4·κ₊ (深度+凸面)",
+}
+"""特征通道: 映射函数的输入场. 共 6 种, 全部归一到 [0,1]."""
+
+
 class PolkaDocument:
     """波点文档: 图像 + 中间场 + 点列表 + 编辑历史."""
 
@@ -189,6 +265,7 @@ class PolkaDocument:
         self.density: Optional[np.ndarray] = None
         self.fg_mask: Optional[np.ndarray] = None
         self.kappa: Optional[np.ndarray] = None   # 符号化平均曲率场 (缓存)
+        self._geo_cache: dict = {}                 # geometry_fields 缓存
         self.dots: list[Dot] = []
         self._depth_backend: str = "luminance"
         self._semantic_aware: bool = True
@@ -234,6 +311,7 @@ class PolkaDocument:
         # 新图像: 清空全部状态
         self.depth_raw = self.d_norm = self.density = self.fg_mask = None
         self.kappa = None
+        self._geo_cache = {}
         self.dots = []
         self._undo_stack.clear()
         self._redo_stack.clear()
@@ -286,6 +364,40 @@ class PolkaDocument:
         self._semantic_aware = semantic_aware
         self._recompute_norm_density()
 
+    # -- 特征场 ----------------------------------------------------------
+
+    def get_feature(self, name: str) -> np.ndarray:
+        """按名称返回归一到 [0,1] 的特征场 (:data:`FEATURES` 键).
+
+        几何场 (曲率/梯度) 计算一次后按图像缓存, 不随参数重算.
+        """
+        if name not in FEATURES:
+            raise ValueError(f"unknown feature {name!r}, choose from "
+                             f"{list(FEATURES)}")
+        if self.d_norm is None:
+            raise RuntimeError("call ensure_depth() first")
+        if name == "depth":
+            return self.d_norm
+        if name == "luminance":
+            g = self.gray.astype(np.float32) / 255.0
+            return 1.0 - g          # 暗 = 1 → 大点 (映射函数 near=0 约定翻转)
+        if self._geo_cache.get("src") is not self.d_norm:
+            from ..ops.geometry import geometry_fields
+            self._geo_cache = {"src": self.d_norm}
+            self._geo_cache.update(geometry_fields(self.d_norm))
+        geo = self._geo_cache
+        if name == "curvature":
+            return (geo["kappa"] + 1.0) * 0.5       # [-1,1] → [0,1]
+        if name == "gradient":
+            return geo["grad_mag"]
+        if name == "gaussian_curv":
+            return (geo["gauss_sign"] + 1.0) * 0.5
+        if name == "hybrid":
+            k_pos = geo["kappa_pos"]
+            h = 0.6 * (1.0 - self.d_norm) + 0.4 * k_pos
+            return np.clip(h, 0.0, 1.0)
+        raise AssertionError(name)
+
     def _recompute_norm_density(self, percentile_clip: float = 2.0,
                                 beta: float = 0.6, gamma: float = 1.2):
         """深度归一化 + 复合密度场 (换 alpha 等参数时无需重跑)."""
@@ -313,6 +425,7 @@ class PolkaDocument:
                  alpha: float = 1.5,
                  sigma: float = 0.15,
                  activation: str = "power",
+                 feature: str = "depth",
                  prune: str = "overlap",
                  prune_gap: float = 1.5,
                  pos_jitter: float = 0.3,
@@ -320,11 +433,16 @@ class PolkaDocument:
                  bg_fill: bool = True,
                  bg_spacing: float = 20.0,
                  seed: int = 42) -> dict:
-        """按当前参数 (重新) 生成全部波点. 返回统计 dict."""
+        """按当前参数 (重新) 生成全部波点. 返回统计 dict.
+
+        feature: :data:`FEATURES` 键 — 映射函数的输入特征场.
+        """
         if self.density is None:
             raise RuntimeError("call ensure_depth() first")
         if activation not in ACTIVATIONS:
             raise ValueError(f"unknown activation {activation!r}")
+        if feature not in FEATURES:
+            raise ValueError(f"unknown feature {feature!r}")
         if prune not in FILTERS:
             raise ValueError(f"unknown filter {prune!r}")
         rng = np.random.default_rng(seed)
@@ -346,15 +464,16 @@ class PolkaDocument:
         if pos_jitter > 0:
             pts = pts + rng.normal(0, pos_jitter, pts.shape)
 
-        # 半径场: 按激活函数查询
+        # 半径场: 映射函数作用于所选特征场
+        feat = self.get_feature(feature)
         xi = np.clip(pts[:, 0].astype(int), 0, W - 1)
         yi = np.clip(pts[:, 1].astype(int), 0, H - 1)
         if need_kappa:
             radius_field = ACTIVATIONS[activation][1](
-                self.d_norm, r_min, r_max, alpha, rng, sigma, kappa=kappa)
+                feat, r_min, r_max, alpha, rng, sigma, kappa=kappa)
         else:
             radius_field = ACTIVATIONS[activation][1](
-                self.d_norm, r_min, r_max, alpha, rng, sigma)
+                feat, r_min, r_max, alpha, rng, sigma)
         radii = radius_field[yi, xi].astype(np.float64)
 
         # 角色: 前景/背景 (fg_mask 全 1 时全部为 fg)
@@ -509,6 +628,66 @@ class PolkaDocument:
         """修改点角色 (前景/背景/边缘). 不入历史."""
         if role in ("fg", "bg", "edge"):
             self.dots[index].role = role
+
+    def remap_radii(self,
+                    activation: str,
+                    feature: str = "depth",
+                    r_min: float = 1.0,
+                    r_max: float = 14.0,
+                    alpha: float = 1.5,
+                    sigma: float = 0.0,
+                    region: Optional[tuple] = None,
+                    seed: int = 42) -> int:
+        """再编辑核心: 保留点位置, 按新映射函数 + 特征场重算半径.
+
+        与 :meth:`generate` 不同 — 不重新采样: 手动增删移动过的点
+        全部保留, 只有半径被替换.
+
+        Parameters
+        ----------
+        activation : :data:`ACTIVATIONS` 键
+        feature : :data:`FEATURES` 键, 映射函数的输入特征场
+        region : 可选 (x, y, radius) 圆形选区 — 只重映射选区内
+                 的点 (局部再编辑); None = 全部点.
+        seed : 映射抖动的随机种子 (sigma>0 时影响)
+
+        Returns
+        -------
+        n_remapped : 被重映射的点数 (入历史, 可撤销)
+        """
+        if activation not in ACTIVATIONS:
+            raise ValueError(f"unknown activation {activation!r}")
+        if feature not in FEATURES:
+            raise ValueError(f"unknown feature {feature!r}")
+        feat = self.get_feature(feature)
+        H, W = feat.shape
+        rng = np.random.default_rng(seed)
+        fn = ACTIVATIONS[activation][1]
+        # 需要曲率的映射函数传入缓存场 (curvature/depth_curv)
+        kappa_arg = None
+        if activation in ("curvature", "depth_curv"):
+            if self.kappa is None:
+                from ..ops.geometry import mean_curvature
+                self.kappa = mean_curvature(self.d_norm)
+            kappa_arg = self.kappa
+            radius_field = fn(feat, r_min, r_max, alpha, rng, sigma,
+                              kappa=kappa_arg)
+        else:
+            radius_field = fn(feat, r_min, r_max, alpha, rng, sigma)
+
+        targets = self.dots
+        if region is not None:
+            rx, ry, rr = region
+            targets = [d for d in self.dots
+                       if np.hypot(d.x - rx, d.y - ry) <= rr]
+        if not targets:
+            return 0
+        self._push_history()
+        for d in targets:
+            xi = int(np.clip(round(d.x), 0, W - 1))
+            yi = int(np.clip(round(d.y), 0, H - 1))
+            d.r = float(radius_field[yi, xi])
+        return len(targets)
 
     def add_dot(self, x: float, y: float, r: float, role: str = "fg") -> None:
         """在 (x, y) 添加一个点 (入历史)."""

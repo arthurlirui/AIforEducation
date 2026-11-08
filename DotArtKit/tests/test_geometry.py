@@ -141,7 +141,7 @@ class TestGeometryActivations:
         from dotartkit.gui.polka_document import ACTIVATIONS
         assert "curvature" in ACTIVATIONS
         assert "depth_curv" in ACTIVATIONS
-        assert len(ACTIVATIONS) == 6
+        assert len(ACTIVATIONS) == 10
 
     def test_curvature_activation(self, doc):
         """纯曲率激活: 凸面区域点更大."""
