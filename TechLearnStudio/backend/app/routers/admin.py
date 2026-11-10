@@ -1,6 +1,9 @@
 """Admin router: Studio 推送/上下架（写权限，需 admin token）。"""
 from __future__ import annotations
 
+import logging
+import secrets
+
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 
@@ -10,9 +13,18 @@ from ..models import Course, Frame
 
 router = APIRouter()
 
+logger = logging.getLogger(__name__)
+
 
 def _require_admin(x_admin_token: str | None = Header(None)) -> None:
-    if x_admin_token != settings.admin_token:
+    token = settings.admin_token
+    if not token:
+        # B6 fail-safe：未配置 TLS_ADMIN_TOKEN 时写操作直接拒绝
+        logger.warning("TLS_ADMIN_TOKEN 未配置，admin 写操作被拒绝（fail-safe）")
+        raise HTTPException(401, "admin token not configured")
+    if not x_admin_token or not secrets.compare_digest(
+        x_admin_token.encode(), token.encode()
+    ):
         raise HTTPException(401, "invalid admin token")
 
 
@@ -35,20 +47,27 @@ class CoursePayload(BaseModel):
 
 @router.post("/admin/courses", response_model=Course, dependencies=[Depends(_require_admin)])
 def upsert_course_with_frames(payload: CoursePayload):
-    """Studio 推送：创建或更新课件，含全部帧（替换式）。"""
+    """Studio 推送：创建或更新课件，含全部帧（替换式）。
+
+    version 经 bump_course_version 的 SQL 表达式原子自增（B3），
+    并发推送不丢版本号；首推 version=1。
+    """
     existing = db.get_course(payload.id)
-    version = (existing.version + 1) if existing else 1
     course = Course(
         id=payload.id,
         title=payload.title,
         category=payload.category,
         subject=payload.subject,
         source_id=payload.source_id,
-        version=version,
+        version=1,
         frames_count=len(payload.frames),
         status=(existing.status if existing else "draft"),
     )
     db.upsert_course(course)
+    if existing:
+        version = db.bump_course_version(payload.id)
+    else:
+        version = 1
     frames = [
         Frame(
             id=f"{payload.id}#{f.index}",

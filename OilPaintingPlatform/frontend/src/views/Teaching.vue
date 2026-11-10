@@ -6,6 +6,7 @@ import { getArticles } from '../api'
 const articles = ref([])
 const filter = ref('')
 const loading = ref(true)
+const error = ref('')
 
 const categories = computed(() => {
   const set = new Set(articles.value.map((a) => a.category))
@@ -20,6 +21,8 @@ const filtered = computed(() => {
 onMounted(async () => {
   try {
     articles.value = await getArticles()
+  } catch (e) {
+    error.value = '教学文章加载失败，请检查网络或后端服务后重试'
   } finally {
     loading.value = false
   }
@@ -43,6 +46,10 @@ onMounted(async () => {
     </div>
 
     <div v-if="loading" class="empty-state"><div class="spinner"></div></div>
+    <div v-else-if="error" class="empty-state">
+      <p>{{ error }}</p>
+      <button class="btn btn-outline" style="margin-top:12px;" @click="$router.go(0)">重试</button>
+    </div>
     <div v-else class="grid grid-3">
       <RouterLink
         v-for="a in filtered"

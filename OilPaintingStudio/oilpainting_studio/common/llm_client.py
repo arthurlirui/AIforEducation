@@ -91,6 +91,11 @@ class LLMClient:
                     await asyncio.sleep(delay)
                     delay = min(delay * 2, MAX_DELAY)
                     continue
+                if 400 <= resp.status_code < 500:
+                    # 4xx（除 429）是请求/认证错误, 重试无意义, 直接返回哨兵
+                    last_err = f"HTTP {resp.status_code}: {resp.text[:200]}"
+                    logger.error("LLM 请求错误（不重试）: %s", last_err)
+                    return f"{LLM_ERROR_PREFIX} {last_err}]"
                 resp.raise_for_status()
                 data = resp.json()
                 self.last_usage = data.get("usage")

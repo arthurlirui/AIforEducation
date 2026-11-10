@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -75,6 +76,7 @@ class PaintingStudioDemoEngine:
         self.choice = resolve_choice(prefer, self.report)
         self._yolo = None      # 惰性加载的 ultralytics 模型
         self._yolo_device = None
+        self._run_lock = threading.Lock()  # 并发 run 串行（YOLO 非线程安全）
 
     # ── 后端选择 ──
 
@@ -133,6 +135,12 @@ class PaintingStudioDemoEngine:
         return estimate_depth_mock, "mock:gradient"
 
     # ── demo 主流程 ──
+
+    def run_locked(self, painting_path: Path, out_dir: Path) -> DemoRun:
+        """带 per-engine 锁的 run: 并发调用串行执行（YOLO 模型非线程安全,
+        且避免交叉修改 report.backends[...].infer_ms）。"""
+        with self._run_lock:
+            return self.run(painting_path, out_dir)
 
     def run(self, painting_path: Path, out_dir: Path) -> DemoRun:
         """三步 demo: 分割 → 深度 → 3D 点云, 每步计时并落盘产物。"""
@@ -193,9 +201,10 @@ class PaintingStudioDemoEngine:
         # ③ MonoSplat: 深度反投影 → 顶点色点云 PLY (复用 revive gs2d_init)
         t0 = time.perf_counter()
         ply_rel = "scene.ply"
-        self._export_pointcloud(image_rgb, depth, out_dir / ply_rel)
+        ply_path = out_dir / ply_rel
+        self._export_pointcloud(image_rgb, depth, ply_path)
         gs_ms = int((time.perf_counter() - t0) * 1000)
-        num_pts = (out_dir / ply_rel).stat().st_size // 60  # 粗略点数估计
+        num_pts = _ply_vertex_count(ply_path)  # 解析 header element vertex
         run.steps.append(StepResult(
             self.STEP_NAMES[2], True, gs_ms,
             f"点云 PLY ({num_pts:,} 点, RGB-D 反投影)",
@@ -228,3 +237,17 @@ class PaintingStudioDemoEngine:
             f"{p[0]:.3f} {p[1]:.3f} {p[2]:.3f} {c[0]} {c[1]} {c[2]}"
             for p, c in zip(pts[::1], cols[::1]))
         ply_path.write_text(header + body, encoding="ascii")
+
+
+def _ply_vertex_count(ply_path: Path) -> int:
+    """从 PLY header 解析 element vertex 数（只读 header 行, 不扫 body）。"""
+    with open(ply_path, "r", encoding="ascii") as f:
+        for line in f:
+            if line.startswith("element vertex"):
+                try:
+                    return int(line.split()[-1])
+                except ValueError:
+                    break
+            if line.startswith("end_header"):
+                break
+    return 0

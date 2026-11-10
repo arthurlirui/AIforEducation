@@ -15,6 +15,7 @@ import cv2
 import numpy as np
 
 from ...common.comfy.client import ComfyClient
+from ...common.imio import imread_, imwrite_
 from ..config import Settings
 from ..schemas import Stage3Output, Stage4Output, KeyframeSpec
 from ...common.utils.image import frames_to_video
@@ -97,12 +98,14 @@ def generate_mock(
 
     if len(keyframes) == 1:
         # 单帧 → 重复 + 轻微抖动模拟动画
-        base = cv2.imread(str(keyframes[0].render_path))
+        base = imread_(keyframes[0].render_path)
+        if base is None:
+            raise FileNotFoundError(f"无法读取关键帧: {keyframes[0].render_path}")
         for i in range(num_frames):
             t = i / max(1, num_frames - 1)
             # 轻微亮度变化模拟动画
             frame = cv2.convertScaleAbs(base, alpha=1.0 + 0.05 * np.sin(t * 2 * np.pi), beta=0)
-            cv2.imwrite(str(frames_dir / f"frame_{i:04d}.png"), frame)
+            imwrite_(frames_dir / f"frame_{i:04d}.png", frame)
     else:
         # 多帧 → 线性插值
         for i in range(num_frames):
@@ -112,10 +115,14 @@ def generate_mock(
             kf_hi = min(kf_lo + 1, len(keyframes) - 1)
             alpha = kf_idx - kf_lo
 
-            img_lo = cv2.imread(str(keyframes[kf_lo].render_path))
-            img_hi = cv2.imread(str(keyframes[kf_hi].render_path))
+            img_lo = imread_(keyframes[kf_lo].render_path)
+            if img_lo is None:
+                raise FileNotFoundError(f"无法读取关键帧: {keyframes[kf_lo].render_path}")
+            img_hi = imread_(keyframes[kf_hi].render_path)
+            if img_hi is None:
+                raise FileNotFoundError(f"无法读取关键帧: {keyframes[kf_hi].render_path}")
             frame = cv2.addWeighted(img_lo, 1 - alpha, img_hi, alpha, 0)
-            cv2.imwrite(str(frames_dir / f"frame_{i:04d}.png"), frame)
+            imwrite_(frames_dir / f"frame_{i:04d}.png", frame)
 
     final_path = output_dir / "final_mock.mp4"
     frames_to_video(frames_dir, final_path, settings.fps)
@@ -135,13 +142,20 @@ def _create_keyframe_video(
 ) -> None:
     """将关键帧的某个图像属性合成为视频。"""
     paths = [getattr(kf, attr) for kf in keyframes]
-    first = cv2.imread(str(paths[0]))
+    first = imread_(paths[0])
+    if first is None:
+        raise FileNotFoundError(f"无法读取关键帧: {paths[0]}")
     h, w = first.shape[:2]
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     writer = cv2.VideoWriter(str(output_path), fourcc, fps, (w, h))
-    for p in paths:
-        writer.write(cv2.imread(str(p)))
-    writer.release()
+    try:
+        for p in paths:
+            img = imread_(p)
+            if img is None:
+                raise FileNotFoundError(f"无法读取关键帧: {p}")
+            writer.write(img)
+    finally:
+        writer.release()
 
 
 def run_stage5(

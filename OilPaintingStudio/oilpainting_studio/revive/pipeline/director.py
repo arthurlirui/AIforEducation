@@ -113,11 +113,13 @@ def run_pipeline(
     except Exception as e:  # 评估失败不影响主流程
         logger.warning("评估失败: %s", e)
 
-    # 返回最终视频路径
-    final_video = project_dir / "stage5" / "final_mock.mp4"
+    # 返回最终视频路径：优先用模块 4 实际产物（ComfyUI 真跑时非 final_mock.mp4）
+    final_video = stage4.final_video_path
     if not final_video.exists():
+        # 兜底 glob（排除 LTX 路径的中间产物 keyframes_rgb/depth.mp4）
         stage5_dir = project_dir / "stage5"
-        mp4s = list(stage5_dir.glob("*.mp4"))
+        mp4s = [p for p in stage5_dir.glob("*.mp4")
+                if p.name not in ("keyframes_rgb.mp4", "keyframes_depth.mp4")]
         final_video = mp4s[0] if mp4s else final_video
     return final_video
 
@@ -129,9 +131,12 @@ def _load_stage1(project_dir: Path, painting_path: Path, settings: Settings) -> 
     import re
 
     from ..schemas import ControlSignals, ObjectCategory, SegmentedObject
+    from ...common.imio import imread_
 
     stage1_dir = project_dir / "stage1"
-    image = cv2.imread(str(painting_path))
+    image = imread_(painting_path)
+    if image is None:
+        raise FileNotFoundError(f"无法读取原画: {painting_path}")
     h, w = image.shape[:2]
 
     # 扫描所有物体 mask
@@ -144,7 +149,7 @@ def _load_stage1(project_dir: Path, painting_path: Path, settings: Settings) -> 
             continue
         obj_id = int(match.group(1))
         label = match.group(2)
-        mask = cv2.imread(str(mf), cv2.IMREAD_GRAYSCALE)
+        mask = imread_(mf, cv2.IMREAD_GRAYSCALE)
         if mask is None or mask.sum() == 0:
             continue
         ys, xs = np.where(mask > 0)

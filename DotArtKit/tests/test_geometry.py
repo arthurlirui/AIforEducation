@@ -245,7 +245,7 @@ class TestLearnedGeometry:
         x = torch.cat([d_t, g_t, d_t.abs(), g_t.abs(), k_t, k_t], dim=1)
         radius, dens = net(x)
         crit = StipplePerceptualLoss()
-        losses = crit(radius, dens, d_t, d_t.abs(), kappa=k_t)
+        losses = crit(radius, dens, d_t, kappa=k_t)
         assert "curvature_align" in losses
         assert "concavity_density" in losses
         assert torch.isfinite(losses["total"])

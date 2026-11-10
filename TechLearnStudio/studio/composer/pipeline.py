@@ -1,12 +1,70 @@
 """Composer: 从原始文档章节生成 frames.json。
 
 规则模板保证离线可跑；LLM 可用时增强大纲与帧内容（compose_with_llm）。
+LLM 输出经 Pydantic schema 校验（BlockSpec/FrameContent/Outline），
+校验失败的帧逐项降级为规则模板块（S1），不让坏输出炸掉管线或前端。
 """
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal
+
+from pydantic import BaseModel, ValidationError
+
+logger = logging.getLogger(__name__)
+
+# hyperframes.js 实际支持的 block 类型（renderBlock switch 的 7 个分支）
+BlockType = Literal["text", "code", "formula", "callout", "motionCanvas", "quiz", "link"]
+
+
+class BlockSpec(BaseModel):
+    """单个内容块的最小结构校验（S1）。
+
+    关键字段类型不符 → ValidationError → 该帧降级为规则块。
+    额外字段（如 LLM 多给的元数据）保留放行，前端 renderBlock 忽略未知字段。
+    """
+    model_config = {"extra": "allow"}
+
+    type: BlockType
+    fragment: int | None = None
+    # text / callout
+    md: str | None = None
+    # code
+    lang: str | None = None
+    src: str | None = None
+    runnable: bool | None = None
+    # formula
+    tex: str | None = None
+    explain: str | None = None
+    # callout
+    kind: str | None = None
+    # motionCanvas
+    sceneRef: str | None = None
+    # quiz
+    q: str | None = None
+    opts: list[str] | None = None
+    answer: int | None = None
+    why: str | None = None
+    # link
+    to: str | None = None
+    label: str | None = None
+
+
+class FrameContent(BaseModel):
+    """LLM 单帧输出 {"blocks": [...], "notes": "..."} 的结构校验。"""
+    model_config = {"extra": "allow"}
+
+    blocks: list[BlockSpec]
+    notes: str = ""
+
+
+class Outline(BaseModel):
+    """LLM 大纲输出 {"steps": ["步骤标题", ...]} 的结构校验。"""
+    model_config = {"extra": "allow"}
+
+    steps: list[str]
 
 
 @dataclass
@@ -51,6 +109,36 @@ def outline(section: Section) -> list[str]:
 
 
 # ---------- 帧构造 ----------
+
+# backend 不可达时的通用静态占位 SVG（S5）：
+# 内容固定、无参数插值，天然满足前端 hyperframes.js 的 isSafeSvg 白名单
+# （以 <svg 开头，无 <script / on* 事件属性 / javascript: 协议）。
+_PLACEHOLDER_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" '
+    'style="background:#f0f0f0;border-radius:8px;">'
+    '<rect x="0" y="0" width="400" height="200" fill="#f0f0f0" rx="8"/>'
+    '<text x="200" y="105" text-anchor="middle" fill="#888" font-size="16">'
+    'animation unavailable offline</text>'
+    '</svg>'
+)
+
+
+def _motion_canvas_fallback_svg(scene_ref: str) -> str:
+    """motionCanvas 块的 fallbackSvg（S5）：优先 HTTP 从 backend 取真实动画 SVG，
+    backend 不可用时返回通用静态占位 SVG——compose 不依赖 backend 也可运行。"""
+    try:
+        # S2：studio 既可作为包（studio.composer）也可平铺（sys.path 含 studio/）导入，
+        # 相对导入在平铺模式下会越顶，故双路径兼容（与下方 llm 导入同理）
+        try:
+            from ..anim_client import fetch_fallback_svg
+        except ImportError:
+            from anim_client import fetch_fallback_svg
+        svg = fetch_fallback_svg(scene_ref, {})
+    except Exception:
+        svg = None
+    return svg or _PLACEHOLDER_SVG
+
+
 def build_frames(section: Section) -> list[FrameSpec]:
     """把一节内容展开成帧序列。"""
     frames: list[FrameSpec] = []
@@ -100,18 +188,15 @@ def build_frames(section: Section) -> list[FrameSpec]:
 
     # 动画帧（Motion Canvas SVG 动画）
     if section.anim_kind:
-        try:
-            from anim_gen import generate as gen_anim
-            anim_result = gen_anim(section.anim_kind, {})
-            fallback_svg = anim_result.content
-        except Exception:
-            fallback_svg = "<svg/>"
+        # S5：动画模板唯一实现在 backend，fallbackSvg 经 HTTP 获取
+        # （studio/anim_client.py）；backend 不可达时用静态占位 SVG，离线可 compose
         frames.append(FrameSpec(
             index=idx, title=f"{section.title} 可视化", layout="diagram",
             blocks=[
                 {"type": "motionCanvas", "sceneRef": section.anim_kind,
                  "params": {}, "renderMode": "video",
-                 "fallbackSvg": fallback_svg, "fragment": 0},
+                 "fallbackSvg": _motion_canvas_fallback_svg(section.anim_kind),
+                 "fragment": 0},
                 {"type": "text", "md": "看动画理解原理。", "fragment": 1},
             ],
         ))
@@ -161,23 +246,35 @@ fragment 从 0 递增。代码必须可运行。"""
 
 
 def compose_with_llm(section: Section, llm=None) -> list[dict]:
-    """LLM 增强合成。llm 不可用时降级到规则模板 compose()。"""
+    """LLM 增强合成。llm 不可用时降级到规则模板 compose()。
+
+    LLM 输出（大纲/单帧）均过 Pydantic 校验（S1）：
+    - 大纲校验失败 → 整节降级规则模板；
+    - 单帧校验失败 → 仅该帧降级规则块，其余帧不受影响。
+    """
     if llm is None:
-        from ..llm import get_llm
+        # S2：包导入与平铺导入（sys.path 含 studio/）双路径兼容
+        try:
+            from ..llm import get_llm
+        except ImportError:
+            from llm import get_llm
         llm = get_llm()
 
     if not llm.available:
         return compose(section)
 
-    # 1. LLM 生成大纲
+    # 1. LLM 生成大纲（结构校验：steps 必须是字符串列表）
     outline_resp = llm.chat_json(
         _OUTLINE_SYSTEM,
         f"主题：{section.title}\n原始材料：{section.body_md}",
     )
-    if not outline_resp or "steps" not in outline_resp:
+    try:
+        outline = Outline.model_validate(outline_resp or {})
+    except ValidationError:
+        logger.warning("LLM 大纲校验失败，整节降级规则模板：%r", outline_resp)
         return compose(section)
 
-    steps = outline_resp["steps"][:7]  # 最多 7 步
+    steps = outline.steps[:7]  # 最多 7 步
     frames: list[FrameSpec] = []
     idx = 0
 
@@ -207,11 +304,13 @@ def compose_with_llm(section: Section, llm=None) -> list[dict]:
             f"公式：{section.formula or '无'}\n代码示例：{section.code_blocks[0]['src'] if section.code_blocks else '无'}",
         )
 
-        if frame_resp and "blocks" in frame_resp:
-            blocks = frame_resp["blocks"]
-            notes = frame_resp.get("notes", "")
-        else:
-            # LLM 对单帧失败时用规则块降级
+        # 结构校验：blocks 必须是 BlockSpec 列表，坏输出该帧降级规则块
+        try:
+            content = FrameContent.model_validate(frame_resp or {})
+            blocks = [b.model_dump(exclude_none=True) for b in content.blocks]
+            notes = content.notes
+        except ValidationError:
+            logger.warning("LLM 帧内容校验失败（%s），该帧用规则块降级：%r", step_title, frame_resp)
             blocks = [{"type": "text", "md": f"## {step_title}\n{section.body_md}", "fragment": 0}]
             notes = ""
 

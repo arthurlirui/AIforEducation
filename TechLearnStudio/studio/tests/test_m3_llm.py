@@ -10,7 +10,7 @@ from llm.client import LLMClient
 
 
 def test_llm_unavailable_falls_back_to_rules():
-    """无 API key 时 LLMClient.available 可能为 True（pollinations），但 chat 失败也应降级。"""
+    """llm.available=False（如所有 provider 处于失败冷却期）→ 降级规则模板。"""
     # 用 mock 强制 LLM 不可用
     mock_llm = MagicMock()
     mock_llm.available = False
@@ -83,3 +83,79 @@ def test_llm_client_providers():
     assert client.available
     names = [p["name"] for p in client._providers]
     assert "pollinations" in names
+
+
+def test_llm_provider_failure_cooldown(monkeypatch):
+    """S3：provider 失败后进入冷却期，available 变 False；冷却解除后恢复。"""
+    import llm.client as llm_mod
+
+    def _fail(*args, **kwargs):
+        raise ConnectionError("network unreachable")
+
+    monkeypatch.setattr(llm_mod.httpx, "post", _fail)
+    client = LLMClient()
+    assert client.available
+    resp = client.chat("s", "u")
+    assert not resp.ok
+    # 唯一 provider 处于失败冷却期 → available=False（离线机器不再每帧白等超时）
+    assert not client.available
+    # 冷却期结束（模拟时间流逝）→ 恢复可用
+    client._failed_until["pollinations"] = 0.0
+    assert client.available
+
+
+# ---------- S1：LLM 畸形输出的结构校验与降级 ----------
+def test_llm_malformed_outline_falls_back_to_rules():
+    """LLM 大纲 steps 非列表/非字符串 → 整节降级规则模板，不崩。"""
+    mock_llm = MagicMock()
+    mock_llm.available = True
+    mock_llm.chat_json.side_effect = [
+        {"steps": {"bad": "shape"}},          # steps 是 dict
+    ]
+    frames = compose_with_llm(PYTHON_ASYNCIO, llm=mock_llm)
+    rule_frames = compose(PYTHON_ASYNCIO)
+    assert len(frames) == len(rule_frames)   # 与规则模板一致
+    assert frames[0]["layout"] == "title"
+
+
+def test_llm_outline_steps_of_non_str_rejected():
+    """大纲 steps 元素非字符串 → 校验失败，降级规则模板。"""
+    mock_llm = MagicMock()
+    mock_llm.available = True
+    mock_llm.chat_json.side_effect = [{"steps": ["好的步骤", 12345]}]
+    frames = compose_with_llm(PYTHON_ASYNCIO, llm=mock_llm)
+    rule_frames = compose(PYTHON_ASYNCIO)
+    assert len(frames) == len(rule_frames)
+
+
+def test_llm_malformed_blocks_degrade_per_frame():
+    """单帧 blocks 畸形（非数组/未知类型/null 元素）→ 仅该帧降级规则块。"""
+    mock_llm = MagicMock()
+    mock_llm.available = True
+    mock_llm.chat_json.side_effect = [
+        {"steps": ["动机", "示例"]},
+        {"blocks": "not-a-list", "notes": ""},               # blocks 非数组
+        {"blocks": [{"type": "hacker", "md": "x"}], "notes": ""},  # 未知 block 类型
+    ]
+    frames = compose_with_llm(PYTHON_ASYNCIO, llm=mock_llm)
+    assert len(frames) == 3  # 封面 + 2 步骤
+    for f in frames[1:]:
+        blocks = json.loads(f["blocks_json"])
+        assert len(blocks) > 0
+        assert all(b["type"] in ("text", "code", "formula", "callout",
+                                 "motionCanvas", "quiz", "link") for b in blocks)
+
+
+def test_llm_valid_blocks_pass_through_schema():
+    """合法 LLM 块原样通过校验进入 blocks_json。"""
+    mock_llm = MagicMock()
+    mock_llm.available = True
+    mock_llm.chat_json.side_effect = [
+        {"steps": ["动机"]},
+        {"blocks": [{"type": "quiz", "q": "1+1?", "opts": ["1", "2"], "answer": 1, "why": "算术", "fragment": 0}],
+         "notes": "n"},
+    ]
+    frames = compose_with_llm(PYTHON_ASYNCIO, llm=mock_llm)
+    blocks = json.loads(frames[1]["blocks_json"])
+    assert blocks[0]["type"] == "quiz"
+    assert blocks[0]["answer"] == 1

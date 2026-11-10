@@ -22,17 +22,20 @@ ArtRealm3D/
 │   ├── app/
 │   │   ├── data/masterpieces.py    # 名画知识库：背景/精神内核/分层构图/章节/测验
 │   │   ├── services/renderer.py    # 程序化分层渲染器 (numpy+PIL, 确定性输出)
-│   │   ├── services/assets.py      # 图层资产管线 (签名缓存)
+│   │   ├── services/assets.py      # 图层资产管线 (处方+渲染器代码签名缓存)
 │   │   └── routers/                # /api/masterpieces, quiz, health
-│   └── tests/test_backend.py       # 22 个测试
+│   └── tests/test_backend.py       # 27 个测试
 └── frontend/                # Vite + Vue3 + Three.js
-    └── src/
-        ├── three/PaintingScene.js  # 分层视差场景引擎
-        └── views/                  # Home(目录) / Tour(沉浸导览) / Quiz(测验)
+    ├── src/
+    │   ├── composables/useTourTimeline.js  # 导览章节时间线（纯逻辑，可单测）
+    │   ├── three/PaintingScene.js  # 分层视差场景引擎
+    │   └── views/                  # Home(目录) / Tour(沉浸导览) / Quiz(测验)
+    └── tests/run-tests.mjs         # 时间线纯逻辑测试（node 直接运行）
 ```
 
 **数据流**：知识库中的"风格处方"（palette + 几何语义）→ 渲染器产出带 alpha 的
-RGBA 图层 PNG（按内容签名缓存）→ 前端按 `depth` 摆进 3D 空间 → 章节叙事驱动镜头。
+RGBA 图层 PNG（按处方 + 渲染器代码哈希签名缓存，代码一变自动重渲染并清理旧缓存）→
+前端按 `depth` 摆进 3D 空间 → 章节叙事驱动镜头。
 
 ## 🚀 运行
 
@@ -53,9 +56,15 @@ npm run dev                             # 打开 http://localhost:5173
 ## 🧪 测试
 
 ```bash
-cd backend && python -m pytest tests -q     # 22 passed
+cd backend && python -m pytest tests -q     # 27 passed
+cd frontend && npm test                     # 导览时间线纯逻辑测试 (node tests/run-tests.mjs)
 cd frontend && npm run build                # vite build 通过
 ```
+
+> 前端测试选用 node 直接运行的纯 JS 脚本（参考 TechLearnStudio 的做法），
+> 不引入 vitest 依赖：`useTourTimeline` 被设计为无定时器、无 DOM 的纯状态机
+> （组件用 setInterval 驱动 `tick(dtMs)`），测试直接调 tick 即可确定性覆盖
+> "切章重臂 / 暂停恢复 / 末章转跳"三个历史 bug 高发场景。
 
 ## 📖 API 概览
 

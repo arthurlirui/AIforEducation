@@ -73,6 +73,9 @@ class CanvasView(tk.Canvas):
         self._region_press = None   # Ctrl+拖拽选区起点 (doc 坐标)
         self._drag_dot = None       # 拖拽中的点索引
         self._drag_moved = False
+        self._wheel_editing = False # 滚轮改半径的手势进行中 (历史用)
+        self._erase_changed = False # 擦除手势是否实际删除了点
+        self._generating = False    # 后台生成进行中: 拦截画布编辑
         # 事件绑定
         self.bind("<Button-1>", self._on_left)
         self.bind("<B1-Motion>", self._on_drag)
@@ -81,9 +84,19 @@ class CanvasView(tk.Canvas):
         self.bind("<B3-Motion>", self._on_right_drag)
         self.bind("<Button-2>", self._on_right_pan)
         self.bind("<B2-Motion>", self._on_right_drag)
+        # 滚轮改半径手势的兜底收尾 (Windows 滚轮无 ButtonRelease)
+        self.bind("<ButtonRelease-2>", self.on_button_release_wheel)
+        self.bind("<ButtonRelease-3>", self.on_button_release_wheel)
         self.bind("<MouseWheel>", self._on_wheel)        # Windows 滚轮
         self.bind("<Button-5>", lambda e: self._zoom_at(e.x, e.y, 0.8))
         self.bind("<Button-4>", lambda e: self._zoom_at(e.x, e.y, 1.25))
+
+    def _brush_radius(self) -> float:
+        """笔刷半径 (Spinbox 被清空时 TclError → 用默认值兜底)."""
+        try:
+            return float(self.app.brush_radius.get())
+        except Exception:
+            return 6.0
 
     # ------------------------------------------------------------------
     # 坐标变换
@@ -107,10 +120,9 @@ class CanvasView(tk.Canvas):
             return
         cw, ch = self.winfo_width(), self.winfo_height()
         if cw < 50 or ch < 50:
-            # 窗口尚未布局完成: 用应用窗口尺寸兜底, 并延迟重试
-            cw = max(self.app.winfo_width() - 320, 400)
-            ch = max(self.app.winfo_height() - 80, 300)
+            # 窗口尚未布局完成: 只安排延迟重试, 避免双重计算
             self.after(80, self.fit_image)
+            return
         self.zoom = min(cw / W, ch / H) * 0.95
         self.pan_x = (cw - W * self.zoom) / 2
         self.pan_y = (ch - H * self.zoom) / 2
@@ -152,7 +164,7 @@ class CanvasView(tk.Canvas):
                 fill="#00ff88", outline=""))
         if app.tool.get() == "add" and app._last_mouse is not None:
             mx, my = app._last_mouse
-            sr = app.brush_radius.get() * self.zoom
+            sr = self._brush_radius() * self.zoom
             self._overlay_ids.append(self.create_oval(
                 mx - sr, my - sr, mx + sr, my + sr,
                 outline="#ffcc00", dash=(4, 3)))
@@ -186,6 +198,10 @@ class CanvasView(tk.Canvas):
                 self.app.selected_dot = None
                 return
             d = self.app.doc.dots[self.app.selected_dot]
+            if not self._wheel_editing:
+                # 首次滚轮: 进入一次交互编辑 (快照), ButtonRelease 提交
+                self.app.doc.begin_edit()
+                self._wheel_editing = True
             d.r = max(0.3, d.r + 0.25 * (1 if event.delta > 0 else -1))
             self.app.invalidate_render()
             self.refresh()
@@ -213,6 +229,10 @@ class CanvasView(tk.Canvas):
         doc = self.app.doc
         if doc.image is None:
             return
+        if self._generating:
+            # 生成进行中: 文档模型正被 worker 线程写入, 拦截画布编辑
+            self.app.update_status("生成中… 请稍候 (画布编辑已临时禁用)")
+            return
         dx, dy = self.to_doc(event.x, event.y)
         if event.state & 0x0004:  # Ctrl+左键: 圆形选区 (用于局部重映射)
             self._region_press = (dx, dy)
@@ -230,10 +250,12 @@ class CanvasView(tk.Canvas):
             self.refresh()
         elif tool == "add":
             role = "bg" if (event.state & 0x0001) else "fg"  # Shift
-            doc.add_dot(dx, dy, self.app.brush_radius.get(), role)
+            doc.add_dot(dx, dy, self._brush_radius(), role)
             self.app.invalidate_render()
             self.app.after_edit()
         elif tool == "erase":
+            # 擦除手势: 按下时快照, 松开时一次提交 (一条撤销记录)
+            doc.begin_edit()
             hit = doc.find_dot(dx, dy, tol_extra=self.HIT_TOL / self.zoom)
             if hit is not None:
                 doc.delete_dot(hit)
@@ -241,11 +263,14 @@ class CanvasView(tk.Canvas):
                 self.app.invalidate_render()
                 self.app.after_edit()
             self._press = ("erase", event.x, event.y)
+            self._erase_changed = hit is not None
 
     def _on_drag(self, event):
         self.app._last_mouse = (event.x, event.y)
         doc = self.app.doc
         if doc.image is None:
+            return
+        if self._generating:
             return
         if self._press and self._press[0] == "region":
             # Ctrl 拖拽: 实时更新圆形选区
@@ -261,6 +286,7 @@ class CanvasView(tk.Canvas):
                 dx, dy = self.to_doc(event.x, event.y)
                 n = doc.delete_dots_in_circle(dx, dy, 6.0 / self.zoom)
                 if n:
+                    self._erase_changed = True
                     self.app.invalidate_render()
                     self.app.after_edit()
                 self._press = ("erase", event.x, event.y)
@@ -274,13 +300,29 @@ class CanvasView(tk.Canvas):
 
     def _on_release(self, event):
         doc = self.app.doc
+        if self._press and self._press[0] == "erase":
+            # 擦除手势结束: 一次提交 (begin_edit 的快照入撤销栈)
+            doc.end_edit(changed=self._erase_changed)
+            self._erase_changed = False
         if self._drag_dot is not None:
             doc.end_edit(changed=self._drag_moved)
             if self._drag_moved:
                 self.app.after_edit()
+        self.on_button_release_wheel(event)
         self._drag_dot = None
         self._drag_moved = False
         self._press = None
+
+    def on_button_release_wheel(self, event):
+        """ButtonRelease 兜底: 结束滚轮改半径手势 (提交历史).
+
+        Windows 滚轮事件不产生 ButtonRelease, 由 <ButtonRelease-1/2/3>
+        共用本回调收尾; 切换选中/工具时同样提交.
+        """
+        if self._wheel_editing:
+            self.app.doc.end_edit(changed=True)
+            self._wheel_editing = False
+            self.app.update_status("已提交滚轮改半径 — Ctrl+Z 可撤销")
 
     def on_delete_key(self, event):
         app = self.app
@@ -423,9 +465,6 @@ class PolkaApp(tk.Tk):
                       length=120).pack(side="left", fill="x", expand=True)
             ttk.Label(row, width=5,
                       textvariable=self._fmt_var(var, hi)).pack(side="left")
-        # 整数显示绑定
-        self._sliders["n_points"].trace_add(
-            "write", lambda *_: None)
         # 开关
         self.edge_dots = tk.BooleanVar(value=True)
         self.bg_fill = tk.BooleanVar(value=True)
@@ -520,6 +559,10 @@ class PolkaApp(tk.Tk):
             messagebox.showinfo("提示", "请先打开一张图片")
             return
         try:
+            seed = int(self.seed.get())
+        except Exception:
+            seed = 42      # Spinbox 被清空时 TclError → 兜底
+        try:
             n = self.doc.remap_radii(
                 activation=self.activation.get(),
                 feature=self.feature.get(),
@@ -528,7 +571,7 @@ class PolkaApp(tk.Tk):
                 alpha=self._sliders["alpha"].get(),
                 sigma=self._sliders["sigma"].get(),
                 region=region,
-                seed=self.seed.get())
+                seed=seed)
         except Exception as e:
             messagebox.showerror("重映射失败", str(e))
             return
@@ -557,7 +600,12 @@ class PolkaApp(tk.Tk):
             messagebox.showinfo("提示", "请先打开一张图片")
             return
         if self._gen_thread and self._gen_thread.is_alive():
+            self.update_status("生成中… 请稍候 (深度估计可能需要数秒)")
             return
+        try:
+            seed = int(self.seed.get())
+        except Exception:
+            seed = 42      # Spinbox 被清空时 TclError → 兜底
         # tkinter 变量非线程安全: 在 UI 线程一次性抓取参数快照
         params = {
             "depth_backend": self.depth_backend.get(),
@@ -573,9 +621,10 @@ class PolkaApp(tk.Tk):
             "edge_dots": self.edge_dots.get(),
             "bg_fill": self.bg_fill.get(),
             "bg_spacing": self._sliders["bg_spacing"].get(),
-            "seed": self.seed.get(),
+            "seed": seed,
         }
         self._gen_result = None          # (stats, dt) 或 (None, error_msg)
+        self.canvas._generating = True   # 生成期间禁用画布编辑
         self.update_status("生成中… (深度估计可能需要数秒)")
         self._gen_thread = threading.Thread(
             target=self._generate_worker, args=(params,), daemon=True)
@@ -592,8 +641,13 @@ class PolkaApp(tk.Tk):
             if stats is not None:
                 self._generate_done(stats, err)   # err 处存放 dt
             else:
+                self.canvas._generating = False
                 messagebox.showerror("生成失败", err)
                 self.update_status("生成失败")
+        else:
+            # worker 已死且无结果 (线程被硬杀): 避免状态栏永远停在"生成中"
+            self.canvas._generating = False
+            self.update_status("生成失败: 工作线程异常终止且无结果")
 
     def _generate_worker(self, params: dict):
         try:
@@ -620,6 +674,7 @@ class PolkaApp(tk.Tk):
             self._gen_result = (None, str(e))
 
     def _generate_done(self, stats, dt):
+        self.canvas._generating = False   # 恢复画布编辑
         self.selected_dot = None
         self.invalidate_render()
         self.canvas.refresh()
@@ -640,9 +695,7 @@ class PolkaApp(tk.Tk):
             return None
         if self._render_dirty or self._render_cache is None:
             # 渲染在 UI 线程做 (通常 < 0.5s); 点多时 O(n) cv2.circle
-            self._render_cache = self.doc.render(
-                palette=self.palette.get(),
-                semantic_aware=self.semantic_aware.get())
+            self._render_cache = self.doc.render(palette=self.palette.get())
             self._render_dirty = False
         return self._render_cache
 
@@ -667,6 +720,8 @@ class PolkaApp(tk.Tk):
             self.update_status("已重做")
 
     def _on_tool_change(self):
+        # 切换工具时收尾未提交的滚轮改半径手势
+        self.canvas.on_button_release_wheel(None)
         self.canvas.refresh()
 
     def update_status(self, msg: str | None = None):

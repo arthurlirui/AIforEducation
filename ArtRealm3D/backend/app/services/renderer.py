@@ -13,7 +13,6 @@ The renderer is deterministic: same prescription -> identical bytes.
 """
 from __future__ import annotations
 
-import colorsys
 import io
 import math
 from typing import Any
@@ -22,6 +21,10 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
 W, H = 1024, 768
+
+# 源码不可读时（frozen/zipapp 部署）assets._renderer_code_sig 的兜底版本号；
+# 手动 bump 亦可强制轮换缓存签名
+FALLBACK_VERSION = "1"
 
 
 # --------------------------------------------------------------------------
@@ -34,22 +37,6 @@ def _hex2rgb(h: str) -> tuple[int, int, int]:
 
 def _mix(c1: tuple[int, int, int], c2: tuple[int, int, int], t: float) -> tuple[int, int, int]:
     return tuple(int(round(a + (b - a) * t)) for a, b in zip(c1, c2))  # type: ignore[return-value]
-
-
-def _gradient_horizontal(palette: list[str], w: int = W, h: int = H) -> Image.Image:
-    """Smooth horizontal multi-stop gradient, dithered to avoid banding."""
-    stops = [_hex2rgb(c) for c in palette]
-    x = np.linspace(0.0, 1.0, w)
-    arr = np.zeros((h, w, 3), dtype=np.float32)
-    for ch in range(3):
-        vals = np.zeros(w)
-        for i in range(len(stops) - 1):
-            m = (x >= i / (len(stops) - 1)) & (x <= (i + 1) / (len(stops) - 1))
-            t = (x[m] - i / (len(stops) - 1)) * (len(stops) - 1)
-            vals[m] = [stops[i][ch] * (1 - tt) + stops[i + 1][ch] * tt for tt in t]
-        noise = np.random.default_rng(7 + ch).normal(0, 1.2, w)
-        arr[:, :, ch] = np.clip(vals[None, :] + noise[:, None] if False else vals[None, :] + noise[None, :], 0, 255)
-    return Image.fromarray(arr.astype(np.uint8), "RGB")
 
 
 def _gradient_vertical(palette: list[str], w: int = W, h: int = H) -> Image.Image:
@@ -67,23 +54,43 @@ def _gradient_vertical(palette: list[str], w: int = W, h: int = H) -> Image.Imag
     return Image.fromarray(arr.astype(np.uint8), "RGB")
 
 
+# 笔触落笔判定阈值：基图 RGB 最大通道 >= 该值的像素视为"有内容"。
+# 必须高于 render_layers_sorted 的 BLACK_ALPHA_THRESHOLD=12：前景层在黑底上
+# 取色 arr[y,x]+N(0,18)，若允许在空白处起笔，噪声本身就能把暗色推到 30-54，
+# 远超阈值 12，会在本应透明的区域留下不透明暗斑（"黑方块"级回归）。
+STROKE_CONTENT_THRESHOLD = 24
+
+
 def _stroke_texture(img: Image.Image, strength: float = 0.12, seed: int = 3) -> Image.Image:
     """Overlay short directional strokes — 'painted' feel instead of flat fills."""
     rng = np.random.default_rng(seed)
     arr = np.asarray(img).astype(np.float32)
-    overlay = arr.copy()
+    # 唯一的绘制载体：笔触直接画在 img 的副本上，之后从同一副本读回。
+    # （历史上这里把笔触画进一个临时 PIL 图、却从原 numpy 数组重新读回，
+    #   所有笔触被静默丢弃——该函数曾是彻底的 no-op。）
+    overlay_img = img.copy()
+    dr = ImageDraw.Draw(overlay_img)
     n = 2600
     xs = rng.integers(0, W - 40, n).tolist()
     ys = rng.integers(0, H - 6, n).tolist()
     lens = rng.integers(8, 42, n).tolist()
     angs = rng.uniform(0, math.pi, n).tolist()
-    dr = ImageDraw.Draw(Image.fromarray(overlay.astype(np.uint8), "RGB"))
     for x, y, ln, a in zip(xs, ys, lens, angs):
+        # 逐笔起点检查（简单方案，避免整幅 alpha 按位与的开销）：只在基图
+        # 有内容的像素上起笔。空白处起笔的笔触取色自纯黑+噪声，画出来
+        # 只会污染透明区，跳过即可。
+        if arr[y, x].max() < STROKE_CONTENT_THRESHOLD:
+            continue
         dx, dy = math.cos(a) * ln, math.sin(a) * ln * 0.35
         col = tuple(int(c + rng.normal(0, 18)) for c in arr[y, x])
         dr.line([(x, y), (x + dx, y + dy)], fill=col, width=2)
-    overlay = np.asarray(Image.fromarray(overlay.astype(np.uint8), "RGB")).astype(np.float32)
+    overlay = np.asarray(overlay_img).astype(np.float32)
     out = arr * (1 - strength) + overlay * strength
+    # 双保险（等价于 stroke 前后 alpha 按位与）：有内容的笔触可能以 width=2
+    # 探出轮廓 1-2px，或跨越轮廓内凹处；这些"基图空白"的像素必须还原，
+    # 否则混合值 c*strength 仍可能超过 BLACK_ALPHA_THRESHOLD 而变不透明。
+    empty = arr.max(axis=-1) < STROKE_CONTENT_THRESHOLD
+    out[empty] = arr[empty]
     return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8), "RGB")
 
 
@@ -438,9 +445,11 @@ def render_layers_sorted(layers: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     Only the three backdrop styles (night-sky / wave-sky / dark-void) are
     opaque. Every other style paints sparse content on a black canvas, so
-    near-black pixels (below BLACK_ALPHA_THRESHOLD, which tolerates the
-    stroke-texture noise) become alpha=0 — letting backdrops show through
-    when the frontend composites layers as 3D parallax planes.
+    near-black pixels (below BLACK_ALPHA_THRESHOLD) become alpha=0 — letting
+    backdrops show through when the frontend composites layers as 3D parallax
+    planes. The stroke texture only paints on content pixels (see
+    STROKE_CONTENT_THRESHOLD in _stroke_texture), so it never lifts empty
+    pixels above this threshold.
     """
     OPAQUE_STYLES = {"night-sky", "wave-sky", "dark-void"}
     BLACK_ALPHA_THRESHOLD = 12
@@ -454,7 +463,8 @@ def render_layers_sorted(layers: list[dict[str, Any]]) -> list[dict[str, Any]]:
             arr[mask, 3] = 0
             rgba = Image.fromarray(arr, "RGBA")
         if layer.get("opacity", 1.0) < 1.0:
-            a = np.asarray(rgba)
+            # copy()：不与 PIL 只读图像共享缓冲，就地写 alpha 才安全
+            a = np.asarray(rgba).copy()
             a[..., 3] = (a[..., 3].astype(np.float32) * layer["opacity"]).astype(np.uint8)
             rgba = Image.fromarray(a, "RGBA")
         buf = io.BytesIO()

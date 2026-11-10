@@ -108,8 +108,9 @@ class TestFeatures:
 
     def test_luminance_direction(self, doc):
         f = doc.get_feature("luminance")
-        # 渐变图: 左暗 → luminance 特征左高 (暗=1)
-        assert f[50, 5] > f[50, 135]
+        # 渐变图: 左暗 → luminance 特征左低 (暗=0; 低值=大点约定,
+        # 经 power 激活后暗处得到大点 — 经典点绘)
+        assert f[50, 5] < f[50, 135]
 
     def test_geo_cache_reuse(self, doc):
         doc.get_feature("curvature")

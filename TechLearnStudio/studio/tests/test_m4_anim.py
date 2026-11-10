@@ -1,115 +1,108 @@
-"""M4 测试：Motion Canvas (SVG 动画) 真实渲染。"""
+"""M4 测试：motionCanvas fallbackSvg 的 HTTP 获取与离线降级（S5 消除 anim 复制后）。
+
+动画模板的内容生成测试已随唯一实现迁往 backend/tests/test_backend.py
+（backend 独占 anim 生成）；本模块只测 studio 侧行为：
+- anim_client：HTTP 获取 / 失败降级 None / env 基址 / 非 SVG 内容拒绝；
+- composer：离线时 fallbackSvg 为通用静态占位 SVG（过前端 isSafeSvg 白名单），
+  backend 可达时为 HTTP 返回内容。
+"""
 from __future__ import annotations
 
 import json
-from pathlib import Path
+import re
+from types import SimpleNamespace
 
-from fastapi.testclient import TestClient
-
-from app.main import create_app
-
-app = create_app()
-client = TestClient(app)
-
-
-def setup_module(_):
-    from app.db import reinit_engine
-    reinit_engine()
+import anim_client
+from composer import compose
+from composer.pipeline import _PLACEHOLDER_SVG
+from composer.samples import SIGNAL_CONVOLUTION
 
 
-def teardown_module(_):
-    pass
-
-
-# ---------- AnimGen 单元测试 ----------
-def test_convolution_template():
-    from anim_gen import generate
-    result = generate("convolution", {"signal": [1, 2, 3], "kernel": [1, 0, -1]})
-    assert result.content_type == "image/svg+xml"
-    assert "<svg" in result.content
-    assert "animateTransform" in result.content  # 有动画
-    assert result.duration_s == 4.0
-
-
-def test_ownership_move_template():
-    from anim_gen import generate
-    result = generate("ownership_move", {"move_from": "s", "move_to": "t"})
-    assert "<svg" in result.content
-    assert "animate" in result.content
-    assert "移动" in result.content
-
-
-def test_ofdm_template():
-    from anim_gen import generate
-    result = generate("ofdm_subcarriers", {"n_subcarriers": 4})
-    assert "<svg" in result.content
-    assert "子载波" in result.content
-
-
-def test_attention_flow_template():
-    from anim_gen import generate
-    result = generate("attention_flow", {"seq_len": 4})
-    assert "<svg" in result.content
-    assert "Attention" in result.content
-
-
-def test_unknown_template_fallback():
-    from anim_gen import generate
-    result = generate("nonexistent", {})
-    assert "<svg" in result.content
-    assert "未找到" in result.content
-
-
-def test_save_svg():
-    from anim_gen import generate, save_svg
-    result = generate("convolution", {})
-    out = Path(__file__).parent / "_tmp_anim"
-    path = save_svg(result, out)
-    assert path.exists()
-    assert path.suffix == ".svg"
-    path.unlink()
-    out.rmdir()
-
-
-def test_scene_hash_deterministic():
-    from anim_gen import scene_hash
-    h1 = scene_hash("convolution", {"signal": [1, 2]})
-    h2 = scene_hash("convolution", {"signal": [1, 2]})
-    h3 = scene_hash("convolution", {"signal": [1, 3]})
-    assert h1 == h2
-    assert h1 != h3
-
-
-# ---------- Backend anim API ----------
-def test_anim_render_endpoint():
-    r = client.post("/api/anim/render", json={"sceneRef": "convolution", "params": {}})
-    assert r.status_code == 200
-    data = r.json()
-    assert data["contentType"] == "image/svg+xml"
-    assert "<svg" in data["content"]
-
-
-def test_anim_library_endpoint():
-    r = client.get("/api/anim/library")
-    assert r.status_code == 200
-    templates = r.json()["templates"]
-    assert "convolution" in templates
-    assert "ownership_move" in templates
-    assert "ofdm_subcarriers" in templates
-    assert "attention_flow" in templates
-
-
-# ---------- Composer 集成：motionCanvas block 含真实 SVG ----------
-def test_compose_produces_real_anim_svg():
-    import sys
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from composer import compose
-    from composer.samples import SIGNAL_CONVOLUTION
-
-    frames = compose(SIGNAL_CONVOLUTION)
+def _mc_block(frames):
     diag = next(f for f in frames if f["layout"] == "diagram")
     blocks = json.loads(diag["blocks_json"])
-    mc_block = next(b for b in blocks if b["type"] == "motionCanvas")
-    # fallbackSvg 应该是真实 SVG（不是 "<svg/>" 占位）
-    assert "<svg" in mc_block["fallbackSvg"]
-    assert "animate" in mc_block["fallbackSvg"].lower()
+    return next(b for b in blocks if b["type"] == "motionCanvas")
+
+
+def _is_safe_svg(svg: str) -> bool:
+    """前端 hyperframes.js isSafeSvg 白名单的 Python 复刻（保持同语义）。"""
+    s = svg.strip()
+    return (s.startswith("<svg")
+            and not re.search(r"<script", s, re.I)
+            and not re.search(r"\son\w+\s*=", s, re.I)
+            and not re.search(r"javascript:", s, re.I))
+
+
+# ---------- anim_client ----------
+def test_fetch_fallback_svg_offline_returns_none(monkeypatch):
+    def _conn_refused(*a, **k):
+        raise ConnectionError("offline")
+    monkeypatch.setattr(anim_client, "_post", _conn_refused)
+    assert anim_client.fetch_fallback_svg("convolution", {}) is None
+
+
+def test_fetch_fallback_svg_ok_returns_content(monkeypatch):
+    svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>'
+    monkeypatch.setattr(anim_client, "_post",
+                        lambda *a, **k: SimpleNamespace(status_code=200,
+                                                        json=lambda: {"content": svg}))
+    assert anim_client.fetch_fallback_svg("convolution", {}) == svg
+
+
+def test_fetch_fallback_svg_non_200_or_non_svg_returns_none(monkeypatch):
+    # 非 200 → None
+    monkeypatch.setattr(anim_client, "_post",
+                        lambda *a, **k: SimpleNamespace(status_code=404,
+                                                        json=lambda: {}))
+    assert anim_client.fetch_fallback_svg("convolution", {}) is None
+    # 200 但内容不是 SVG → None
+    monkeypatch.setattr(anim_client, "_post",
+                        lambda *a, **k: SimpleNamespace(status_code=200,
+                                                        json=lambda: {"content": "<p>hi</p>"}))
+    assert anim_client.fetch_fallback_svg("convolution", {}) is None
+
+
+def test_fetch_fallback_svg_uses_env_base_url(monkeypatch):
+    seen = {}
+
+    def _fake_post(url, payload, timeout=3.0):
+        seen["url"] = url
+        seen["payload"] = payload
+        return SimpleNamespace(status_code=200, json=lambda: {"content": "<svg/>"})
+
+    monkeypatch.setattr(anim_client, "_post", _fake_post)
+    monkeypatch.setenv("TLS_BACKEND_URL", "http://10.0.0.9:9000/")
+    assert anim_client.fetch_fallback_svg("ownership_move", {"move_from": "a"}) == "<svg/>"
+    assert seen["url"] == "http://10.0.0.9:9000/api/anim/render"
+    assert seen["payload"] == {"sceneRef": "ownership_move", "params": {"move_from": "a"}}
+
+
+# ---------- compose 集成 ----------
+def test_compose_offline_uses_placeholder_svg(monkeypatch):
+    """无 backend 时 motionCanvas 的 fallbackSvg 为通用静态占位 SVG，
+    且过前端 isSafeSvg 白名单（compose 完全离线可用）。"""
+    def _conn_refused(*a, **k):
+        raise ConnectionError("offline")
+    monkeypatch.setattr(anim_client, "_post", _conn_refused)
+
+    frames = compose(SIGNAL_CONVOLUTION)
+    mc = _mc_block(frames)
+    assert mc["fallbackSvg"] == _PLACEHOLDER_SVG
+    assert "animation unavailable offline" in mc["fallbackSvg"]
+    assert _is_safe_svg(mc["fallbackSvg"])
+    # block 结构与 hyperframes.js 的消费约定不变（data-mc-block ← sceneRef）
+    assert mc["sceneRef"] == "convolution"
+    assert mc["params"] == {}
+    assert mc["renderMode"] == "video"
+
+
+def test_compose_with_backend_uses_http_svg(monkeypatch):
+    """mock httpx 命中 backend 时 fallbackSvg 为 HTTP 返回内容。"""
+    svg = ('<svg xmlns="http://www.w3.org/2000/svg">'
+           '<rect><animate attributeName="opacity" values="0;1"/></rect></svg>')
+    monkeypatch.setattr(anim_client, "_post",
+                        lambda *a, **k: SimpleNamespace(status_code=200,
+                                                        json=lambda: {"content": svg}))
+    frames = compose(SIGNAL_CONVOLUTION)
+    mc = _mc_block(frames)
+    assert mc["fallbackSvg"] == svg

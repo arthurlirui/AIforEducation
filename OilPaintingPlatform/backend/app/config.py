@@ -30,9 +30,10 @@ class Settings(BaseSettings):
 
     app_name: str = "油画艺术教学平台"
     app_version: str = "0.1.0"
-    debug: bool = True
+    debug: bool = False
 
-    # CORS – allow the Vite dev server by default
+    # CORS – allow the Vite dev server by default.
+    # Override with e.g. CORS_ORIGINS='["https://example.com"]' (JSON array).
     cors_origins: List[str] = Field(
         default_factory=lambda: [
             "http://localhost:5173",
@@ -40,6 +41,10 @@ class Settings(BaseSettings):
             "http://localhost:4173",
         ]
     )
+
+    # Rate limiting for POST /api/generate (per-client-IP sliding window)
+    rate_limit_enabled: bool = True
+    rate_limit_per_minute: int = 10
 
     # Output / storage
     output_dir: Path = OUTPUT_DIR

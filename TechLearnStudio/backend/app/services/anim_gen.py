@@ -3,6 +3,12 @@
 M4 实现：生成可播放的 SVG 动画（SMIL/CSS），不依赖 MC npm 包或 ffmpeg。
 Backend 托管 SVG 文件，前端用 <iframe> 或内联 <svg> 播放。
 API 兼容设计文档：sceneRef → scene 代码 → 渲染产物。
+
+注意（S5）：本文件是 anim 模板的**唯一实现**（backend 独占动画生成）。
+Studio 侧不持有副本：compose 时的 motionCanvas fallbackSvg 通过
+POST /api/anim/render 获取（见 studio/anim_client.py）；backend 不可达时
+studio 用通用静态占位 SVG 离线降级（见 studio/composer/pipeline.py）。
+前端播放中的按需渲染同样走 backend 的 /api/anim/render。
 """
 from __future__ import annotations
 
@@ -10,6 +16,18 @@ import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
+
+
+def _esc(value: Any) -> str:
+    """SVG 文本节点转义（S6）：参数插值前必须过此函数，防 SVG 注入。"""
+    return (
+        str(value)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
 
 
 @dataclass
@@ -39,7 +57,7 @@ def _convolution_svg(signal: list[float], kernel: list[float], mode: str = "full
         bh = max(10, abs(v) * 60)
         y = 120 - bh
         signal_bars += f'<rect class="sig-{i}" x="{x}" y="{y}" width="{bar_w}" height="{bh}" fill="#58a6ff" rx="3"/>'
-        signal_bars += f'<text x="{x+bar_w/2}" y="140" text-anchor="middle" font-size="12" fill="#aaa">{v}</text>'
+        signal_bars += f'<text x="{x+bar_w/2}" y="140" text-anchor="middle" font-size="12" fill="#aaa">{_esc(v)}</text>'
 
     # 核（滑动窗口）
     kernel_rects = ""
@@ -243,16 +261,21 @@ def scene_hash(scene_ref: str, params: dict) -> str:
 
 
 def save_svg(result: AnimResult, output_dir: Path) -> Path:
-    """把渲染结果保存为 SVG 文件，返回文件路径。"""
+    """把渲染结果保存为 SVG 文件，返回文件路径。
+
+    缓存 hash 纳入真实渲染内容（S7）：不同 params → 不同内容 → 不同文件名，
+    修复原先永远用空 params 算 hash 导致不同参数结果互相覆盖的埋雷。
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
-    h = scene_hash(result.scene_ref, {})
+    h = hashlib.sha256(f"{result.scene_ref}:{result.content}".encode()).hexdigest()[:16]
     path = output_dir / f"{result.scene_ref}_{h}.svg"
     path.write_text(result.content, encoding="utf-8")
     return path
 
 
 def _fallback_svg(scene_ref: str) -> str:
+    ref = _esc(scene_ref)
     return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" style="background:#0d1117;border-radius:8px;">
-  <text x="200" y="100" text-anchor="middle" fill="#666" font-size="14">动画模板 "{scene_ref}" 未找到</text>
+  <text x="200" y="100" text-anchor="middle" fill="#666" font-size="14">动画模板 "{ref}" 未找到</text>
   <text x="200" y="130" text-anchor="middle" fill="#444" font-size="12">显示静态降级图</text>
 </svg>"""

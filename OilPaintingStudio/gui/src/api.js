@@ -71,7 +71,7 @@ export const api = {
   redo: (pid) => req('POST', `/api/projects/${pid}/undo/redo`),
 }
 
-/** 轮询任务到终态 */
+/** 轮询任务到终态。超时时先请求后端取消（释放 GPU 占用）再抛错。 */
 export async function waitTask(taskId, onProgress, intervalMs = 400, timeoutMs = 300000) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
@@ -80,5 +80,7 @@ export async function waitTask(taskId, onProgress, intervalMs = 400, timeoutMs =
     if (['done', 'failed', 'cancelled'].includes(t.status)) return t
     await new Promise(r => setTimeout(r, intervalMs))
   }
-  throw new Error('任务超时')
+  // 超时: 任务可能仍在后端占用 GPU, 先 cancel 再抛错
+  try { await api.cancelTask(taskId) } catch { /* 任务可能刚好已结束 */ }
+  throw new Error('任务超时（已请求取消）')
 }

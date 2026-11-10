@@ -61,10 +61,31 @@ async def stage_generate(
     return script
 
 
+def _shot_durations(clips: list[Path]) -> list[float]:
+    """用 ffprobe 量测各片段实际时长（秒）。量不到时记 -1。
+
+    I2V 帧数取整（n|1）会让实际时长与剧本 duration_sec 有出入,
+    记录实际值供字幕时间轴校对（V5 已知漂移的 meta 侧补偿）。
+    """
+    from .ffmpeg_tool import probe_duration
+    out: list[float] = []
+    for c in clips:
+        try:
+            d = probe_duration("", c)
+            out.append(round(d, 2) if d else -1.0)
+        except Exception:
+            out.append(-1.0)
+    return out
+
+
 async def stage_render(
     comfy: ComfyClient, settings: Settings, script: Script, project_dir: Path,
 ) -> list[Path]:
-    """渲染所有镜头的关键帧 + 视频。返回片段路径列表（按镜头顺序）。"""
+    """渲染所有镜头的关键帧 + 视频。返回片段路径列表（按镜头顺序）。
+
+    注: 当前为串行渲染（逐镜头 await）。Settings.concurrency 与
+    ComfyClient._sem 仅在并发调用 run() 时限流, 本函数未启用并发。
+    """
     style = settings.style(script.style)
     clips: list[Path] = []
     for shot in script.shots:
@@ -102,7 +123,11 @@ async def run_full(
     style_key: str | None = None, aspect: str | None = None,
     target_duration_sec: int | None = None, project_id: str | None = None,
 ) -> Path:
-    """一键端到端。返回成片路径。"""
+    """一键端到端。返回成片路径。
+
+    各阶段失败时把错误写入 meta["stages"] 后 re-raise（保证失败 run 的
+    项目目录里也有剧本阶段记录, 便于排障）。
+    """
     project_dir = new_project_dir(settings.output_dir, project_id)
     t0 = time.time()
     meta: dict = {"topic": topic, "project_id": project_dir.name, "stages": {}}
@@ -110,6 +135,7 @@ async def run_full(
     # LLM
     llm = LLMClient(settings.llm_base_url, settings.llm_api_key, settings.llm_model)
     comfy = ComfyClient(settings.comfy_url, settings.concurrency)
+    stage = "generate"
     try:
         # 1. 剧本
         ts = time.time()
@@ -120,16 +146,25 @@ async def run_full(
                                       "shots": len(script.shots)}
 
         # 2. 渲染
+        stage = "render"
         ts = time.time()
         clips = await stage_render(comfy, settings, script, project_dir)
         meta["stages"]["render"] = {"ok": True, "sec": round(time.time() - ts, 1),
-                                    "clips": len(clips)}
+                                    "clips": len(clips),
+                                    "shot_durations": _shot_durations(clips)}
 
         # 3. 剪辑
+        stage = "compose"
         ts = time.time()
         final = stage_compose(settings, script, clips, project_dir)
         meta["stages"]["compose"] = {"ok": True, "sec": round(time.time() - ts, 1),
                                      "final": str(final)}
+    except Exception as e:
+        # 失败也要落盘 meta, 记录失败阶段与原因 (docstring 承诺的"错误记录")
+        meta["stages"][stage] = {"ok": False, "error": str(e)}
+        meta["total_sec"] = round(time.time() - t0, 1)
+        write_meta(project_dir, meta)
+        raise
     finally:
         await llm.aclose()
         await comfy.aclose()

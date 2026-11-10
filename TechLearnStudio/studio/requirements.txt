@@ -1,0 +1,5 @@
+httpx>=0.26
+apscheduler>=3.10
+
+# 开发/测试
+pytest>=8.0

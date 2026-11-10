@@ -11,19 +11,23 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from ...common.imio import imread_
+
 logger = logging.getLogger(__name__)
 
 
 def load_lineart(lineart_path: Path | None, target_h: int, target_w: int) -> np.ndarray:
     """加载线稿并二值化。返回 (H, W) uint8 二值图（255=线，0=背景）。"""
     if lineart_path and lineart_path.exists():
-        img = cv2.imread(str(lineart_path), cv2.IMREAD_GRAYSCALE)
+        # 路径安全读图 (cv2.imread 在 Windows 上不读中文路径)
+        img = imread_(lineart_path, cv2.IMREAD_GRAYSCALE)
         if img is not None:
             if img.shape[:2] != (target_h, target_w):
                 img = cv2.resize(img, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
             # 二值化
             _, binary = cv2.threshold(img, 128, 255, cv2.THRESH_BINARY_INV)
             return binary
+        logger.warning("线稿读取失败, 使用物体原始 mask 作为目标轮廓: %s", lineart_path)
 
     # 无线稿时返回 None
     logger.info("无线稿，使用物体原始 mask 作为目标轮廓")

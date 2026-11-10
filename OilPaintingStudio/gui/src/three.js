@@ -5,7 +5,7 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js'
 import { PLYLoader } from 'three/addons/loaders/PLYLoader.js'
 
 /** 初始化视口。返回 controller 对象。 */
-export function initScene(container, { onTransformEnd, onSelect }) {
+export function initScene(container, { onTransformEnd, onSelect, onPlyError }) {
   const renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(window.devicePixelRatio)
   renderer.setSize(container.clientWidth, container.clientHeight)
@@ -144,7 +144,10 @@ export function initScene(container, { onTransformEnd, onSelect }) {
         const mat = new THREE.PointsMaterial({ size: 0.05, vertexColors: true, sizeAttenuation: true })
         const pts = new THREE.Points(geo, mat)
         group.add(pts)
-      }, undefined, () => { /* PLY 加载失败静默 */ })
+      }, undefined, err => {
+        console.warn('PLY 加载失败:', plyUrl, err)
+        onPlyError && onPlyError(node.node_id, plyUrl)
+      })
     },
     setGhost(url) {
       if (ghostMesh) { scene.remove(ghostMesh); ghostMesh = null }

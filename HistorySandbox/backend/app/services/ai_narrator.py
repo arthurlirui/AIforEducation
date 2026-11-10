@@ -15,18 +15,13 @@ import httpx
 from ..config import settings
 from ..models import AskAnswer, HistoricalEvent, SandboxStep
 from . import get_event, get_step
+from .sanitize import sanitize as _sanitize
 
 STYLE_LEADS = {
     "immersive": "以沉浸式沙盘讲解员的口吻，用生动、有画面感的语言",
     "academic": "以严谨的历史教学口吻，条理清晰地",
     "storytelling": "以说书人般的叙事口吻，娓娓道来地",
 }
-
-_BAD_CHARS = re.compile(r"[<>{}\\]")
-
-
-def _sanitize(text: str, limit: int = 900) -> str:
-    return _BAD_CHARS.sub("", text).strip()[:limit]
 
 
 def build_prompt(event: HistoricalEvent, step: SandboxStep, style: str = "immersive") -> str:
@@ -70,6 +65,22 @@ async def _llm_chat(prompt: str) -> str | None:
 
 # ---------------------------------------------------------------- narration
 
+# Small process-level LRU for LLM narrations: the same (event, step, style) is
+# requested repeatedly in a classroom, no need to re-hit the LLM each time.
+_LLM_CACHE_MAX = 32
+_LLM_NARRATE_CACHE: dict[tuple[str, int, str], str] = {}
+
+
+def _cache_get(key: tuple[str, int, str]) -> str | None:
+    return _LLM_NARRATE_CACHE.get(key)
+
+
+def _cache_put(key: tuple[str, int, str], value: str) -> None:
+    if len(_LLM_NARRATE_CACHE) >= _LLM_CACHE_MAX:
+        _LLM_NARRATE_CACHE.pop(next(iter(_LLM_NARRATE_CACHE)))  # FIFO eviction
+    _LLM_NARRATE_CACHE[key] = value
+
+
 def _local_narrate(event: HistoricalEvent, step: SandboxStep, style: str) -> str:
     """Template-based immersive narration, works fully offline."""
     openers = {
@@ -104,7 +115,12 @@ async def narrate(event_id: str, step_id: int, style: str = "immersive"):
     step = get_step(event_id, step_id)
     if event is None or step is None:
         return None
-    llm_text = await _llm_chat(build_prompt(event, step, style))
+    cache_key = (event_id, step_id, style)
+    llm_text = _cache_get(cache_key)
+    if llm_text is None:
+        llm_text = await _llm_chat(build_prompt(event, step, style))
+        if llm_text:
+            _cache_put(cache_key, llm_text)
     if llm_text:
         return Narration(event_id=event_id, step_id=step_id, text=llm_text, source="llm")
     return Narration(
@@ -139,6 +155,9 @@ def _extract_terms(question: str) -> list[str]:
             for size in (2, 3, 4):
                 if len(t) > size:
                     windows.extend(t[i:i + size] for i in range(len(t) - size + 1))
+        elif re.fullmatch(r"[\u4e00-\u9fff]+", t) and len(t) > 8:
+            # 超长专名按整词难以命中，补一个前 4 字滑窗
+            windows.append(t[:4])
     terms = terms + windows
     # dedupe, drop very short single CJK chars
     seen: set[str] = set()
@@ -215,7 +234,8 @@ def _local_answer(event: HistoricalEvent, step: SandboxStep | None, question: st
         refs.append(label)
     lead = f"结合《{event.title}》沙盘推演的记载："
     tail = ""
-    if any("精神" in r or "意义" in r for _, r in [(0, " ".join(refs))]):
+    refs_text = " ".join(refs)
+    if "精神" in refs_text or "意义" in refs_text:
         tail = "历史的答案，往往就藏在沙盘上这些看似平静的箭头与疆界之中。"
     return AskAnswer(
         question=question,

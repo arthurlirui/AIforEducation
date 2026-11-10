@@ -18,6 +18,7 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
@@ -36,9 +37,21 @@ router = APIRouter(prefix="/api/demo", tags=["demo"])
 DEMO_ROOT = Path(__file__).resolve().parents[2] / "projects" / "_demo"
 PAINTINGS_DIR = DEMO_ROOT / "paintings"
 RUNS_DIR = DEMO_ROOT / "runs"
+MAX_RUNS_KEPT = 30  # runs/ 保留最近 N 个, 超出清理最旧
+
+# GPU 互斥锁: desktop 组装时（__main__.py）用 set_gpu_lock 注入与 gui
+# TaskQueue 共享的同一把锁, 保证 demo 推理与任务队列不并发抢占 GPU。
+# 默认独立锁（独立 demo app 场景仍保证并发 run 串行）。
+_gpu_lock = threading.Lock()
 
 _engine_lock = threading.Lock()
 _engine: PaintingStudioDemoEngine | None = None
+
+
+def set_gpu_lock(lock: threading.Lock) -> None:
+    """注入共享 GPU 锁（与 TaskQueue 同一把）。"""
+    global _gpu_lock
+    _gpu_lock = lock
 
 
 def _get_engine(prefer: str = "auto") -> PaintingStudioDemoEngine:
@@ -120,7 +133,7 @@ def cv2_resize_safe(img, scale: float):
 
 class DemoRunRequest(BaseModel):
     painting: str
-    prefer: str = "auto"
+    prefer: Literal["auto", "gpu", "cpu", "mock"] = "auto"
 
 
 @router.post("/run")
@@ -141,22 +154,39 @@ def run_demo(req: DemoRunRequest):
     except Exception as e:
         raise HTTPException(500, f"引擎初始化失败: {e}")
 
-    run_id = datetime.now().strftime("%Y%m%d-%H%M%S") + f"-{engine.choice.effective.value}"
+    # 毫秒后缀: 同秒两次运行不共用 out_dir
+    run_id = (datetime.now().strftime("%Y%m%d-%H%M%S%f")[:-3]
+              + f"-{engine.choice.effective.value}")
     out_dir = RUNS_DIR / run_id
     try:
-        run = engine.run(painting_path, out_dir)
+        # GPU 互斥: 与 gui TaskQueue 共享同一把锁 (D1), 且 per-engine 串行 (D2)
+        with _gpu_lock:
+            run = engine.run_locked(painting_path, out_dir)
     except FileNotFoundError as e:
         raise HTTPException(404, str(e))
     except Exception as e:
         logger.exception("demo run 失败")
         raise HTTPException(500, f"demo 运行失败: {e}")
 
-    # 运行记录落盘
+    # 运行记录落盘 + 清理旧 runs（保留最近 MAX_RUNS_KEPT 个）
     record = {"run_id": run_id, "painting": painting,
               "ts": datetime.now().isoformat(),
               "device": run.to_dict()}
     atomic_write_json(out_dir / "run.json", record)
+    _cleanup_runs()
     return record
+
+
+def _cleanup_runs() -> None:
+    """runs/ 只保留最近 MAX_RUNS_KEPT 个目录, 超出删最旧。"""
+    try:
+        dirs = sorted((d for d in RUNS_DIR.iterdir() if d.is_dir()),
+                      key=lambda d: d.name, reverse=True)
+        for old in dirs[MAX_RUNS_KEPT:]:
+            import shutil
+            shutil.rmtree(old, ignore_errors=True)
+    except OSError as e:  # 清理失败不影响主流程
+        logger.warning("runs 清理失败: %s", e)
 
 
 @router.get("/runs")

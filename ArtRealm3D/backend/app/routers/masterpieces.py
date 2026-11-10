@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from ..data.masterpieces import get_masterpiece, list_masterpieces
-from ..schemas import MasterpieceBrief, QuizResult, QuizSubmission
+from ..schemas import MasterpieceBrief, MasterpieceDetail, QuizResult, QuizSubmission
 from ..services.assets import ensure_assets
 
 router = APIRouter(tags=["masterpieces"])
@@ -15,7 +15,7 @@ def api_list_masterpieces():
     return list_masterpieces()
 
 
-@router.get("/masterpieces/{mid}")
+@router.get("/masterpieces/{mid}", response_model=MasterpieceDetail)
 def api_get_masterpiece(mid: str):
     m = get_masterpiece(mid)
     if m is None:

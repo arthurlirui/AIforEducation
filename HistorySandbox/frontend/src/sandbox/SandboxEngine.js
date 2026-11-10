@@ -12,6 +12,12 @@ import { CONTINENTS, LANDMARKS } from './worldGeo.js'
 const SCALE = 1.4
 const LON0 = 10, LAT0 = 30
 
+// Hover tooltips: raycasting on every pointermove is too expensive, so the
+// pick is throttled to this interval; the tooltip position itself follows the
+// cursor on every move using the cached latest hit.
+const HOVER_RAYCAST_INTERVAL_MS = 50
+const TOOLTIP_OFFSET = 12
+
 export function lonLatToWorld(lon, lat) {
   return new THREE.Vector3((lon - LON0) * SCALE, 0, -(lat - LAT0) * SCALE)
 }
@@ -28,6 +34,44 @@ const ACTOR_KINDS = {
   trade: { shape: 'box', color: '#ffffff' },
   city: { shape: 'cylinder', color: '#ffffff' },
   battle: { shape: 'octa', color: '#ffffff' },
+}
+
+// Ancient place-name label colours by terrain type (deep outline keeps them
+// readable on bright terrain): rivers blue-ish, mountains parchment, cities
+// and forts accent gold, everything else aged ivory.
+const LABEL_COLORS = {
+  river: '#7fb8e8',
+  mountain: '#d8c9a3',
+  city: '#f1c40f',
+  fort: '#f1c40f',
+}
+
+/** Build a CanvasTexture Sprite that renders text with a dark outline. */
+export function makeTextSprite(text, { color = '#f0e6c8', fontSize = 42 } = {}) {
+  const pad = 12
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  ctx.font = `${fontSize}px "PingFang SC", "Microsoft YaHei", serif`
+  canvas.width = Math.ceil(ctx.measureText(text).width) + pad * 2
+  canvas.height = fontSize + pad * 2
+  // resizing a canvas resets its 2d state — re-apply the font before drawing
+  const c2 = canvas.getContext('2d')
+  c2.font = ctx.font
+  c2.textBaseline = 'middle'
+  c2.textAlign = 'center'
+  c2.strokeStyle = 'rgba(11,16,32,0.9)'
+  c2.lineWidth = 6
+  c2.strokeText(text, canvas.width / 2, canvas.height / 2)
+  c2.fillStyle = color
+  c2.fillText(text, canvas.width / 2, canvas.height / 2)
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.colorSpace = THREE.SRGBColorSpace
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false })
+  const sprite = new THREE.Sprite(mat)
+  const s = 0.045 // world units per pixel
+  sprite.scale.set(canvas.width * s, canvas.height * s, 1)
+  sprite.renderOrder = 10
+  return sprite
 }
 
 export class SandboxEngine {
@@ -64,8 +108,10 @@ export class SandboxEngine {
     this._nationGroup = new THREE.Group()  // scenario areas
     this._actorGroup = new THREE.Group()   // chess pieces
     this._fxGroup = new THREE.Group()      // arrows / highlights / markers
+    this._labelGroup = new THREE.Group()   // per-scenario ancient place-name labels
+    this._landmarkGroup = new THREE.Group()  // world-scale landmark labels
     this.scene.add(this._worldGroup, this._terrainGroup, this._nationGroup,
-                   this._actorGroup, this._fxGroup)
+                   this._actorGroup, this._fxGroup, this._labelGroup, this._landmarkGroup)
 
     this._actors = new Map()      // actorId -> { mesh, base }
     this._time = 0
@@ -76,14 +122,24 @@ export class SandboxEngine {
     this._selectedId = null
     this._raycaster = new THREE.Raycaster()
     this._ndc = new THREE.Vector2()
+    // hover tooltip state (lazily created DOM element + throttled picking)
+    this._tooltipEl = null
+    this._hoverLabel = null
+    this._lastHoverRaycastAt = 0
 
     this._buildOcean()
     this._buildContinents()
     this._buildStars()
 
-    window.addEventListener('resize', () => this._onResize())
+    this._onResizeBound = () => this._onResize()
+    window.addEventListener('resize', this._onResizeBound)
     this.renderer.domElement.addEventListener('pointerdown', (e) => this._onPointerDown(e))
     this.renderer.domElement.addEventListener('pointerup', (e) => this._onPointerUp(e))
+    // hover tooltips (same bound-handler pattern so dispose() can remove them)
+    this._onPointerMoveBound = (e) => this._onPointerMove(e)
+    this._onPointerLeaveBound = () => { this._hoverLabel = null; this._hideTooltip() }
+    this.renderer.domElement.addEventListener('pointermove', this._onPointerMoveBound)
+    this.renderer.domElement.addEventListener('pointerleave', this._onPointerLeaveBound)
     this._clock = new THREE.Clock()
     this._raf = requestAnimationFrame(this._tick.bind(this))
   }
@@ -102,7 +158,7 @@ export class SandboxEngine {
     for (const [id, entry] of this._actors) {
       const on = id === actorId
       entry.mesh.traverse((o) => {
-        if (o.isMesh && o.geometry?.type === 'CylinderGeometry' && o.position.y < 0) {
+        if (o.isMesh && o.userData.isBase) {
           o.material.color.set(on ? '#f1c40f' : '#1a2244')
           o.material.emissive?.set(on ? '#f1c40f' : '#000000')
         }
@@ -114,6 +170,15 @@ export class SandboxEngine {
     this._downAt = { x: e.clientX, y: e.clientY, t: performance.now() }
   }
 
+  /** Convert a pointer event to NDC coordinates on the canvas. */
+  _setNdcFromEvent(e) {
+    const rect = this.renderer.domElement.getBoundingClientRect()
+    this._ndc.set(
+      ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      -((e.clientY - rect.top) / rect.height) * 2 + 1,
+    )
+  }
+
   _onPointerUp(e) {
     if (!this._picking || !this._downAt) return
     const moved = Math.hypot(e.clientX - this._downAt.x, e.clientY - this._downAt.y)
@@ -121,11 +186,7 @@ export class SandboxEngine {
     this._downAt = null
     if (moved > 6 || dt > 600) return   // it was a drag/orbit, not a click
 
-    const rect = this.renderer.domElement.getBoundingClientRect()
-    this._ndc.set(
-      ((e.clientX - rect.left) / rect.width) * 2 - 1,
-      -((e.clientY - rect.top) / rect.height) * 2 + 1,
-    )
+    this._setNdcFromEvent(e)
     this._raycaster.setFromCamera(this._ndc, this.camera)
 
     // 1) try actor meshes first
@@ -152,6 +213,94 @@ export class SandboxEngine {
       }
     }
     this._onPickActor?.(null)
+  }
+
+  // -------------------------------------------------------- hover tooltip
+
+  /**
+   * Show a DOM tooltip with the actor/marker name under the cursor.
+   * The raycast is throttled to HOVER_RAYCAST_INTERVAL_MS; between picks the
+   * tooltip keeps following the cursor with the cached latest hit, so pointer
+   * movement never feels laggy. While a button is held (camera drag) the
+   * tooltip is hidden so orbiting never pops spurious labels.
+   */
+  _onPointerMove(e) {
+    if (e.buttons !== 0) {   // dragging the camera (or a press) — no tooltip
+      this._hoverLabel = null
+      this._hideTooltip()
+      return
+    }
+    const now = performance.now()
+    if (now - this._lastHoverRaycastAt >= HOVER_RAYCAST_INTERVAL_MS) {
+      this._lastHoverRaycastAt = now
+      this._hoverLabel = this._raycastLabel(e)
+    }
+    if (this._hoverLabel) this._showTooltipAt(e)
+    else this._hideTooltip()
+  }
+
+  /** Raycast actors (chess pieces) and markers (battle shards) for a label. */
+  _raycastLabel(e) {
+    this._setNdcFromEvent(e)
+    this._raycaster.setFromCamera(this._ndc, this.camera)
+
+    const meshes = []
+    const labelByMesh = new Map()
+    for (const entry of this._actors.values()) {
+      if (!entry.mesh.userData.label) continue
+      entry.mesh.traverse((o) => {
+        if (o.isMesh) { meshes.push(o); labelByMesh.set(o, entry.mesh.userData.label) }
+      })
+    }
+    for (const fx of this._fxGroup.children) {
+      if (fx.userData.label && fx.geometry?.type === 'OctahedronGeometry') {
+        meshes.push(fx)
+        labelByMesh.set(fx, fx.userData.label)
+      }
+    }
+    const hits = this._raycaster.intersectObjects(meshes, false)
+    return hits.length ? (labelByMesh.get(hits[0].object) || null) : null
+  }
+
+  /** Lazily create the tooltip div; inline styles keep the engine self-contained. */
+  _ensureTooltip() {
+    if (!this._tooltipEl) {
+      const el = document.createElement('div')
+      // Chinese-aesthetic dark panel: deep navy bg, aged-ivory text
+      el.style.cssText = [
+        'position:absolute', 'display:none', 'z-index:20',
+        'padding:5px 10px', 'border-radius:8px',
+        'background:rgba(11,16,32,0.92)', 'color:#f0e6c8',
+        'font-size:12px', 'white-space:nowrap',
+        'border:1px solid rgba(120,140,200,0.35)',
+        'pointer-events:none',
+      ].join(';')
+      this.container.appendChild(el)
+      this._tooltipEl = el
+    }
+    return this._tooltipEl
+  }
+
+  /** Position the tooltip near the cursor, flipping at the canvas edges. */
+  _showTooltipAt(e) {
+    const el = this._ensureTooltip()
+    el.textContent = this._hoverLabel
+    el.style.display = 'block'
+    const rect = this.container.getBoundingClientRect()
+    let x = e.clientX - rect.left + TOOLTIP_OFFSET
+    let y = e.clientY - rect.top + TOOLTIP_OFFSET
+    if (x + el.offsetWidth > rect.width) {
+      x = e.clientX - rect.left - el.offsetWidth - TOOLTIP_OFFSET
+    }
+    if (y + el.offsetHeight > rect.height) {
+      y = e.clientY - rect.top - el.offsetHeight - TOOLTIP_OFFSET
+    }
+    el.style.left = `${Math.max(0, x)}px`
+    el.style.top = `${Math.max(0, y)}px`
+  }
+
+  _hideTooltip() {
+    if (this._tooltipEl) this._tooltipEl.style.display = 'none'
   }
 
   // ------------------------------------------------------------ world base
@@ -230,6 +379,9 @@ export class SandboxEngine {
       dot.position.set(p.x, 0.8, p.z)
       this._worldGroup.add(dot)
       labelDivs.push({ text: lm.name, pos: p })
+      const sprite = makeTextSprite(lm.name)
+      sprite.position.set(p.x, 3, p.z)
+      this._landmarkGroup.add(sprite)
     }
     this._landmarks = labelDivs
   }
@@ -258,7 +410,20 @@ export class SandboxEngine {
         default: break
       }
       if (t.label) {
-        const p = lonLatToWorld(t.points[0][0], t.points[0][1])
+        // polyline features (mountain ridge / river) anchor at the midpoint of
+        // the line; point-like features anchor at their single point
+        const anchor = (t.type === 'mountain' || t.type === 'river')
+          ? t.points[Math.floor(t.points.length / 2)]
+          : t.points[0]
+        const p = lonLatToWorld(anchor[0], anchor[1])
+        const size = t.size || 1
+        let y = 1.6
+        if (t.type === 'mountain') y = 3.6 * size + 1      // above the snow caps
+        else if (t.type === 'city' || t.type === 'fort') y = 2.2 * size
+        const sprite = makeTextSprite(t.label, { color: LABEL_COLORS[t.type] || '#f0e6c8' })
+        sprite.position.set(p.x, y, p.z)
+        sprite.userData.labelType = t.type
+        this._labelGroup.add(sprite)
         this._terrainLabels.push({
           text: t.label,
           pos: p,
@@ -573,8 +738,15 @@ export class SandboxEngine {
     this._clearGroup(this._nationGroup)
     this._clearGroup(this._actorGroup)
     this._clearGroup(this._fxGroup)
+    this._clearGroup(this._labelGroup)
     this._actors.clear()
     this._terrainLabels = []
+    // pieces/markers of the previous scenario are gone; drop the hover state
+    this._hoverLabel = null
+    this._hideTooltip()
+    // world-scale landmark labels only make sense on world maps; on region /
+    // country scenarios they would overlap the ancient place-name labels
+    this._landmarkGroup.visible = (event.map?.scale === 'world')
 
     this.event = event
     this.nations = event.nations || []
@@ -625,6 +797,10 @@ export class SandboxEngine {
   applyStep(step, { animateCamera = true } = {}) {
     this._step = step
     this._clearGroup(this._fxGroup)
+    // markers were just replaced (and some actors may be gone): a cached
+    // hover hit could show a stale name until the next raycast
+    this._hoverLabel = null
+    this._hideTooltip()
 
     // --- actors: create/update/remove with position tween
     const seen = new Set()
@@ -652,6 +828,7 @@ export class SandboxEngine {
     for (const [id, entry] of this._actors) {
       if (!seen.has(id)) {
         this._actorGroup.remove(entry.mesh)
+        this._disposeObject(entry.mesh)
         this._actors.delete(id)
       }
     }
@@ -749,6 +926,7 @@ export class SandboxEngine {
       }),
     )
     base.position.y = -1.1
+    base.userData.isBase = true   // explicit marker for setSelected highlighting
     group.add(base)
 
     // strength bar
@@ -810,15 +988,23 @@ export class SandboxEngine {
 
   // ---------------------------------------------------------------- render
 
+  /** Release the GPU resources of a removed object (geometry/material/texture). */
+  _disposeObject(obj) {
+    obj.traverse?.((o) => {
+      o.geometry?.dispose?.()
+      if (o.material) {
+        (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => {
+          m.map?.dispose?.()   // label sprites own a CanvasTexture
+          m.dispose()
+        })
+      }
+    })
+  }
+
   _clearGroup(g) {
     for (const child of [...g.children]) {
       g.remove(child)
-      child.traverse?.((o) => {
-        o.geometry?.dispose?.()
-        if (o.material) {
-          (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose())
-        }
-      })
+      this._disposeObject(child)
     }
   }
 
@@ -873,6 +1059,16 @@ export class SandboxEngine {
       })
     }
 
+    // ancient place-name labels: fade out with camera distance so far views
+    // don't turn into an unreadable pile of text
+    for (const group of [this._labelGroup, this._landmarkGroup]) {
+      if (!group.visible) continue
+      for (const s of group.children) {
+        const dist = this.camera.position.distanceTo(s.position)
+        s.material.opacity = Math.max(0, Math.min(0.95, 1.6 - dist / 400))
+      }
+    }
+
     this.rig.update(dt)
     this.renderer.render(this.scene, this.camera)
     this._raf = requestAnimationFrame(this._tick.bind(this))
@@ -880,6 +1076,15 @@ export class SandboxEngine {
 
   dispose() {
     cancelAnimationFrame(this._raf)
+    window.removeEventListener('resize', this._onResizeBound)
+    this.renderer.domElement.removeEventListener('pointermove', this._onPointerMoveBound)
+    this.renderer.domElement.removeEventListener('pointerleave', this._onPointerLeaveBound)
+    this.rig.dispose()
+    // free the CanvasTextures owned by label sprites
+    this._clearGroup(this._labelGroup)
+    this._clearGroup(this._landmarkGroup)
+    this._tooltipEl?.remove()
+    this._tooltipEl = null
     this.renderer.dispose()
     this.container.removeChild(this.renderer.domElement)
   }

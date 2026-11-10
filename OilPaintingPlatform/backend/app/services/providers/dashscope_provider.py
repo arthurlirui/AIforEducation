@@ -15,15 +15,13 @@ from ...config import settings
 from ...schemas import GeneratedImage
 
 
-DASHSCOPE_API = "https://dashscope.aliyuncs.com/api/v1"
-
-
 class DashscopeProvider(ImageProvider):
     name = "dashscope"
     display_name = "阿里通义万相"
     description = "阿里云 DashScope 通义万相文生图，异步轮询"
     needs_api_key = True
     default_base_url = "https://dashscope.aliyuncs.com/api/v1"
+    supported_sizes = ["1024x1024", "720x1280", "1280x720"]
 
     def _env_api_key(self) -> str:
         return settings.dashscope_api_key
@@ -48,7 +46,7 @@ class DashscopeProvider(ImageProvider):
 
         # 1) Submit task
         resp = httpx.post(
-            f"{DASHSCOPE_API}/services/aigc/text2image/image-synthesis",
+            f"{self.base_url}/services/aigc/text2image/image-synthesis",
             json=payload,
             headers=headers,
             timeout=self.timeout,
@@ -59,12 +57,12 @@ class DashscopeProvider(ImageProvider):
         if not task_id:
             raise RuntimeError(f"DashScope submit failed: {task}")
 
-        # 2) Poll
-        poll_headers = {"Authorization": f"Bearer {settings.dashscope_api_key}"}
+        # 2) Poll — reuse the same credentials used for submission
+        poll_headers = {"Authorization": f"Bearer {self.api_key}"}
         deadline = time.time() + self.timeout
         while time.time() < deadline:
             r = httpx.get(
-                f"{DASHSCOPE_API}/tasks/{task_id}",
+                f"{self.base_url}/tasks/{task_id}",
                 headers=poll_headers,
                 timeout=30,
             )
@@ -94,7 +92,6 @@ class DashscopeProvider(ImageProvider):
                             url=self.file_url(path),
                             provider=self.name,
                             revised_prompt=prompt,
-                            local_path=str(path),
                         )
                     )
         return images

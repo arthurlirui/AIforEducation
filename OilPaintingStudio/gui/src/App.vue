@@ -131,7 +131,7 @@ onMounted(async () => {
     <!-- 底部状态栏 -->
     <footer style="height:26px;background:var(--panel);border-top:1px solid var(--bd);display:flex;align-items:center;gap:16px;padding:0 14px;flex:none" class="mini">
       <span v-if="project">{{ t('footerProject') }}: {{ project.name }} · project.json</span>
-      <span>undo: {{ project?.undo_depth ?? 0 }} / 50</span>
+      <span :title="t('undoHint')">undo: {{ project?.undo_depth ?? 0 }} / 50</span>
       <span style="margin-left:auto">{{ t('footerTagline') }}</span>
     </footer>
 

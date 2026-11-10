@@ -21,6 +21,7 @@ import httpx
 from ..config import settings
 from ..models import Actor, Arrow, Highlight, Marker, SandboxStep
 from . import get_event, get_step
+from .sanitize import sanitize
 
 # movement range per actor kind, in degrees of lon/lat per simulated step
 MOVE_RANGE = {
@@ -36,6 +37,34 @@ MOVE_RANGE = {
 HOME_DEFENCE_BONUS = 0.25
 
 HYP_MARKER = "· 假想"
+
+# kinds that may initiate an attack (teaching scenes: only real combat units)
+COMBATANT_KINDS = ("army", "fleet", "person")
+
+# ------------------------------------------------- hypothetical step sessions
+#
+# In-memory registry of the latest hypothetical state per act, so a second
+# command can branch from the previous hypothetical result (chained commands
+# accumulate) while recorded history stays immutable. Keys are always
+# (event_id, 900 + historical_step_id), so the registry is naturally bounded
+# by the number of acts per event.
+_HYP_SESSIONS: dict[tuple[str, int], SandboxStep] = {}
+HYP_ID_BASE = 900
+
+
+def _get_step(event_id: str, step_id: int) -> SandboxStep | None:
+    """Resolve a step id: hypothetical sessions first, then recorded history."""
+    return _HYP_SESSIONS.get((event_id, step_id)) or get_step(event_id, step_id)
+
+
+def _register_hyp(event_id: str, step: SandboxStep) -> SandboxStep:
+    _HYP_SESSIONS[(event_id, step.id)] = step
+    return step
+
+
+def _hyp_step_id(base: SandboxStep) -> int:
+    """Hypothetical steps keep the 900+x sentinel id, even when chained."""
+    return base.id if base.id >= HYP_ID_BASE else HYP_ID_BASE + base.id
 
 
 def _dist(a: tuple[float, float], b: tuple[float, float]) -> float:
@@ -123,25 +152,44 @@ def _check_command_applicable(event, base: SandboxStep, kind: str, cmd: dict[str
         if actor is None:
             raise CommandUnavailable("unknown_actor", "沙盘上没有这枚棋子，或它不在当前幕中。")
     if kind == "attack":
-        actor = next(a for a in actors if a.id == cmd.get("actor_id"))
+        actor = next(a for a in actors if a.id == cmd["actor_id"])
+        if actor.kind not in COMBATANT_KINDS:
+            raise CommandUnavailable(
+                "non_combatant",
+                f"「{actor.name}」不是作战单位，无法发起进攻。试试指挥一支军队或舰队。",
+            )
         if not any(a.nation != actor.nation for a in actors):
             raise CommandUnavailable(
                 "no_enemy",
                 f"「{base.title}」这一幕的沙盘上只有{actor.name}所属阵营，没有可进攻的敌军棋子。"
                 "航海、商路类剧本多为单阵营推演，试试机动、假想推演，或换一个战役型剧本（如赤壁之战、二战欧洲）。",
             )
+        if not any(a.nation != actor.nation and a.kind != "battle" for a in actors):
+            raise CommandUnavailable(
+                "invalid_target",
+                "沙盘上的敌军只有战场标记，不能作为进攻目标。",
+            )
+    if kind == "alliance" and cmd.get("target_nation"):
+        partner = cmd["target_nation"]
+        if partner not in {n.id for n in event.nations}:
+            raise CommandUnavailable("unknown_nation", "沙盘上没有这个势力，无法缔结同盟。")
+        if cmd.get("actor_id"):
+            actor = next((a for a in actors if a.id == cmd["actor_id"]), None)
+            if actor is not None and actor.nation == partner:
+                raise CommandUnavailable("invalid_target", "不能与自己所属的势力结盟。")
 
 
 async def simulate_command(event_id: str, step_id: int, cmd: dict[str, Any]) -> SandboxStep | None:
     event = get_event(event_id)
-    base = get_step(event_id, step_id)
+    base = _get_step(event_id, step_id)
     if event is None or base is None:
         return None
 
     kind = cmd.get("command", "move")
     _check_command_applicable(event, base, kind, cmd)
 
-    rng = random.Random(cmd.get("seed") or 42)
+    seed = cmd.get("seed")
+    rng = random.Random(42 if seed is None else seed)
     actors = [a.model_copy(deep=True) for a in base.actors]
     arrows: list[Arrow] = []
     highlights: list[Highlight] = []
@@ -181,8 +229,8 @@ async def simulate_command(event_id: str, step_id: int, cmd: dict[str, Any]) -> 
         attacker = next((a for a in actors if a.id == cmd["actor_id"]), None)
         if attacker is None:
             return None
-        # nearest enemy actor
-        enemies = [a for a in actors if a.nation != attacker.nation]
+        # nearest enemy actor (battle markers are not valid targets)
+        enemies = [a for a in actors if a.nation != attacker.nation and a.kind != "battle"]
         if not enemies:
             return None
         target = min(enemies, key=lambda e: _dist(attacker.position, e.position))
@@ -242,9 +290,9 @@ async def simulate_command(event_id: str, step_id: int, cmd: dict[str, Any]) -> 
     else:
         return None
 
-    return SandboxStep(
-        id=900 + step_id,
-        date=f"{date}{HYP_MARKER}",
+    return _register_hyp(event_id, SandboxStep(
+        id=_hyp_step_id(base),
+        date=base.date if base.hypothetical else f"{date}{HYP_MARKER}",
         title=title,
         narrative=narrative,
         spirit=spirit,
@@ -256,7 +304,7 @@ async def simulate_command(event_id: str, step_id: int, cmd: dict[str, Any]) -> 
         highlights=highlights,
         markers=markers,
         hypothetical=True,
-    )
+    ))
 
 
 # -------------------------------------------------- LLM counterfactual layer
@@ -279,6 +327,16 @@ def _build_hyp_prompt(event, base: SandboxStep, question: str) -> str:
     )
 
 
+def _strip_code_fence(text: str) -> str:
+    """Strip an optional markdown code fence (```json ... ``` or ``` ... ```)."""
+    t = text.strip()
+    if t.startswith("```"):
+        t = t.removeprefix("```json").removeprefix("```")
+        if t.endswith("```"):
+            t = t[:-3]
+    return t.strip()
+
+
 async def _llm_hypothetical(prompt: str) -> dict[str, Any] | None:
     if not (settings.llm_base_url and settings.llm_api_key and settings.llm_model):
         return None
@@ -293,7 +351,10 @@ async def _llm_hypothetical(prompt: str) -> dict[str, Any] | None:
             }, headers={"Authorization": f"Bearer {settings.llm_api_key}"})
             resp.raise_for_status()
             content = resp.json()["choices"][0]["message"]["content"]
-        return json.loads(content)
+        data = json.loads(_strip_code_fence(content))
+        # A truncated/odd LLM reply can still be valid JSON but not an object
+        # (array, string, number...) — anything non-dict goes to local fallback.
+        return data if isinstance(data, dict) else None
     except Exception:
         return None
 
@@ -320,7 +381,7 @@ def _local_hypothetical(event, base: SandboxStep, question: str) -> dict[str, An
 
 async def simulate_hypothetical(event_id: str, step_id: int, cmd: dict[str, Any]) -> SandboxStep | None:
     event = get_event(event_id)
-    base = get_step(event_id, step_id)
+    base = _get_step(event_id, step_id)
     if event is None or base is None:
         return None
     question = cmd.get("question", "").strip()
@@ -328,7 +389,9 @@ async def simulate_hypothetical(event_id: str, step_id: int, cmd: dict[str, Any]
         return None
 
     prompt = _build_hyp_prompt(event, base, question)
-    data = await _llm_hypothetical(prompt) or _local_hypothetical(event, base, question)
+    data = await _llm_hypothetical(prompt)
+    if not isinstance(data, dict):
+        data = _local_hypothetical(event, base, question)
 
     actors = [a.model_copy(deep=True) for a in base.actors]
     arrows: list[Arrow] = []
@@ -352,17 +415,17 @@ async def simulate_hypothetical(event_id: str, step_id: int, cmd: dict[str, Any]
         try:
             pos = (float(m["position"][0]), float(m["position"][1]))
             markers.append(Marker(id=f"hyp-{len(markers)}", kind="battle", position=pos,
-                                  label=str(m.get("label", "假想"))[:20], color="#f1c40f"))
+                                  label=sanitize(str(m.get("label", "假想")), 20), color="#f1c40f"))
         except (KeyError, TypeError, IndexError, ValueError):
             continue
 
-    return SandboxStep(
-        id=900 + step_id,
-        date=f"{base.date}{HYP_MARKER}",
-        title=str(data.get("title", "假想推演"))[:30],
-        narrative=str(data.get("narrative", ""))[:400],
-        spirit=str(data.get("spirit", ""))[:200],
-        significance=str(data.get("significance", ""))[:200],
+    return _register_hyp(event_id, SandboxStep(
+        id=_hyp_step_id(base),
+        date=base.date if base.hypothetical else f"{base.date}{HYP_MARKER}",
+        title=sanitize(str(data.get("title", "假想推演")), 30),
+        narrative=sanitize(str(data.get("narrative", "")), 400),
+        spirit=sanitize(str(data.get("spirit", "")), 200),
+        significance=sanitize(str(data.get("significance", "")), 200),
         camera=base.camera,
         camera_zoom=base.camera_zoom,
         actors=actors,
@@ -370,4 +433,4 @@ async def simulate_hypothetical(event_id: str, step_id: int, cmd: dict[str, Any]
         highlights=[],
         markers=markers,
         hypothetical=True,
-    )
+    ))

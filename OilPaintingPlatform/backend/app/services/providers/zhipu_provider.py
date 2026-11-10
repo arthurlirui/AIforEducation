@@ -23,6 +23,11 @@ class ZhipuProvider(ImageProvider):
     needs_base_url = True
     is_free = True
     default_base_url = "https://open.bigmodel.cn/api/paas/v4"
+    # CogView-3 supported sizes
+    supported_sizes = [
+        "1024x1024", "768x1344", "864x1152",
+        "1344x768", "1152x864", "1440x720", "720x1440",
+    ]
 
     def _env_api_key(self) -> str:
         return settings.zhipu_api_key
@@ -34,6 +39,7 @@ class ZhipuProvider(ImageProvider):
         return bool(self.api_key)
 
     def _generate(self, prompt, negative_prompt, size, n):
+        self.notes.append("该模型不支持负面提示词，负面提示词设置已被忽略")
         url = f"{self.base_url.rstrip('/')}/images/generations"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -63,27 +69,21 @@ class ZhipuProvider(ImageProvider):
                         url=self.file_url(path),
                         provider=self.name,
                         revised_prompt=prompt,
-                        local_path=str(path),
                     )
                 )
             elif url_val:
-                # Download so the file is served locally
-                try:
-                    r = httpx.get(url_val, timeout=60)
-                    r.raise_for_status()
-                    path = self.save_image_bytes(r.content, ext="png")
-                    images.append(
-                        GeneratedImage(
-                            url=self.file_url(path),
-                            provider=self.name,
-                            revised_prompt=prompt,
-                            local_path=str(path),
-                        )
+                # Download so the file is served locally. Remote URLs expire
+                # quickly, so a failed download must surface as an error
+                # (mapped to a friendly message by the router) instead of
+                # silently writing a soon-dead link into the gallery.
+                r = httpx.get(url_val, timeout=60)
+                r.raise_for_status()
+                path = self.save_image_bytes(r.content, ext="png")
+                images.append(
+                    GeneratedImage(
+                        url=self.file_url(path),
+                        provider=self.name,
+                        revised_prompt=prompt,
                     )
-                except Exception:
-                    images.append(
-                        GeneratedImage(
-                            url=url_val, provider=self.name, revised_prompt=prompt
-                        )
-                    )
+                )
         return images

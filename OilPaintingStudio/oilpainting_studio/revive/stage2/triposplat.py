@@ -149,14 +149,20 @@ def generate_object_3dgs(
     depth_crop = depth[y0:y1, x0:x1]
 
     # 生成 3D 高斯
+    source = "mock"
     try:
         gaussians_3d = generate_with_triposplat(
             crop_rgb, depth_crop, settings.focal_length)
-    except (ImportError, Exception) as e:
+        source = "triposplat"
+    except (ImportError, FileNotFoundError) as e:
+        # 仅依赖缺失降级 mock; 推理期错误上抛
         logger.warning("TripoSplat 不可用 (%s)，使用 mock 生成: %s", e, obj.label)
         gaussians_3d = generate_triposplat_mock(
             crop_rgb, depth_crop, settings.focal_length,
             settings.gaussians_per_object)
+    except Exception as e:
+        logger.error("TripoSplat 推理失败 (%s)，上抛", e)
+        raise
 
     # 转换为 2DGS surfel
     surfels = convert_3dgs_to_2dgs(gaussians_3d)
@@ -182,7 +188,7 @@ def generate_object_3dgs(
         num_gaussians=len(surfels),
         bbox_3d=bbox_3d,
         center_3d=center,
-        source="triposplat" if False else "mock",  # 实际使用时根据是否 fallback 设置
+        source=source,  # 按 generate_with_triposplat 是否走 fallback 分支设置
     )
     logger.info("物体 %s (id=%d): %d 高斯点 → %s",
                 obj.label, obj.object_id, len(surfels), ply_path.name)

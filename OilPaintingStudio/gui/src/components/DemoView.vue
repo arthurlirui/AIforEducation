@@ -11,23 +11,38 @@ const prefer = ref('auto')        // auto | gpu | cpu | mock
 const running = ref(false)
 const lastRun = ref(null)         // {run_id, device:{steps...}}
 const runs = ref([])
+const connError = ref(false)      // 服务不可达 → 显式横幅, 不再伪装成空状态
 
 const tierColor = { gpu: 'var(--grn)', cpu: 'var(--yel)', mock: 'var(--red)' }
 const tierName = computed(() => ({ gpu: 'GPU', cpu: 'CPU', mock: 'MOCK' }))
 
 async function loadDevice() {
-  const r = await fetch(`/api/demo/device?prefer=${prefer.value}`)
-  device.value = await r.json()
+  try {
+    const r = await fetch(`/api/demo/device?prefer=${prefer.value}`)
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    device.value = await r.json()
+  } catch { connError.value = true }
 }
 async function loadPaintings() {
-  const r = await fetch('/api/demo/paintings')
-  paintings.value = await r.json()
-  if (paintings.value.length && !selectedPainting.value)
-    selectedPainting.value = paintings.value[0].name
+  try {
+    const r = await fetch('/api/demo/paintings')
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    paintings.value = await r.json()
+    if (paintings.value.length && !selectedPainting.value)
+      selectedPainting.value = paintings.value[0].name
+  } catch { connError.value = true }
 }
 async function loadRuns() {
-  const r = await fetch('/api/demo/runs')
-  runs.value = await r.json()
+  try {
+    const r = await fetch('/api/demo/runs')
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    runs.value = await r.json()
+  } catch { connError.value = true }
+}
+
+async function retryAll() {
+  connError.value = false
+  await Promise.all([loadDevice(), loadPaintings(), loadRuns()])
 }
 
 async function runDemo() {
@@ -43,11 +58,14 @@ async function runDemo() {
     const data = await r.json()
     if (!r.ok) throw new Error(data.detail || r.statusText)
     lastRun.value = data
-    await loadDevice()
-    await loadRuns()
   } catch (e) {
     alert(t('demoFailed', e.message))
   } finally { running.value = false }
+  // demo 已成功: 之后的刷新失败只标连接横幅, 不误报为 demo 失败
+  try {
+    await loadDevice()
+    await loadRuns()
+  } catch { /* loadDevice/loadRuns 内部已置 connError */ }
 }
 
 function artifactUrl(runId, filename) {
@@ -55,11 +73,7 @@ function artifactUrl(runId, filename) {
 }
 
 const dev = computed(() => device.value || { report: {} })
-onMounted(async () => {
-  await loadDevice()
-  await loadPaintings()
-  await loadRuns()
-})
+onMounted(retryAll)
 </script>
 
 <template>
@@ -68,6 +82,14 @@ onMounted(async () => {
     <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
       <h2 style="font-weight:600;font-size:16px">{{ t('demoTitle') }}</h2>
       <span class="mini">{{ t('demoSub') }}</span>
+    </div>
+
+    <!-- 服务未连接横幅 (fetch 失败时显式提示, 不再伪装空状态) -->
+    <div v-if="connError"
+         style="background:rgba(224,101,90,.12);border:1px solid var(--red);border-radius:10px;padding:12px;display:flex;gap:12px;align-items:center">
+      <span style="color:var(--red);font-weight:500">{{ t('connError') }}</span>
+      <span class="mini">{{ t('connErrorHint') }}</span>
+      <button class="btn" style="margin-left:auto" @click="retryAll">{{ t('retry') }}</button>
     </div>
 
     <!-- 设备面板 -->
@@ -168,6 +190,6 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div v-if="!paintings.length" class="empty">{{ t('noPainting') }}</div>
+    <div v-if="!paintings.length && !connError" class="empty">{{ t('noPainting') }}</div>
   </div>
 </template>

@@ -35,6 +35,10 @@ const currentStep = computed(() =>
 
 // ---- world-model handlers ----
 function enterWorldModel() {
+  // pause autoplay so its timer can never switch steps and silently wipe
+  // the hypothetical state the user is inspecting
+  playing.value = false
+  clearTimeout(playTimer)
   wmMode.value = ''
   wmSelectedActor.value = ''
   hypStep.value = null
@@ -67,19 +71,16 @@ async function runSimulation(cmd) {
   wmBusy.value = true
   error.value = ''
   try {
-    const step = await simulate(currentEvent.value.id, currentStepId.value, cmd)
+    // Chained commands branch from the current hypothetical state (900+x);
+    // hypStep is cleared on every step/mode switch, so when it exists we are
+    // still on the same act and the previous moves must accumulate.
+    const baseStepId = hypStep.value ? hypStep.value.id : currentStepId.value
+    const step = await simulate(currentEvent.value.id, baseStepId, cmd)
     hypStep.value = step
     engine?.applyStep(step)
   } catch (e) {
-    // 409 carries a structured {reason, message} detail with a friendly hint;
-    // FastAPI wraps it as {"detail": {...}}, so look there first
-    const m = /\{.*\}/s.exec(e.message)?.[0]
-    try {
-      const parsed = JSON.parse(m)
-      error.value = parsed?.detail?.message || parsed?.message || `世界模型推演失败：${e.message}`
-    } catch {
-      error.value = `世界模型推演失败：${e.message}`
-    }
+    // 409 carries a structured {reason, message} detail (parsed in api.js)
+    error.value = e.detail?.message || `世界模型推演失败：${e.message}`
   } finally {
     wmBusy.value = false
   }
@@ -219,7 +220,7 @@ watch(playing, (v) => { engine && (engine.rig.autoRotate = !v) })
       :mode="wmMode"
       :selected-actor-id="wmSelectedActor"
       :busy="wmBusy"
-      @set-mode="(m) => { wmMode = m; wmSelectedActor = ''; engine?.setSelected(null); hypStep = null }"
+      @set-mode="(m) => { wmMode = m; wmSelectedActor = ''; engine?.setSelected(null) }"
       @select-actor="onPickActor"
       @cancel="() => { wmMode = ''; wmSelectedActor = ''; engine?.setSelected(null) }"
       @submit-hypothetical="(q, mode) => wmSubmit(q, mode)"

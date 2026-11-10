@@ -4,30 +4,28 @@
 1. prompt_builder  — 提示词合成引擎 (风格关键词/媒介提示/艺术家/负面词)
 2. ProviderRegistry — 注册表 + get_provider 的 mock 回退逻辑
 3. MockProvider     — SVG 占位图生成与落盘
+
+（路由层 / provider 凭据链路 / gallery 并发等测试见 test_api.py、
+  test_providers.py、test_gallery.py。sys.path 由根目录 conftest.py 设置。）
 """
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
 import pytest
 
-BACKEND_ROOT = Path(__file__).resolve().parents[1] / "backend"
-sys.path.insert(0, str(BACKEND_ROOT))
-
-from app.schemas import GeneratedImage, StylePreset  # noqa: E402
-from app.services.prompt_builder import (  # noqa: E402
+from app.schemas import GeneratedImage, StylePreset
+from app.services.prompt_builder import (
     compose_negative_prompt,
     compose_prompt,
     get_style,
     list_styles,
 )
-from app.services.providers import (  # noqa: E402
+from app.services.prompt_service import list_prompts
+from app.services.providers import (
     ImageProvider,
     ProviderRegistry,
     get_provider,
 )
-from app.services.providers.mock_provider import MockProvider  # noqa: E402
+from app.services.providers.mock_provider import MockProvider, _svg
 
 
 @pytest.fixture(scope="module")
@@ -50,6 +48,18 @@ class TestStylesData:
         assert get_style("impressionism") is not None
         assert get_style("no-such-style") is None
 
+    def test_prompt_recommended_styles_exist(self):
+        """prompts.json 的 recommended_style 必须都能在 styles.json 中找到，
+        否则前端点击模板后不会切换风格（推荐 badge 静默消失）。"""
+        style_ids = {s.id for s in list_styles()}
+        prompts = list_prompts()
+        assert len(prompts) >= 20, "prompts.json 至少 20 条模板"
+        for p in prompts:
+            assert p.recommended_style in style_ids, (
+                f"模板 {p.id} 的 recommended_style '{p.recommended_style}' "
+                "不在 styles.json 中"
+            )
+
 
 class TestComposePrompt:
     def test_appends_style_keywords(self, impressionism):
@@ -66,6 +76,14 @@ class TestComposePrompt:
         out = compose_prompt("an oil painting of a harbor", impressionism)
         # 用户已提 oil painting → 不追加媒介提示短语 "oil painting on canvas"
         assert "oil painting on canvas" not in out
+
+    def test_medium_hint_not_duplicated_by_style_keywords(self, impressionism):
+        """风格关键词已含 "oil painting" 时不再追加媒介提示（3.1）."""
+        out = compose_prompt("a quiet harbor", impressionism)
+        assert "oil painting" in out  # 来自风格关键词
+        assert "oil painting on canvas" not in out
+        # 整个合成结果中 "oil painting" 只出现一次
+        assert out.count("oil painting") == 1
 
     def test_chinese_prompt_gets_medium_hint(self, impressionism):
         out = compose_prompt("宁静的港湾", impressionism)
@@ -130,7 +148,7 @@ class TestRegistry:
         info = ProviderRegistry.info()
         assert len(info) >= 6
         mock_entry = next(i for i in info if i["id"] == "mock")
-        assert mock_entry["free"] is False or mock_entry["free"] is True  # 字段存在
+        assert isinstance(mock_entry["free"], bool)
         assert "name" in mock_entry and "needs_api_key" in mock_entry
 
 
@@ -181,9 +199,15 @@ class TestMockProvider:
         assert path.exists()
         assert path.read_bytes().startswith(b"<?xml")  # SVG
 
-    def test_generate_deterministic_colors(self):
-        """同一 prompt 生成相同配色 (md5 决定)."""
-        svg1 = MockProvider()._generate("same prompt", "", "1024x1024", 1)[0]
-        svg2 = MockProvider()._generate("same prompt", "", "1024x1024", 1)[0]
-        assert svg1.url.split("/")[-1].split("_", 1)[0] == \
-               svg2.url.split("/")[-1].split("_", 1)[0] or True
+    def test_generate_deterministic_output(self):
+        """同一 prompt 生成完全相同的 SVG（md5 决定配色与 seed）."""
+        svg1 = _svg("same prompt", "Mock Style", 42)
+        svg2 = _svg("same prompt", "Mock Style", 42)
+        assert svg1 == svg2
+
+    def test_seed_deterministic_across_instances(self):
+        """seed 由 md5 推导，跨进程/跨实例可复现（不依赖 PYTHONHASHSEED）."""
+        img1 = MockProvider()._generate("same prompt", "", "1024x1024", 1)[0]
+        img2 = MockProvider()._generate("same prompt", "", "1024x1024", 1)[0]
+        assert img1.seed == img2.seed
+        assert img1.seed is not None

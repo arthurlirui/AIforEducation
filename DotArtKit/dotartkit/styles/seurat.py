@@ -37,25 +37,32 @@ def generate_seurat(
 
     Parameters
     ----------
-    dot_spacing : 网格间距 (像素)
+    dot_spacing : 网格间距 (像素), ≥2 (spacing=1 会产生空切片 NaN)
     dot_ratio : 点径 / 间距
     sat_boost : 饱和度提升倍数
     canvas_color : 画布底色 (RGB ∈ [0,1])
     """
+    if dot_spacing < 2:
+        raise ValueError(f"dot_spacing 必须 ≥ 2 (收到 {dot_spacing}); "
+                         "spacing=1 会产生空 cell 切片 (NaN 颜色)")
     rng = np.random.default_rng(seed)
     arr = to_float01(image)
     h, w = arr.shape[:2]
 
+    # cell 均值: 积分图向量化 (与逐 cell 循环等价, 含非整除边缘 cell).
+    half = dot_spacing // 2
     ys = np.arange(dot_spacing // 2, h, dot_spacing)
     xs = np.arange(dot_spacing // 2, w, dot_spacing)
-    cell_mean = np.zeros((len(ys), len(xs), 3), np.float32)
-    for iy, y in enumerate(ys):
-        y0 = max(0, y - dot_spacing // 2)
-        y1 = min(h, y + dot_spacing // 2)
-        for ix, x in enumerate(xs):
-            x0 = max(0, x - dot_spacing // 2)
-            x1 = min(w, x + dot_spacing // 2)
-            cell_mean[iy, ix] = arr[y0:y1, x0:x1].reshape(-1, 3).mean(0)
+    y0 = np.maximum(ys - half, 0)
+    y1 = np.minimum(ys + half, h)
+    x0 = np.maximum(xs - half, 0)
+    x1 = np.minimum(xs + half, w)
+    ii = np.zeros((h + 1, w + 1, 3), np.float64)
+    ii[1:, 1:] = arr.cumsum(0).cumsum(1)
+    sums = (ii[y1][:, x1] - ii[y0][:, x1]
+            - ii[y1][:, x0] + ii[y0][:, x0])
+    areas = (y1 - y0)[:, None] * (x1 - x0)[None, :]
+    cell_mean = (sums / areas[..., None]).astype(np.float32)
 
     hsv = rgb_to_hsv(cell_mean)
     hsv[..., 1] = np.clip(hsv[..., 1] * sat_boost, 0, 1)

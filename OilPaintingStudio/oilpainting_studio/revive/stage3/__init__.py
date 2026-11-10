@@ -12,6 +12,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from ...common.imio import imread_, imwrite_
 from ..config import Settings
 from ..schemas import Stage1Output, Stage2Output, Stage3Output, RepositionTransform
 from .inpaint import compute_hole_mask, inpaint_holes
@@ -70,7 +71,9 @@ def run_stage3(
             continue
 
         surfels = load_surfels_from_ply(record.ply_path)
-        original_mask = cv2.imread(str(obj.mask_path), cv2.IMREAD_GRAYSCALE)
+        original_mask = imread_(obj.mask_path, cv2.IMREAD_GRAYSCALE)
+        if original_mask is None:
+            raise FileNotFoundError(f"无法读取物体 mask: {obj.mask_path}")
         object_masks_original.append(original_mask)
 
         if i in matching and target_bboxes:
@@ -135,7 +138,9 @@ def run_stage3(
         save_surfels_to_ply(np.zeros((1, 12), dtype=np.float32), edited_scene_path)
 
     # 5. 填色补缺：修复背景上物体移动导致的缺口
-    background = cv2.imread(str(stage1.background_path))
+    background = imread_(stage1.background_path)
+    if background is None:
+        raise FileNotFoundError(f"无法读取背景图: {stage1.background_path}")
     inpainted_bg = background.copy()
     for orig_mask, new_mask in zip(object_masks_original, object_masks_new):
         if new_mask is not None:
@@ -146,7 +151,7 @@ def run_stage3(
                     settings.inpaint_radius, settings.inpaint_method)
 
     inpainted_bg_path = stage3_dir / "inpainted_background.png"
-    cv2.imwrite(str(inpainted_bg_path), inpainted_bg)
+    imwrite_(inpainted_bg_path, inpainted_bg)
 
     # 6. 合成关键帧：将编辑后场景渲染为单张关键帧
     keyframe_path = stage3_dir / "keyframe.png"
@@ -160,7 +165,7 @@ def run_stage3(
         combined_surfels = np.zeros((1, 12), dtype=np.float32)
 
     rgb_frame, depth_frame = _render_keyframe(combined_surfels, h, w, focal)
-    cv2.imwrite(str(keyframe_path), cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR))
+    imwrite_(keyframe_path, cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2BGR))
 
     # 深度图
     d_min, d_max = depth_frame.min(), depth_frame.max()
@@ -168,12 +173,12 @@ def run_stage3(
         depth_u16 = ((depth_frame - d_min) / (d_max - d_min) * 65535).astype(np.uint16)
     else:
         depth_u16 = np.zeros((h, w), dtype=np.uint16)
-    cv2.imwrite(str(keyframe_depth_path), depth_u16)
+    imwrite_(keyframe_depth_path, depth_u16)
 
     # 边缘图
     gray = cv2.cvtColor(rgb_frame, cv2.COLOR_RGB2GRAY)
     edges = cv2.Canny(gray, 50, 150)
-    cv2.imwrite(str(keyframe_edge_path), edges)
+    imwrite_(keyframe_edge_path, edges)
 
     output = Stage3Output(
         transforms=transforms,

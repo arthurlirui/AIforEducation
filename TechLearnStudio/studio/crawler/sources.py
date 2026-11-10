@@ -1,7 +1,12 @@
 """ContentSource 抽象基类 + 各 adapter。
 
 每个 adapter 负责抓取一种技术的文档/讲义，切分为 Section。
-M5-M6 实现内置示例内容（离线可跑），真实抓取留接口。
+
+诚实声明（S13）：当前所有 adapter 的 parse() 忽略传入的 docs 参数，
+返回内置的离线 Section（fetch() 也返回内置占位内容）。也就是说
+fingerprint 变化触发的"增量重生成"，重新发布的仍是同一份内置内容——
+真实抓取（sitemap/PDF → parse 联动）是留出的接口，尚未实现。
+接入真实数据源时需重写各 adapter 的 fetch/parse，使 parse 真正消费 docs。
 """
 from __future__ import annotations
 
@@ -20,7 +25,11 @@ class RawDoc:
 
 
 class ContentSource(ABC):
-    """内容源抽象基类。"""
+    """内容源抽象基类。
+
+    契约：fetch() 拉取原始文档 → parse(docs) 切分为语义小节。
+    现状：各实现均为内置离线内容，parse(docs) 不消费 docs（见模块 docstring）。
+    """
     kind: str = "base"
     subject: str = ""
 
@@ -35,7 +44,7 @@ class ContentSource(ABC):
 
     @abstractmethod
     def parse(self, docs: list[RawDoc]) -> list[Section]:
-        """切分为语义小节。"""
+        """切分为语义小节。当前实现返回内置离线内容，忽略 docs（S13 诚实声明）。"""
 
     def get_sections(self) -> list[Section]:
         """便捷方法：fetch + parse。"""

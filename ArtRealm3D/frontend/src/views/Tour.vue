@@ -1,8 +1,9 @@
 <script setup>
-import { onMounted, onBeforeUnmount, ref, computed, nextTick } from 'vue'
+import { onMounted, onBeforeUnmount, ref, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchMasterpiece } from '../api'
 import { PaintingScene } from '../three/PaintingScene'
+import { useTourTimeline } from '../composables/useTourTimeline'
 
 const route = useRoute()
 const router = useRouter()
@@ -10,16 +11,19 @@ const container = ref(null)
 const caption = ref(null)
 const data = ref(null)
 const error = ref('')
-const chapterIndex = ref(0)
-const playing = ref(false)
 const narrationOn = ref(false)
-const progress = ref(0)
 let scene = null
-let chapterTimer = null
-let progressTimer = null
+let tourTimer = null
 const speech = window.speechSynthesis || null
 
-const chapter = computed(() => (data.value ? data.value.chapters[chapterIndex.value] : null))
+// 章节时间线逻辑抽到 composable（可单测）：currentChapter/tick/progress/…
+const chaptersRef = computed(() => data.value?.chapters ?? [])
+const {
+  chapterIndex, playing, progress, chapter,
+  next, prev, goto, start, pause, resume, tick,
+} = useTourTimeline(chaptersRef, {
+  onTourEnd: () => { stopTour(); router.push(`/quiz/${data.value.id}`) },
+})
 
 function speak(text) {
   if (!speech || !narrationOn.value) return
@@ -34,24 +38,30 @@ function stopSpeech() {
   if (speech) speech.cancel()
 }
 
-function applyChapter(idx) {
-  const c = data.value.chapters[idx]
-  chapterIndex.value = idx
-  progress.value = 0
+// 章节切换的视图副作用：镜头聚焦 + 朗读（含时间线自动切章的路径）
+function presentChapter(idx) {
+  const c = data.value?.chapters[idx]
+  if (!c) return
   if (scene) scene.focusLayer(c.focus)
   speak(`${c.title}。${c.text}`)
 }
+watch(chapterIndex, (idx) => presentChapter(idx))
+
+function startTimer() {
+  // 单一驱动源：每 100ms tick 一次，进度与切章由同一状态机保证同步
+  clearInterval(tourTimer)
+  tourTimer = setInterval(() => tick(100), 100)
+}
 
 function startTour() {
-  applyChapter(0)
-  resumeTour()
+  start()
+  presentChapter(0) // chapterIndex 可能本来就是 0，watch 不会触发
+  startTimer()
 }
 
 function nextChapter() {
   if (chapterIndex.value < data.value.chapters.length - 1) {
-    applyChapter(chapterIndex.value + 1)
-    // 重臂定时器：沿用旧章节剩余时长会导致进度/切章错拍
-    resumeTour()
+    next() // 触发 watch → presentChapter（重臂由 composable 保证）
   } else {
     stopTour()
     router.push(`/quiz/${data.value.id}`)
@@ -59,33 +69,22 @@ function nextChapter() {
 }
 
 function prevChapter() {
-  if (chapterIndex.value > 0) {
-    applyChapter(chapterIndex.value - 1)
-    resumeTour()
-  }
+  prev()
+}
+
+function gotoChapter(i) {
+  goto(i)
 }
 
 function stopTour() {
-  playing.value = false
-  clearInterval(chapterTimer)
-  clearInterval(progressTimer)
+  pause()
+  clearInterval(tourTimer)
   stopSpeech()
 }
 
 function resumeTour() {
-  playing.value = true
-  const dur = (chapter.value?.duration || 15) * 1000
-  clearInterval(chapterTimer)
-  clearInterval(progressTimer)
-  chapterTimer = setInterval(nextChapter, dur)
-  progressTimer = setInterval(() => {
-    progress.value = Math.min(1, progress.value + 100 / dur)
-  }, 100)
-}
-
-function gotoChapter(i) {
-  applyChapter(i)
-  resumeTour()
+  resume() // 内部已重置 progress：进度条与章节定时器同步从头走
+  startTimer()
 }
 
 function toggleNarration() {

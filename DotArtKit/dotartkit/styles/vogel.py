@@ -16,7 +16,7 @@ from ..ops.color import to_float01, luminance, rgb_to_hsv, hsv_to_rgb, sample_co
 def generate_vogel(
     image: Image.Image,
     n_dots: int = 2200,
-    scale: float = None,
+    scale: float | None = None,
     golden_angle: float = 137.508,
     center=None,
     radius_power: float = 0.5,

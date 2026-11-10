@@ -124,6 +124,16 @@ python -m uvicorn app.main:app --reload --port 8000
 - API 文档：http://127.0.0.1:8000/docs
 - 健康检查：http://127.0.0.1:8000/api/health
 
+### 配置说明（环境变量 / `.env`）
+
+- `CORS_ORIGINS`：允许跨域的前端来源，**JSON 数组格式**，例如：
+  `CORS_ORIGINS=["http://localhost:5173","https://your-frontend.example.com"]`
+- `RATE_LIMIT_ENABLED`：是否开启 `/api/generate` 限流（默认 `true`）
+- `RATE_LIMIT_PER_MINUTE`：每 IP 每分钟最多生成次数（默认 `10`，超出返回 429）
+- `DEBUG`：调试模式（默认 `false`）
+
+> ⚠️ 在 `.env` 中配置付费 API Key 前，请勿把服务端口暴露到公网：`/api/generate` 目前无鉴权，仅有限流保护。
+
 ### 2. 前端
 
 ```bash

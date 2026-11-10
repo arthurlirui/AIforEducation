@@ -213,43 +213,71 @@ async def paint_mask(oid: int, payload: dict,
     if not mask_path.exists():
         raise HTTPException(404, "mask.png 不存在, 请先运行分割")
 
-    before = _mask_b64(mask_path)
-    if "png_b64" in payload:
-        try:
-            data = base64.b64decode(payload["png_b64"], validate=True)
-        except (binascii.Error, ValueError):
-            raise HTTPException(400, "无效的 base64 数据")
-        tmp = mask_path.with_suffix(".tmp.png")
-        tmp.write_bytes(data)
-        img = imgio.imread(str(tmp), cv2.IMREAD_GRAYSCALE)
-        if img is None:
-            tmp.unlink(missing_ok=True)
-            raise HTTPException(400, "无效的 PNG 数据")
-        imgio.imwrite(str(mask_path), img)
-        tmp.unlink(missing_ok=True)
-    elif "strokes" in payload:
-        img = imgio.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
-        if img is None:
-            raise HTTPException(500, "mask 读取失败")
-        h, w = img.shape[:2]
-        for s in payload["strokes"]:
-            x, y, r = int(s["x"]), int(s["y"]), max(1, int(s.get("radius", 8)))
-            val = 0 if s.get("erase") else 255
-            cv2.circle(img, (x, y), r, val, -1)
-        imgio.imwrite(str(mask_path), img)
-    else:
-        raise HTTPException(400, "需要 png_b64 或 strokes")
+    # per-object 写锁: 并发笔刷串行化, 避免 imwrite 覆盖丢更新/版本号错位
+    with store.object_lock(oid):
+        before = _snapshot_to_file(store, mask_path)
+        if "png_b64" in payload:
+            try:
+                data = base64.b64decode(payload["png_b64"], validate=True)
+            except (binascii.Error, ValueError):
+                raise HTTPException(400, "无效的 base64 数据")
+            tmp = mask_path.with_suffix(".tmp.png")
+            try:
+                tmp.write_bytes(data)
+                img = imgio.imread(str(tmp), cv2.IMREAD_GRAYSCALE)
+                if img is None:
+                    raise HTTPException(400, "无效的 PNG 数据")
+                imgio.imwrite(str(mask_path), img)
+            finally:
+                tmp.unlink(missing_ok=True)
+        elif "strokes" in payload:
+            img = imgio.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
+            if img is None:
+                raise HTTPException(500, "mask 读取失败")
+            h, w = img.shape[:2]
+            for s in payload["strokes"]:
+                x, y, r = int(s["x"]), int(s["y"]), max(1, int(s.get("radius", 8)))
+                val = 0 if s.get("erase") else 255
+                cv2.circle(img, (x, y), r, val, -1)
+            imgio.imwrite(str(mask_path), img)
+        else:
+            raise HTTPException(400, "需要 png_b64 或 strokes")
 
-    obj.mask_version += 1
-    store.save_object(obj)
-    after = _mask_b64(mask_path)
-    store.push_undo(UndoEntry(op="mask.paint", target=f"stage1/objects/{oid:02d}/mask.png",
-                              before=before, after=after))
+        obj.mask_version += 1
+        store.save_object(obj)
+        after = _snapshot_to_file(store, mask_path)
+        store.push_undo(UndoEntry(op="mask.paint", target=f"stage1/objects/{oid:02d}/mask.png",
+                                  before=before, after=after))
     return {"object_id": oid, "mask_version": obj.mask_version}
 
 
 def _has_object(store: ProjectStore, oid: int) -> bool:
     return store.object_meta_path(oid).exists()
+
+
+# 位图快照: 写文件到 project/.undo/ 而非整图 base64 常驻内存。
+# UndoEntry.before/after 存 "file:.undo/<name>" 标记, 应用时读回。
+# 文件名带随机后缀保证每次落盘唯一: 快照生命周期由栈条目独占,
+# 条目淘汰时可直接删文件, 无需跨条目引用计数。
+_UNDO_PREFIX = "file:"
+
+
+def _snapshot_to_file(store: ProjectStore, path: Path) -> str:
+    """把位图快照写入 project/.undo/, 返回标记字符串。"""
+    from uuid import uuid4
+    undo_dir = store.root / ".undo"
+    undo_dir.mkdir(parents=True, exist_ok=True)
+    name = f"{path.stem}.{uuid4().hex[:16]}{path.suffix}"
+    (undo_dir / name).write_bytes(path.read_bytes())
+    return f"{_UNDO_PREFIX}.undo/{name}"
+
+
+def _load_snapshot(store: ProjectStore, marker: str) -> bytes:
+    """按标记读回快照字节（旧条目可能是裸 base64, 兼容）。"""
+    if marker.startswith(_UNDO_PREFIX):
+        return (store.root / marker[len(_UNDO_PREFIX):]).read_bytes()
+    import base64 as b64
+    return b64.b64decode(marker)
 
 
 def _mask_b64(path: Path) -> str:
@@ -320,16 +348,23 @@ def get_scene(store: ProjectStore = Depends(get_store)):
 
 @scene_router.patch("")
 def patch_scene(patches: list[ScenePatch], store: ProjectStore = Depends(get_store)):
-    """节点增量更新（§3.4 写入协议）。每个 patch = 1 undo 单元。"""
+    """节点增量更新（§3.4 写入协议）。每个 patch = 1 undo 单元。
+
+    先校验全部 patch（节点存在、未锁定）再统一应用: 避免 batch 部分失败
+    时已入栈的 undo 条目污染 undo/redo 语义。
+    """
     graph = store.load_scene()
     nodes = {n.node_id: n for n in graph.nodes}
-    results = []
     for patch in patches:
         node = nodes.get(patch.node_id)
         if node is None:
             raise HTTPException(404, f"节点 {patch.node_id} 不存在")
         if node.locked:
             raise HTTPException(409, f"节点 {patch.node_id} 已锁定")
+
+    results = []
+    for patch in patches:
+        node = nodes[patch.node_id]
         before = node.model_dump()
         if patch.transform is not None:
             node.transform = patch.transform
@@ -475,7 +510,7 @@ def _snapshot_task(task: TaskInfo, store: ProjectStore) -> dict:
         source="snapshot"))
     store.save_keyframes(frames)
     store.set_stage("keyframe", StageStatus.PARTIAL, artifact="stage3/keyframes")
-    task.log.append(f"快照 {kid}: {moved} 个物体已移动")
+    task.append_log(f"快照 {kid}: {moved} 个物体已移动")
     task.progress = 1.0
     return {"keyframe_id": kid, "moved": moved,
             "rgb": frames[-1].rgb_path, "depth": frames[-1].depth_path,
@@ -508,20 +543,49 @@ def keyframe_image(keyframe_id: str, kind: str = "rgb",
 @keyframes_router.post("/{keyframe_id}/lineart", status_code=201)
 async def upload_lineart(keyframe_id: str, payload: dict,
                          store: ProjectStore = Depends(get_store)):
-    """线稿上传（§4.5）: {png_b64} → stage3/lineart/<kid>.png。"""
+    """线稿上传（§4.5）: {png_b64} → stage3/lineart/<kid>.png。
+
+    校验对齐 paint_mask（base64 validate + 验图）; 覆写已有线稿入 undo 栈。
+    """
+    import binascii
+
     frames = store.list_keyframes()
     kf = next((k for k in frames if k.keyframe_id == keyframe_id), None)
     if kf is None:
         raise HTTPException(404, keyframe_id)
     if "png_b64" not in payload:
         raise HTTPException(400, "需要 png_b64")
+    try:
+        data = base64.b64decode(payload["png_b64"], validate=True)
+    except (binascii.Error, ValueError):
+        raise HTTPException(400, "无效的 base64 数据")
     la_dir = store.stage3_dir / "lineart"
     la_dir.mkdir(parents=True, exist_ok=True)
     rel = f"stage3/lineart/{keyframe_id}.png"
     p = store.abspath(rel)
-    p.write_bytes(base64.b64decode(payload["png_b64"]))
+
+    before_rel = kf.lineart_path
+    before = None
+    if before_rel:
+        bp = store.abspath(before_rel)
+        if bp.exists():
+            before = _snapshot_to_file(store, bp)
+    # 落盘前验图 (对齐 paint_mask: 任意字节不允许直接落盘)
+    tmp = p.with_suffix(".tmp.png")
+    try:
+        tmp.write_bytes(data)
+        img = imgio.imread(str(tmp))
+        if img is None:
+            raise HTTPException(400, "无效的 PNG 数据")
+        imgio.imwrite(str(p), img)
+    finally:
+        tmp.unlink(missing_ok=True)
+
     kf.lineart_path = rel
     store.save_keyframes(frames)
+    if before is not None:
+        store.push_undo(UndoEntry(op="lineart.paint", target=rel,
+                                  before=before, after=_snapshot_to_file(store, p)))
     return {"keyframe_id": keyframe_id, "lineart_path": rel}
 
 
@@ -550,7 +614,7 @@ tasks_router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
 @tasks_router.get("")
 def list_tasks(queue: TaskQueue = Depends(get_task_queue)):
-    return [t.model_dump(mode="json") for t in queue.list()]
+    return [queue.snapshot(t) for t in queue.list()]
 
 
 @tasks_router.get("/{task_id}")
@@ -558,7 +622,7 @@ def get_task(task_id: str, queue: TaskQueue = Depends(get_task_queue)):
     t = queue.get(task_id)
     if t is None:
         raise HTTPException(404, task_id)
-    return t.model_dump(mode="json")
+    return queue.snapshot(t)
 
 
 @tasks_router.post("/{task_id}/cancel")
@@ -598,24 +662,23 @@ def _apply_undo(store: ProjectStore, entry: UndoEntry, *, redo: bool) -> None:
     state = entry.after if redo else entry.before
     target = entry.target
 
-    if entry.op == "mask.paint":
-        import base64 as b64
-        # target = "stage1/objects/<oid>/mask.png"
-        mask_path = store.root / target
+    if entry.op in ("mask.paint", "lineart.paint"):
+        # target = "stage1/objects/<oid>/mask.png" 或 "stage3/lineart/<kid>.png"
+        target_path = store.root / target
         if state is None:
             return
-        data = b64.b64decode(state)
-        arr = np.frombuffer(data, dtype=np.uint8)
-        # 快照存的是文件字节; 直接还原
-        mask_path.write_bytes(arr.tobytes())
-        # mask 版本回退
-        oid = int(target.split("/")[2])
-        try:
-            obj = store.get_object(oid)
-            obj.mask_version = max(1, obj.mask_version - (0 if redo else 1))
-            store.save_object(obj)
-        except KeyError:
-            pass
+        # 快照标记: file:.undo/<name>（旧条目为裸 base64, _load_snapshot 兼容）
+        target_path.write_bytes(_load_snapshot(store, state))
+        if entry.op == "mask.paint":
+            # mask 版本回退 (undo -1 / redo 对称 +1, 保底 1)
+            oid = int(target.split("/")[2])
+            try:
+                obj = store.get_object(oid)
+                delta = 1 if redo else -1
+                obj.mask_version = max(1, obj.mask_version + delta)
+                store.save_object(obj)
+            except KeyError:
+                pass
         return
 
     if target.startswith("scene.json#"):
@@ -634,7 +697,8 @@ def _apply_undo(store: ProjectStore, entry: UndoEntry, *, redo: bool) -> None:
         store.save_scene(graph)
         return
 
-    if target.startswith("objects/") and target.endswith("meta.json"):
+    # target 形如 "stage1/objects/<oid>/meta.json"（object.update 入栈格式）
+    if target.endswith("meta.json") and "/objects/" in target:
         if state is not None:
             atomic_write_json(store.root / target, state)
         return

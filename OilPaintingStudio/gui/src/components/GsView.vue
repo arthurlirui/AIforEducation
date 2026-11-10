@@ -11,6 +11,7 @@ const objects = ref([])
 const running = ref(false)
 const progress = ref(0)
 const taskLog = ref([])
+let runningTaskId = null
 
 async function load() {
   try { objects.value = await api.listObjects(props.project.project_id) }
@@ -21,10 +22,16 @@ const active = computed(() => objects.value.filter(o => !o.rejected))
 const pending = computed(() => active.value.filter(o => o.gs_version === 0))
 const isStale = (o) => o.gs_source_ply && !o.gs_source_ply.includes(`.v${o.gs_version}.ply`)
 
+async function cancelRun() {
+  if (!runningTaskId) return
+  try { await api.cancelTask(runningTaskId) } catch (e) { emit('notify-error', e) }
+}
+
 async function runGs(oids) {
   running.value = true; progress.value = 0; taskLog.value = []
   try {
     const { task_id } = await api.runGs(props.project.project_id, oids)
+    runningTaskId = task_id
     const tk = await waitTask(task_id, x => {
       progress.value = x.progress
       taskLog.value = x.log.slice(-6)
@@ -34,7 +41,7 @@ async function runGs(oids) {
       await load(); emit('refresh')
     } else emit('notify', t('gsFailed', tk.error || tk.status), 'err')
   } catch (e) { emit('notify-error', e) }
-  finally { running.value = false }
+  finally { running.value = false; runningTaskId = null }
 }
 
 function status(o) {
@@ -61,6 +68,9 @@ onMounted(load)
           </div>
           <button class="btn pri" :disabled="running || !pending.length"
                   @click="runGs([])">{{ t('batchGenerate', pending.length) }}</button>
+          <button v-if="running" class="btn" style="color:var(--red)" @click="cancelRun">
+            {{ t('cancelTask') }}
+          </button>
         </div>
       </div>
       <div v-if="running && taskLog.length" class="mini" style="background:var(--panel);border-radius:8px;padding:8px 10px">

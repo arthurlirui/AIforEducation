@@ -74,8 +74,9 @@ class TestRenderer:
             # foreground layers need real alpha transparency for compositing
             if r["role"] in ("boats", "pearl", "figure", "cypress"):
                 assert rgba[..., 3].min() == 0, f"layer {r['role']} should be partially transparent"
-            # backdrops must stay fully opaque
-            if r["role"] in ("sky", "background", "sea") and r["role"] != "sea":
+            # backdrops must stay fully opaque（sea 例外：great-wave 的海浪
+            # 需要透明镂空让天空层透出，故不在此列）
+            if r["role"] in ("sky", "background"):
                 assert (rgba[..., 3] == 255).all(), f"backdrop {r['role']} must be opaque"
             # visible content must not be pitch black
             vis = rgba[rgba[..., 3] > 0]
@@ -90,6 +91,43 @@ class TestRenderer:
     def test_unknown_style_raises(self):
         with pytest.raises(ValueError):
             render_layer("no-such-style", ["#000000", "#ffffff"], {})
+
+    def test_stroke_texture_changes_output_and_guards_empty_pixels(self):
+        # 回归守卫：_stroke_texture 曾是彻底的 no-op（笔触画在临时副本上、
+        # 却从原数组读回）。它必须真实改变输出……
+        from app.services.renderer import H, W, _stroke_texture
+
+        base = np.zeros((H, W, 3), dtype=np.uint8)
+        base[200:300, 400:520] = (200, 180, 120)  # 黑底上一块凸形亮斑
+        img = Image.fromarray(base, "RGB")
+        out = _stroke_texture(img, 0.30, seed=5)
+        out_arr = np.asarray(out)
+        assert not np.array_equal(out_arr, base), "stroke texture must alter the image"
+
+        # ……但只能落在基图有内容的像素上：空白区若被笔触抬亮，会超过
+        # BLACK_ALPHA_THRESHOLD=12 而变不透明（"黑方块"级回归）
+        empty = base.max(axis=-1) < 24
+        assert (out_arr[empty] == 0).all(), "strokes must not touch empty (transparent) pixels"
+
+    def test_stroke_texture_keeps_foreground_transparency(self, monkeypatch):
+        # 完整渲染链路：带前景层的图层里，原本透明的像素在笔触生效后
+        # 必须仍然透明（alpha <= BLACK_ALPHA_THRESHOLD=12）
+        import app.services.renderer as renderer_module
+
+        m = get_masterpiece("starry-night")
+        cypress = [l for l in m["layers"] if l["role"] == "cypress"]
+        real_stroke = renderer_module._stroke_texture
+        monkeypatch.setattr(renderer_module, "_stroke_texture", lambda img, strength=0.12, seed=3: img)
+        plain = render_layers_sorted(cypress)
+        monkeypatch.setattr(renderer_module, "_stroke_texture", real_stroke)
+        stroked = render_layers_sorted(cypress)
+
+        assert plain[0]["png"] != stroked[0]["png"], "stroke must change the rendered layer"
+        p = np.asarray(Image.open(io.BytesIO(plain[0]["png"])).convert("RGBA"))
+        s = np.asarray(Image.open(io.BytesIO(stroked[0]["png"])).convert("RGBA"))
+        was_transparent = p[..., 3] == 0
+        assert was_transparent.any(), "cypress layer must have transparent regions"
+        assert (s[was_transparent, 3] <= 12).all(), "strokes must not make empty pixels opaque"
 
     def test_star_layers_have_distinct_depth(self):
         m = get_masterpiece("starry-night")
@@ -120,6 +158,61 @@ class TestAssets:
         from app.services import assets
 
         assert assets.ensure_assets("nope") == {}
+
+    def test_renderer_code_sig_rotates_cache(self, tmp_path, monkeypatch):
+        # 回归守卫：渲染器代码哈希必须参与缓存签名——代码一变，目录与 URL
+        # 都要跟着变，否则会命中旧缓存让渲染修复静默失效（黑方块事件重演）
+        monkeypatch.setattr(settings, "output_dir", tmp_path)
+        from app.services import assets
+
+        mid = "starry-night"
+        out1 = assets.ensure_assets(mid)
+        url1 = out1["layers"][0]["url"]
+        sig1 = out1["prefix"].rsplit("/", 1)[-1]
+        assert (tmp_path / mid / sig1).exists()
+
+        # 模拟"渲染器代码更新"：签名变化 → 新缓存目录 + 新 URL
+        monkeypatch.setattr(assets, "_RENDERER_SIG", "deadbeefcafe")
+        assert assets._layer_sig(mid) != sig1, "_layer_sig must depend on _RENDERER_SIG"
+        out2 = assets.ensure_assets(mid)
+        url2 = out2["layers"][0]["url"]
+        sig2 = out2["prefix"].rsplit("/", 1)[-1]
+        assert sig1 != sig2
+        assert url1 != url2, "URL must change when renderer code changes (busts browser cache)"
+        assert (tmp_path / mid / sig2).exists()
+
+    def test_stale_sig_dirs_are_collected(self, tmp_path, monkeypatch):
+        # 配套 GC：同 mid 下旧签名目录在 ensure_assets 时被清理，
+        # 不随代码迭代无限堆积
+        monkeypatch.setattr(settings, "output_dir", tmp_path)
+        from app.services import assets
+
+        mid = "starry-night"
+        out = assets.ensure_assets(mid)
+        sig = out["prefix"].rsplit("/", 1)[-1]
+
+        stale = tmp_path / mid / "00000000000old"
+        stale.mkdir(parents=True)
+        (stale / "sky.png").write_bytes(b"stale")
+
+        assets.ensure_assets(mid)
+        assert not stale.exists(), "old-signature cache dir must be garbage-collected"
+        assert (tmp_path / mid / sig).exists(), "current-signature dir must survive"
+
+    def test_corrupt_manifest_is_rebuilt(self, tmp_path, monkeypatch):
+        # 自愈路径：manifest 写坏（如写入中途崩溃）时丢弃缓存重渲染
+        monkeypatch.setattr(settings, "output_dir", tmp_path)
+        from app.services import assets
+
+        mid = "starry-night"
+        out1 = assets.ensure_assets(mid)
+        sig_dir = tmp_path / mid / out1["prefix"].split(f"/{mid}/")[-1]
+        (sig_dir / "manifest.json").write_text("{ this is not json", encoding="utf-8")
+
+        out2 = assets.ensure_assets(mid)
+        assert [l["url"] for l in out1["layers"]] == [l["url"] for l in out2["layers"]]
+        manifest = json.loads((sig_dir / "manifest.json").read_text(encoding="utf-8"))
+        assert "layers" in manifest, "corrupt manifest must be rebuilt with valid JSON"
 
 
 # --------------------------------------------------------------------------
@@ -167,6 +260,10 @@ class TestAPI:
             assert img.format == "PNG"
         assert len(d["chapters"]) >= 5
         assert d["chapters"][0]["type"] == "intro"
+        # 回归守卫：详情里的测验题绝不能携带 answer/explain（防提前泄露答案）
+        for q in d["quiz"]:
+            assert "answer" not in q, "detail response must not leak quiz answers"
+            assert "explain" not in q, "detail response must not leak explanations"
 
     def test_detail_404(self, client):
         assert client.get("/api/masterpieces/nope").status_code == 404

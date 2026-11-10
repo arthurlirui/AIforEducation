@@ -12,7 +12,7 @@ from typing import Any
 import yaml
 from dotenv import load_dotenv
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]  # OilPaintingVideo/
+PROJECT_ROOT = Path(__file__).resolve().parents[2]  # OilPaintingStudio/
 CONFIG_DIR = PROJECT_ROOT / "config"
 
 
@@ -44,6 +44,7 @@ class Settings:
     target_duration_sec: int = 30
     fps: int = 24
     shot_duration_sec: int = 3
+    # 注: video 管线当前为串行渲染, 此配置仅作 ComfyClient 并发上限保留, 未实际启用并发
     concurrency: int = 2
 
     # 风格

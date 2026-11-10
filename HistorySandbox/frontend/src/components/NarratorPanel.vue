@@ -31,16 +31,26 @@ async function typeOut(target, ms = 30) {
   if (token === typeToken) typing.value = false
 }
 
+// request tokens: a stale response (e.g. a slow LLM reply for step 1 arriving
+// after the user already switched to step 2) must be discarded, otherwise it
+// would overwrite the newer narration/answer.
+let fetchToken = 0
+let askToken = 0
+
 async function fetchNarration() {
   if (!props.eventId || !props.stepId) return
+  const my = ++fetchToken
   const mod = await import('../api.js')
   try {
     const n = await mod.fetchNarration(props.eventId, props.stepId, 'immersive')
+    if (my !== fetchToken) return   // superseded by a newer request — drop it
     await typeOut(n.text, 14)
   } catch {
-    typeToken++              // cancel any in-flight typing
-    typing.value = false
-    shown.value = '（讲解服务暂时不可用，请确认后端已启动。）'
+    if (my === fetchToken) {
+      typeToken++              // cancel any in-flight typing
+      typing.value = false
+      shown.value = '（讲解服务暂时不可用，请确认后端已启动。）'
+    }
   }
 }
 
@@ -52,18 +62,21 @@ async function submit() {
   const q = input.value.trim()
   if (!q) return
   input.value = ''
+  const my = ++askToken
   typeToken++                 // cancel any in-flight narration typing
   typing.value = false
   answers.value.push({ question: q, answer: '…', source: 'pending' })
+  const idx = answers.value.length - 1
   await nextTick()
   listEl.value?.scrollTo({ top: 1e6, behavior: 'smooth' })
   const mod = await import('../api.js')
   try {
     const res = await mod.askAI(props.eventId, props.stepId, q)
-    answers.value[answers.value.length - 1] = res
+    answers.value[idx] = res            // captured idx: always the right slot
+    if (my !== askToken) return         // but a newer reply owns the typewriter
     await typeOut(res.answer, 12)
   } catch {
-    answers.value[answers.value.length - 1] = {
+    answers.value[idx] = {
       question: q, answer: '（问答服务暂时不可用）', source: 'local',
     }
   }

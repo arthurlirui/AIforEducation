@@ -1,8 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useStore } from '../stores/app'
-import { generateImage } from '../api'
-import StyleCard from '../components/StyleCard.vue'
+import { generateImage, composePreview } from '../api'
 
 const store = useStore()
 
@@ -10,6 +9,7 @@ const prompt = ref('')
 const selectedStyle = ref(null)
 const provider = ref('mock')
 const size = ref('1024x1024')
+const n = ref(1)
 const extraKeywords = ref('')
 const loading = ref(false)
 const error = ref('')
@@ -103,7 +103,11 @@ function usePromptTemplate(tpl) {
 }
 
 // ---- Composed prompt preview ----
-const composedPreview = computed(() => {
+// 优先调用后端 /api/compose-preview，保证预览与真实发给模型的提示词一致；
+// 请求失败时回退到本地拼接。
+const composedPreview = ref('')
+
+const localComposedPreview = computed(() => {
   if (!selectedStyle.value || !prompt.value) return ''
   const style = store.styles.find((s) => s.id === selectedStyle.value)
   if (!style) return ''
@@ -112,12 +116,49 @@ const composedPreview = computed(() => {
   return parts.join(', ')
 })
 
+let previewTimer = null
+let previewSeq = 0
+watch([prompt, selectedStyle, extraKeywords], () => {
+  clearTimeout(previewTimer)
+  if (!selectedStyle.value || !prompt.value) {
+    composedPreview.value = ''
+    return
+  }
+  previewTimer = setTimeout(async () => {
+    const seq = ++previewSeq
+    try {
+      const data = await composePreview({
+        prompt: prompt.value,
+        style_id: selectedStyle.value,
+        extra_keywords: extraKeywords.value || null,
+      })
+      if (seq === previewSeq) composedPreview.value = data.composed_prompt
+    } catch {
+      if (seq === previewSeq) composedPreview.value = localComposedPreview.value
+    }
+  }, 300)
+}, { immediate: true })
+
 // ---- Download ----
+function isSameOrigin(url) {
+  try {
+    return new URL(url, window.location.origin).origin === window.location.origin
+  } catch {
+    return false
+  }
+}
+
 function downloadImage(url, filename) {
   const link = document.createElement('a')
   link.href = url
-  link.download = filename || 'oil-painting.png'
-  link.target = '_blank'
+  if (isSameOrigin(url)) {
+    // 同源（本平台 /files/ 下）才生效的下载
+    link.download = filename || 'oil-painting.png'
+  } else {
+    // 远程 URL 的 download 属性无效，退化为新标签打开
+    link.target = '_blank'
+    link.rel = 'noopener'
+  }
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
@@ -126,11 +167,20 @@ function downloadImage(url, filename) {
 function getFilename(img, index) {
   const styleName = result.value?.style?.name || 'painting'
   const ts = Date.now()
-  const ext = img.url.split('.').pop().split('?')[0] || 'png'
+  const raw = (img.url.split('.').pop() || '').split('?')[0].toLowerCase()
+  const ext = /^(png|jpe?g|svg|webp)$/.test(raw) ? (raw === 'jpeg' ? 'jpg' : raw) : 'png'
   return `oilpainting-${styleName}-${ts}-${index + 1}.${ext}`
 }
 
 // ---- Generate ----
+// Fallback notification: when the chosen provider was unavailable and the
+// backend silently substituted the mock placeholder, show its friendly name
+const fallbackProviderName = computed(() => {
+  const id = result.value?.fallback_from
+  if (!id) return ''
+  return store.providers.find((p) => p.id === id)?.name || id
+})
+
 async function handleGenerate() {
   if (!prompt.value.trim()) {
     error.value = '请输入提示词'
@@ -151,7 +201,7 @@ async function handleGenerate() {
       style_id: selectedStyle.value,
       provider: provider.value || null,
       size: size.value,
-      n: 1,
+      n: n.value,
       extra_keywords: extraKeywords.value || null,
       credentials: creds && (creds.api_key || creds.api_id || creds.base_url)
         ? creds
@@ -165,7 +215,18 @@ async function handleGenerate() {
   }
 }
 
-const sizes = ['1024x1024', '1024x1792', '1792x1024', '768x768', '512x512']
+// ---- Sizes / n（按 provider 支持范围过滤）----
+const allSizes = ['1024x1024', '1024x1792', '1792x1024', '768x768', '512x512']
+
+const availableSizes = computed(() => {
+  const info = selectedProviderInfo.value
+  return info?.supported_sizes?.length ? info.supported_sizes : allSizes
+})
+
+// 切换 provider 后，若当前尺寸不受支持则重置为第一个可用尺寸
+watch(availableSizes, (sizes) => {
+  if (sizes.length && !sizes.includes(size.value)) size.value = sizes[0]
+})
 
 onMounted(() => {
   store.bootstrap()
@@ -222,6 +283,10 @@ onMounted(() => {
           </div>
 
           <div v-if="styleExpanded">
+            <div v-if="!store.styles.length && store.error" style="margin-top:12px; padding:10px 14px; background:#fdecea; border-radius:8px; font-size:13px; color:#b03a2e;">
+              {{ store.error }}
+              <button class="btn btn-outline" style="padding:3px 12px; font-size:12px; margin-left:8px;" @click="store.bootstrap()">重试</button>
+            </div>
             <input v-model="styleSearch" placeholder="搜索风格名称…"  style="margin-top:12px;" />
             <div style="margin-top:12px; max-height:420px; overflow-y:auto;">
               <div
@@ -310,7 +375,7 @@ onMounted(() => {
                   <input
                     :type="'password'"
                     :value="(providerSettings[provider] || {}).api_key || ''"
-                    @input="ensureSettingsEntry(provider); providerSettings[provider].api_key = $event.target.value; saveCredentials()"
+                    @change="ensureSettingsEntry(provider); providerSettings[provider].api_key = $event.target.value; saveCredentials()"
                     placeholder="粘贴你的 API Key"
                     style="margin-top:6px;"
                   />
@@ -321,7 +386,7 @@ onMounted(() => {
                   <input
                     :type="'text'"
                     :value="(providerSettings[provider] || {}).api_id || ''"
-                    @input="ensureSettingsEntry(provider); providerSettings[provider].api_id = $event.target.value; saveCredentials()"
+                    @change="ensureSettingsEntry(provider); providerSettings[provider].api_id = $event.target.value; saveCredentials()"
                     placeholder="API ID / App ID"
                     style="margin-top:6px;"
                   />
@@ -332,7 +397,7 @@ onMounted(() => {
                   <input
                     :type="'text'"
                     :value="(providerSettings[provider] || {}).base_url || ''"
-                    @input="ensureSettingsEntry(provider); providerSettings[provider].base_url = $event.target.value; saveCredentials()"
+                    @change="ensureSettingsEntry(provider); providerSettings[provider].base_url = $event.target.value; saveCredentials()"
                     :placeholder="selectedProviderInfo.default_base_url || 'https://...'"
                     style="margin-top:6px;"
                   />
@@ -342,7 +407,7 @@ onMounted(() => {
                 </div>
 
                 <p style="font-size:12px; color:var(--text-light);">
-                  💡 凭据保存在浏览器 localStorage 中，仅发送给后端用于本次生成，不会上传到任何第三方。
+                  💡 凭据保存在浏览器 localStorage 中，仅建议本机开发环境使用；点击生成时会经后端转发给你所选的模型服务商（如 OpenAI、智谱）。生产环境建议将 Key 配置到后端 .env，请勿在公共设备上保存凭据。
                 </p>
               </div>
             </div>
@@ -351,12 +416,20 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- Step 4: size -->
+        <!-- Step 4: size + count -->
         <div class="card" style="margin-bottom:20px;">
-          <label>4️⃣ 图像尺寸</label>
-          <select v-model="size" style="margin-top:8px;">
-            <option v-for="sz in sizes" :key="sz" :value="sz">{{ sz }}</option>
-          </select>
+          <label>4️⃣ 图像尺寸与数量</label>
+          <div style="display:flex; gap:12px; margin-top:8px;">
+            <select v-model="size" style="flex:1;">
+              <option v-for="sz in availableSizes" :key="sz" :value="sz">{{ sz }}</option>
+            </select>
+            <select v-model="n" style="width:110px;">
+              <option v-for="k in [1, 2, 3, 4]" :key="k" :value="k">{{ k }} 张</option>
+            </select>
+          </div>
+          <p v-if="selectedProviderInfo?.supported_sizes?.length" style="font-size:12px; color:var(--text-light); margin-top:6px;">
+            {{ selectedProviderInfo.name }} 支持的尺寸：{{ selectedProviderInfo.supported_sizes.join('、') }}
+          </p>
         </div>
 
         <!-- Prompt library -->
@@ -418,6 +491,12 @@ onMounted(() => {
             <p style="color:var(--text-light);">正在调用视觉大模型，请稍候…</p>
           </div>
           <div v-else-if="result">
+            <div v-if="result.fallback_from" style="margin-bottom:12px; padding:10px 14px; background:#fff8e1; border:1px solid #f0c040; border-radius:8px; font-size:13px; color:#8a6d00;">
+              ⚠️ 所选模型「{{ fallbackProviderName }}」不可用，已用占位 mock 模型生成，请在模型设置中检查配置
+            </div>
+            <div v-if="result.notes && result.notes.length" style="margin-bottom:12px; padding:10px 14px; background:#fff8e1; border:1px solid #f0c040; border-radius:8px; font-size:13px; color:#8a6d00;">
+              ⚠️ {{ result.notes.join('；') }}
+            </div>
             <div v-for="(img, i) in result.images" :key="i" style="margin-bottom:16px;">
               <img :src="img.url" class="gen-image" style="margin-bottom:10px;" />
               <button

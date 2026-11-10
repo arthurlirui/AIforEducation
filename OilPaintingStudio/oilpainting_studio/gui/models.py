@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -78,7 +78,12 @@ class ObjectMeta(BaseModel):
 
 class UndoEntry(BaseModel):
     """undo 栈条目（§3.3）。JSON 操作记 before/after；
-    位图操作 before/after 为快照相对路径。
+    位图操作（mask.paint/lineart.paint）before/after 为 "file:.undo/<name>"
+    快照文件标记（快照落盘, 非整图 base64 常驻内存）。
+
+    undo/redo 栈持久化到 project/.undo/undo.json, 进程重启后由
+    ProjectStore 回载（快照缺失的条目跳过）; 50 条上限滚动淘汰,
+    被淘汰条目的快照文件一并清理。
     """
     op: str
     target: str
@@ -135,6 +140,12 @@ class TaskStatus(str, Enum):
 
 
 class TaskInfo(BaseModel):
+    """任务信息。
+
+    线程安全约定: worker 线程写 log/progress/result, 请求线程读;
+    读写均需经 TaskQueue 的锁（queue.snapshot(task) 在锁内拷贝后序列化）。
+    log 上限 500 条, 超出丢弃最旧。
+    """
     task_id: str = Field(default_factory=lambda: uuid4().hex[:12])
     kind: str                          # segment / gs / snapshot / compose
     project_id: str
@@ -147,6 +158,16 @@ class TaskInfo(BaseModel):
     created_at: datetime = Field(default_factory=_now)
     finished_at: datetime | None = None
     cancel_requested: bool = Field(default=False, exclude=True)
+
+    MAX_LOG: ClassVar[int] = 500
+    """日志上限（类常量, 非字段）。"""
+
+    def append_log(self, line: str) -> None:
+        """追加日志（有界, 超出丢最旧）。append 对 list 原子; 读侧经
+        TaskQueue.snapshot 在锁内拷贝, 避免序列化竞态。"""
+        self.log.append(line)
+        if len(self.log) > self.MAX_LOG:
+            del self.log[:len(self.log) - self.MAX_LOG]
 
 
 # ───────────────────────── 关键帧 ─────────────────────────

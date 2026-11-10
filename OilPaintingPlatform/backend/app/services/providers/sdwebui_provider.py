@@ -3,6 +3,7 @@ HTTP endpoint. Useful for a fully local, free, self-hosted backend."""
 from __future__ import annotations
 
 import base64
+import time
 
 import httpx
 from typing import List
@@ -18,6 +19,12 @@ def _parse_size(size: str) -> tuple[int, int]:
     return (int(w) // 8) * 8, (int(h) // 8) * 8
 
 
+# Module-level TTL cache for availability probes so a stopped SD WebUI
+# does not cost every generate request a 5s TCP timeout.
+_AVAILABILITY_CACHE: dict[str, tuple[float, bool]] = {}
+_AVAILABILITY_TTL = 30.0  # seconds
+
+
 class SDWebUIProvider(ImageProvider):
     name = "sdwebui"
     display_name = "Stable Diffusion WebUI"
@@ -25,19 +32,24 @@ class SDWebUIProvider(ImageProvider):
     needs_base_url = True
     is_free = True
     default_base_url = "http://127.0.0.1:7860"
+    supported_sizes = ["512x512", "768x768", "1024x1024", "1024x1792", "1792x1024"]
 
     def _env_base_url(self) -> str:
         return settings.sdwebui_base_url
 
     def available(self) -> bool:
+        key = self.base_url.rstrip("/")
+        now = time.monotonic()
+        cached = _AVAILABILITY_CACHE.get(key)
+        if cached is not None and now - cached[0] < _AVAILABILITY_TTL:
+            return cached[1]
         try:
-            r = httpx.get(
-                f"{self.base_url.rstrip('/')}/sdapi/v1/options",
-                timeout=5,
-            )
-            return r.status_code == 200
+            r = httpx.get(f"{key}/sdapi/v1/options", timeout=5)
+            ok = r.status_code == 200
         except Exception:
-            return False
+            ok = False
+        _AVAILABILITY_CACHE[key] = (now, ok)
+        return ok
 
     def _generate(self, prompt, negative_prompt, size, n):
         w, h = _parse_size(size)
@@ -66,7 +78,6 @@ class SDWebUIProvider(ImageProvider):
                     provider=self.name,
                     revised_prompt=prompt,
                     seed=seed,
-                    local_path=str(path),
                 )
             )
         return images

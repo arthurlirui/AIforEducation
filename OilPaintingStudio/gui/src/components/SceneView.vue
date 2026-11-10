@@ -13,6 +13,7 @@ const selectedId = ref(null)
 const gizmoMode = ref('translate')   // translate | rotate | scale
 const showGhost = ref(true)
 const snapshotting = ref(false)
+let snapshotTaskId = null
 
 const viewport = ref(null)
 let three = null
@@ -31,7 +32,9 @@ function rebuild() {
   three.clearObjects()
   for (const n of scene.value.nodes) {
     if (n.kind !== 'gs_object' || !n.visible) continue
-    three.addObject(n, api.plyUrl(pid, Number(n.node_id.split('-')[1])))
+    const oid = Number(n.node_id.split('-')[1])
+    if (!Number.isInteger(oid)) { console.warn('SceneView: 无法从 node_id 提取物体 id, 跳过节点', n.node_id); continue }
+    three.addObject(n, api.plyUrl(pid, oid))
   }
   three.setGhost(showGhost.value ? api.paintingUrl(pid) : null)
 }
@@ -69,13 +72,19 @@ async function snapshot() {
   snapshotting.value = true
   try {
     const { task_id } = await api.snapshot(props.project.project_id)
+    snapshotTaskId = task_id
     const tk = await waitTask(task_id)
     if (tk.status === 'done') {
       emit('notify', t('snapshotDone', tk.result.keyframe_id, tk.result.moved), 'ok')
       emit('refresh')
     } else emit('notify', t('snapshotFailed', tk.error), 'err')
   } catch (e) { emit('notify-error', e) }
-  finally { snapshotting.value = false }
+  finally { snapshotting.value = false; snapshotTaskId = null }
+}
+
+async function cancelSnapshot() {
+  if (!snapshotTaskId) return
+  try { await api.cancelTask(snapshotTaskId) } catch (e) { emit('notify-error', e) }
 }
 
 watch(gizmoMode, m => three && three.setGizmoMode(m))
@@ -85,6 +94,7 @@ onMounted(async () => {
   three = initScene(viewport.value, {
     onTransformEnd,
     onSelect: id => { selectedId.value = id },
+    onPlyError: (nodeId, url) => emit('notify-error', new Error(`PLY 加载失败: ${nodeId} (${url})`)),
   })
   await loadScene()
 })
@@ -135,6 +145,9 @@ onBeforeUnmount(() => { disposeScene(three); three = null })
       <button class="btn" @click="addKeyframe">{{ t('addKf') }}</button>
       <button class="btn pri" :disabled="snapshotting" @click="snapshot">
         {{ snapshotting ? t('snapshotting') : t('snapshotBtn') }}
+      </button>
+      <button v-if="snapshotting" class="btn" style="color:var(--red)" @click="cancelSnapshot">
+        {{ t('cancelTask') }}
       </button>
       <div class="mini">{{ t('snapshotHint') }}</div>
     </aside>

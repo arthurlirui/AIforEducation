@@ -1,13 +1,18 @@
-const BASE = import.meta.env.DEV ? '' : ''
-
 async function request(path, options = {}) {
-  const resp = await fetch(BASE + path, {
+  const resp = await fetch(path, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   })
   if (!resp.ok) {
-    const detail = await resp.text().catch(() => resp.statusText)
-    throw new Error(`API ${resp.status}: ${detail}`)
+    const body = await resp.text().catch(() => '')
+    // FastAPI wraps structured errors as {"detail": {...}} (e.g. 409
+    // {reason, message} from the world model) — parse it once here so
+    // callers can read err.detail instead of string-archaeology.
+    let detail = null
+    try { detail = JSON.parse(body)?.detail ?? null } catch { /* non-JSON body */ }
+    const err = new Error(`API ${resp.status}: ${body || resp.statusText}`)
+    err.detail = detail
+    throw err
   }
   return resp.json()
 }

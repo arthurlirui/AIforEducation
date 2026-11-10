@@ -7,6 +7,7 @@ const messages = {
   zh: {
     // ── App 骨架 ──
     undo: '撤销', redo: '重做', refresh: '刷新', closeProject: '关闭项目',
+    undoHint: 'undo 历史已持久化到项目目录, 重启后可用（上限 50 条）',
     langLabel: '语言',
     footerProject: '项目', footerTagline: 'PaintingStudio v0.1 · FastAPI + Vue3 + Three.js',
     step1: '分割审校', step2: '3D 生成', step3: '场景组装',
@@ -87,9 +88,10 @@ const messages = {
     submitCompose: '提交合成', composing: (p) => `合成中 ${p}%`,
     taskProgress: '任务进度', noTask: '尚未提交合成任务。',
     outputLabel: '输出',
-    composeHint: 'ComfyUI 可用时走 revive.stage5 工作流 (Wan2.2/LTX + depth/canny 双控); 不可用时生成占位视频保证流程闭环。产物写 stage5/runs/<时间戳>/。',
-    composeDone: '合成完成 (ComfyUI 不可用时生成占位视频)',
+    composeHint: '当前为占位演示合成: 后端不调用 ComfyUI 真实推理, 固定生成三帧纯色占位视频以保证流程闭环; keyframe_ids/深度与边缘权重/画幅参数暂不参与。产物写 stage5/runs/<时间戳>/。接入真实推理后此提示将更新。',
+    composeDone: '合成完成（当前为占位演示视频）',
     composeFailed: (e) => `合成失败: ${e}`,
+    cancelTask: '取消',
 
     // ── 论文 Demo ──
     demoTitle: 'PaintingStudio — 论文 Demo',
@@ -110,10 +112,14 @@ const messages = {
     downloadDepth: '⬇ 深度可视化',
     noPainting: '暂无示例画作 — 用 curl -F 上传一幅到 /api/demo/paintings',
     demoFailed: (e) => `demo 失败: ${e}`,
+    connError: '无法连接后端服务',
+    connErrorHint: '服务可能未启动或已停止 — 启动 py -m oilpainting_studio.desktop 后点击重试。',
+    retry: '重试',
   },
 
   en: {
     undo: 'Undo', redo: 'Redo', refresh: 'Refresh', closeProject: 'Close Project',
+    undoHint: 'Undo history is persisted with the project and survives restarts (max 50 entries)',
     langLabel: 'Language',
     footerProject: 'Project', footerTagline: 'PaintingStudio v0.1 · FastAPI + Vue3 + Three.js',
     step1: 'Segmentation', step2: '3D Generation', step3: 'Scene Assembly',
@@ -172,7 +178,6 @@ const messages = {
     snapshotDone: (k, n) => `Snapshot ${k} created (${n} objects moved)`,
     snapshotFailed: (e) => `Snapshot failed: ${e}`,
 
-    keyframesTitle: 'Keyframes',
     keyframes: 'Keyframes',
     noKf: 'No keyframes — move objects in Scene Assembly, then click Snapshot.',
     legend: 'Legend', contourLine: 'Contour', motionLine: 'Motion',
@@ -190,9 +195,10 @@ const messages = {
     submitCompose: 'Submit', composing: (p) => `Synthesizing ${p}%`,
     taskProgress: 'Task progress', noTask: 'No synthesis task yet.',
     outputLabel: 'Output',
-    composeHint: 'Uses the revive.stage5 workflow when ComfyUI is available; otherwise a placeholder video keeps the loop closed. Output goes to stage5/runs/<ts>/.',
-    composeDone: 'Synthesis done (placeholder video when ComfyUI unavailable)',
+    composeHint: 'Placeholder demo synthesis: the backend does NOT call ComfyUI; it always produces a three-frame solid-color placeholder video to keep the loop closed. keyframe_ids / depth & canny weights / aspect are currently ignored. Output goes to stage5/runs/<ts>/.',
+    composeDone: 'Synthesis done (placeholder demo video)',
     composeFailed: (e) => `Synthesis failed: ${e}`,
+    cancelTask: 'Cancel',
 
     demoTitle: 'PaintingStudio — Paper Demo',
     demoSub: 'Canvas3D · Segmentation → Depth → 3D Avatar · GPU/CPU/MOCK auto fallback',
@@ -212,6 +218,9 @@ const messages = {
     downloadDepth: '⬇ Depth visualization',
     noPainting: 'No sample paintings — upload one via curl -F to /api/demo/paintings',
     demoFailed: (e) => `demo failed: ${e}`,
+    connError: 'Backend service unreachable',
+    connErrorHint: 'The server may not be running — start py -m oilpainting_studio.desktop, then retry.',
+    retry: 'Retry',
   },
 }
 

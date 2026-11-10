@@ -1,7 +1,13 @@
-"""ffmpeg 工具：定位可执行文件并封装常用命令。"""
+"""ffmpeg 工具：定位可执行文件并封装常用命令。
+
+ffmpeg 优先级: settings.ffmpeg_path / .env FFMPEG_PATH > PATH (which) >
+项目 bin/ > 常见 conda 安装路径（机器特定, 仅作最后兜底; 换机请用
+.env 的 FFMPEG_PATH 覆盖, 见 config/settings.yaml 注释）。
+"""
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -13,12 +19,14 @@ logger = logging.getLogger(__name__)
 
 def resolve_ffmpeg(ffmpeg_path: str = "") -> str:
     """返回 ffmpeg 可执行文件路径；找不到返回空串。"""
-    if ffmpeg_path and Path(ffmpeg_path).exists():
-        return ffmpeg_path
+    # 环境变量 FFMPEG_PATH 可覆盖（机器特定路径不写死在代码里）
+    env_path = ffmpeg_path or os.getenv("FFMPEG_PATH", "")
+    if env_path and Path(env_path).exists():
+        return env_path
     found = shutil.which("ffmpeg")
     if found:
         return found
-    # 常见 conda 路径
+    # 项目 bin/ 与常见 conda 路径兜底
     candidates = [
         PROJECT_ROOT / "bin" / "ffmpeg.exe",
         PROJECT_ROOT / "bin" / "ffmpeg",

@@ -56,6 +56,10 @@ def test_event_detail_steps_wellformed():
                 assert len(a["position"]) == 2
             for arr in s["arrows"]:
                 assert len(arr["points"]) >= 2
+        # step ids must be contiguous 1..N: playback / next-step logic in the
+        # frontend relies on it (find(id === current + 1))
+        ids = [s["id"] for s in ev["steps"]]
+        assert ids == list(range(1, len(ids) + 1)), f"{eid}: step ids must be 1..N contiguous"
         # step 1 must place actors (something visible on the board)
         assert ev["steps"][0]["actors"]
 
@@ -325,3 +329,149 @@ def test_all_events_terrain_valid():
         for t in ev.map.terrain:
             assert t.type in TERRAIN_TYPES
             assert t.points
+
+
+# --------------------------------------------- world model hardening (review)
+
+@pytest.fixture(autouse=True)
+def _isolate_hyp_sessions():
+    """Keep the in-memory hypothetical-step registry isolated per test."""
+    world_model._HYP_SESSIONS.clear()
+    yield
+    world_model._HYP_SESSIONS.clear()
+
+
+@pytest.mark.anyio
+async def test_alliance_rejects_unknown_nation():
+    with pytest.raises(world_model.CommandUnavailable) as ei:
+        await world_model.simulate_command("chibi-battle", 1, {
+            "command": "alliance", "target_nation": "bogus-nation"})
+    assert ei.value.reason == "unknown_nation"
+
+
+@pytest.mark.anyio
+async def test_alliance_rejects_self_alliance():
+    # cao-main belongs to wei; allying wei with itself is meaningless input
+    with pytest.raises(world_model.CommandUnavailable) as ei:
+        await world_model.simulate_command("chibi-battle", 1, {
+            "command": "alliance", "target_nation": "wei", "actor_id": "cao-main"})
+    assert ei.value.reason == "invalid_target"
+
+
+@pytest.mark.anyio
+async def test_attack_rejects_non_combatant(monkeypatch):
+    ev = get_event("chibi-battle")
+    base = ev.steps[0].model_copy(deep=True)
+    base.actors[0].kind = "city"  # a walled city cannot charge into battle
+    monkeypatch.setattr(world_model, "get_step",
+                        lambda e, s: base if s == base.id else None)
+    with pytest.raises(world_model.CommandUnavailable) as ei:
+        await world_model.simulate_command("chibi-battle", base.id, {
+            "command": "attack", "actor_id": base.actors[0].id, "seed": 1})
+    assert ei.value.reason == "non_combatant"
+
+
+@pytest.mark.anyio
+async def test_attack_cannot_target_battle_marker(monkeypatch):
+    ev = get_event("chibi-battle")
+    base = ev.steps[0].model_copy(deep=True)
+    attacker = base.actors[0]
+    for a in base.actors:  # every enemy is a battle marker, not a real unit
+        if a.nation != attacker.nation:
+            a.kind = "battle"
+    monkeypatch.setattr(world_model, "get_step",
+                        lambda e, s: base if s == base.id else None)
+    with pytest.raises(world_model.CommandUnavailable) as ei:
+        await world_model.simulate_command("chibi-battle", base.id, {
+            "command": "attack", "actor_id": attacker.id, "seed": 1})
+    assert ei.value.reason == "invalid_target"
+
+
+@pytest.mark.anyio
+async def test_llm_hypothetical_non_dict_falls_back_locally(monkeypatch):
+    """A non-dict LLM reply (list/str/truncated JSON) must not 500 — it goes
+    through the local fallback instead."""
+    for bad in (["not", "a", "dict"], '"ok"', 42):
+        async def fake_llm(prompt, _bad=bad):
+            return _bad
+        monkeypatch.setattr(world_model, "_llm_hypothetical", fake_llm)
+        r = await world_model.simulate_command("wwii-europe", 3, {
+            "command": "hypothetical", "question": "如果没有东南风会怎样？", "seed": 3})
+        assert r is not None and r.hypothetical
+        assert "本地推演" in r.narrative  # local fallback engaged, no crash
+
+
+@pytest.mark.anyio
+async def test_llm_hypothetical_output_is_sanitized(monkeypatch):
+    async def fake_llm(prompt):
+        return {
+            "title": "假想<script>",
+            "narrative": "测试<b> markup { injected }\\",
+            "spirit": "", "significance": "",
+            "actor_moves": [], "new_markers": [],
+        }
+    monkeypatch.setattr(world_model, "_llm_hypothetical", fake_llm)
+    r = await world_model.simulate_command("wwii-europe", 3, {
+        "command": "hypothetical", "question": "如果德军拿下莫斯科？", "seed": 1})
+    assert r is not None
+    assert not any(ch in r.narrative for ch in "<>{}\\")
+    assert "<" not in r.title
+
+
+def test_strip_code_fence_variants():
+    f = world_model._strip_code_fence
+    obj = '{"title": "x"}'
+    assert f(f"```json\n{obj}\n```") == obj
+    assert f(f"```\n{obj}```") == obj
+    assert f(f"```json{obj}```") == obj
+    assert f(obj) == obj  # no fence -> untouched
+
+
+@pytest.mark.anyio
+async def test_seed_zero_is_respected(monkeypatch):
+    """seed=0 must not be silently replaced by the default 42."""
+    import random as _random
+
+    seen = {}
+    real = world_model._resolve_combat
+
+    def spy(attacker, defender, event, rng):
+        seen["first_draw"] = rng.random()
+        return real(attacker, defender, event, rng)
+
+    monkeypatch.setattr(world_model, "_resolve_combat", spy)
+    a = await world_model.simulate_command("chibi-battle", 1, {
+        "command": "attack", "actor_id": "cao-main", "seed": 0})
+    assert seen["first_draw"] == _random.Random(0).random()
+    # determinism with an explicit seed of 0 still holds
+    b = await world_model.simulate_command("chibi-battle", 1, {
+        "command": "attack", "actor_id": "cao-main", "seed": 0})
+    assert a.narrative == b.narrative
+
+
+@pytest.mark.anyio
+async def test_chained_commands_accumulate():
+    """A second command branches from the latest hypothetical state: an
+    earlier move must survive instead of being silently reset to history."""
+    r1 = await world_model.simulate_command("chibi-battle", 1, {
+        "command": "move", "actor_id": "cao-main",
+        "target_position": [113.0, 31.0], "seed": 42})
+    assert r1.id == 901 and r1.hypothetical
+    assert "假想" in r1.date
+
+    r2 = await world_model.simulate_command("chibi-battle", r1.id, {
+        "command": "attack", "actor_id": "cao-main", "seed": 42})
+    assert r2 is not None and r2.hypothetical
+    assert r2.id == 901                      # keeps the 900+x sentinel when chained
+    assert r2.date.count("假想") == 1         # marker not doubled on chained steps
+    cao = next(a for a in r2.actors if a.id == "cao-main")
+    assert cao.position == (113.0, 31.0)     # the earlier move is preserved
+
+    # history stays immutable: branching from step 1 again starts from the
+    # recorded state, not from the chained hypothetical strengths
+    hist_cao = get_event("chibi-battle").steps[0].actors[0]
+    r3 = await world_model.simulate_command("chibi-battle", 1, {
+        "command": "move", "actor_id": "cao-main",
+        "target_position": [113.0, 31.0], "seed": 42})
+    cao3 = next(a for a in r3.actors if a.id == "cao-main")
+    assert cao3.strength == hist_cao.strength

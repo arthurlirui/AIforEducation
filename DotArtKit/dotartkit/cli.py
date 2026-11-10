@@ -65,15 +65,13 @@ def _cmd_generate(args: argparse.Namespace) -> int:
         img.thumbnail((args.long_edge, args.long_edge))
 
     # 收集 kwargs: 仅传该模式接受的参数, 避免无关参数引发 TypeError.
-    # 通用参数 (seed / long_edge 已在下采样处理) 对所有模式安全.
-    # palette / n_points / r_max / alpha / sigma / overlap_gap / device 仅在
-    # 对应模式有意义; 用 inspect 过滤.
+    # generate() 的签名是 (mode, image, **kwargs), 无法从签名知道具体流派
+    # 参数, 所以直接查目标流派的签名并用 inspect 过滤.
     import inspect
-    sig = inspect.signature(generate)
-    accepted = set(sig.parameters.keys())
-    # generate() 的签名是 (mode, image, **kwargs), 无法从签名知道具体流派参数.
-    # 所以直接查目标流派的签名.
     from .api import MODES
+    if args.mode not in MODES:
+        print(f"未知模式 {args.mode!r}, 可选: {list(MODES)} (见 'dotart list')")
+        return 2
     target_fn = MODES[args.mode]
     accepted = set(inspect.signature(target_fn).parameters.keys())
 
@@ -92,7 +90,12 @@ def _cmd_generate(args: argparse.Namespace) -> int:
 
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     t0 = time.time()
-    out = generate(args.mode, img, **kwargs)
+    try:
+        out = generate(args.mode, img, **kwargs)
+    except ImportError as e:
+        print(f"[{args.mode}] 缺少可选依赖: {e}")
+        print(f"  请安装对应依赖后重试, 例如: pip install ultralytics")
+        return 2
     out.save(args.output)
     print(f"[{args.mode}] {args.input} -> {args.output}  "
           f"({out.size[0]}x{out.size[1]}, {time.time()-t0:.2f}s)")
@@ -153,7 +156,8 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--sigma", type=float, default=None, help="半径噪声标准差")
     g.add_argument("--overlap-gap", type=float, default=None, help="点间距")
     g.add_argument("--seed", type=int, default=None, help="随机种子")
-    g.add_argument("--device", default="0", help="GPU 编号或 cpu (DL 模式)")
+    g.add_argument("--device", default=None,
+                   help="GPU 编号或 cpu (DL 模式); 缺省由流派自身默认决定")
     g.add_argument("--long-edge", type=int, default=None, help="下采样长边")
     g.set_defaults(func=_cmd_generate)
 

@@ -39,6 +39,7 @@ from .api import (
     list_modes,
     list_pure_modes,
     list_dl_modes,
+    list_torch_modes,
     mode_info,
 )
 from .ops.color import KUSAMA_PALETTES
@@ -54,6 +55,7 @@ __all__ = [
     "list_modes",
     "list_pure_modes",
     "list_dl_modes",
+    "list_torch_modes",
     "mode_info",
     "KUSAMA_PALETTES",
     "DEPTH_PALETTES",

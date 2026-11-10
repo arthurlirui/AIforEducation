@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import os
 import time
-import tempfile
 import numpy as np
 import cv2
 from PIL import Image
@@ -40,7 +39,19 @@ from ..ops.depth import (
     get_foreground_mask,
     has_ultralytics,
 )
-from ..ops.voronoi import has_scipy
+
+# 模块级模型缓存: (model_path, device) → 已加载模型, 避免 api.generate
+# 路径每次调用都从磁盘重载 (与 polka_document.ensure_depth 行为一致).
+_MODEL_CACHE: dict = {}
+
+
+def _get_model(kind: str, model_path: str, device: str):
+    """按 (kind, path, device) 缓存 DepthEstimator / SemanticSegmentor."""
+    key = (kind, model_path, device)
+    if key not in _MODEL_CACHE:
+        cls = DepthEstimator if kind == "depth" else SemanticSegmentor
+        _MODEL_CACHE[key] = cls(model_path, device=device)
+    return _MODEL_CACHE[key]
 
 
 # ---------------------------------------------------------------------------
@@ -84,10 +95,10 @@ def draw_dots_singlecolor(canvas: np.ndarray,
             cv2.circle(canvas, (xi, yi), rr, color, -1, lineType=cv2.LINE_4)
 
 
-def _save_intermediates(output_dir: str, depth: np.ndarray, d_norm: np.ndarray,
+def _save_intermediates(output_dir: str, d_norm: np.ndarray,
                         seg: np.ndarray, density: np.ndarray, fg_mask: np.ndarray,
-                        class_names: dict, W: int, H: int) -> None:
-    """保存中间可视化 (深度图 / 分割图 / 密度场 / 前景掩码)."""
+                        W: int, H: int) -> None:
+    """保存中间可视化 (归一化深度 / 分割图 / 密度场 / 前景掩码)."""
     inter_dir = os.path.join(output_dir, "intermediates")
     os.makedirs(inter_dir, exist_ok=True)
 
@@ -97,7 +108,8 @@ def _save_intermediates(output_dir: str, depth: np.ndarray, d_norm: np.ndarray,
     seg_vis = np.zeros((H, W, 3), dtype=np.uint8)
     colors = np.random.default_rng(42).integers(50, 255, (20, 3))
     for cls_id in np.unique(seg):
-        seg_vis[seg == cls_id] = colors[cls_id]
+        # 取模防越界: 分割模型类别数超过调色板时循环复用颜色
+        seg_vis[seg == cls_id] = colors[cls_id % len(colors)]
     cv2.imwrite(os.path.join(inter_dir, "semantic_seg.png"), seg_vis)
 
     density_vis = cv2.applyColorMap((density * 255).astype(np.uint8), cv2.COLORMAP_VIRIDIS)
@@ -109,57 +121,89 @@ def _save_intermediates(output_dir: str, depth: np.ndarray, d_norm: np.ndarray,
 
 
 # ---------------------------------------------------------------------------
+# 跨层重叠剪枝 (纯 numpy, 可独立单测)
+# ---------------------------------------------------------------------------
+
+def prune_fine_against_large(pts_fine: np.ndarray,
+                             rad_fine: np.ndarray,
+                             pts_large: np.ndarray,
+                             rad_large: np.ndarray,
+                             gap: float = 1.0) -> tuple[np.ndarray, np.ndarray]:
+    """跨层剪枝: 移除落入大点范围内的细点. 返回 (pts_fine, rad_fine) 保留子集.
+
+    细点 i 被移除, 当存在大点 j 使 ``|p_i - q_j| < r_i + R_j + gap``.
+    纯 numpy 向量化 (大点仅数十至数百个, 广播一次即完成), 无
+    scipy / ultralytics 依赖, 可直接单测.
+    """
+    if len(pts_fine) == 0 or len(pts_large) == 0:
+        return pts_fine, rad_fine
+    # (n_fine, n_large) 距离矩阵; n_large 通常 < n_points/6
+    d = np.linalg.norm(pts_fine[:, None, :] - pts_large[None, :, :], axis=2)
+    overlap = d < rad_fine[:, None] + rad_large[None, :] + gap
+    keep = ~overlap.any(axis=1)
+    return pts_fine[keep], rad_fine[keep]
+
+
+# ---------------------------------------------------------------------------
 # 完整深度感知 pipeline
 # ---------------------------------------------------------------------------
 
-def depth_kusama_polka(input_path: str,
-                       output_path: str,
-                       palette: str = "black_red",
-                       depth_model_path: str = "models/yolo26x-depth.pt",
-                       sem_model_path: str = "models/yolo26x-sem.pt",
-                       device: str = "0",
-                       n_points: int = 20000,
-                       n_iter: int = 8,
-                       r_min: float = 1.0,
-                       r_max: float = 18.0,
-                       alpha: float = 1.5,
-                       beta: float = 0.6,
-                       sigma: float = 0.15,
-                       gamma: float = 1.2,
-                       pos_jitter: float = 0.3,
-                       overlap_gap: float = 2.5,
-                       percentile_clip: float = 2.0,
-                       multi_scale: bool = True,
-                       edge_enhance: bool = True,
-                       bg_fill: bool = True,
-                       bg_spacing: float = 20.0,
-                       semantic_aware: bool = True,
-                       target_long_edge: int = 1024,
-                       seed: int = 42,
-                       save_intermediates: bool = False,
-                       output_dir: str = "outputs") -> dict:
-    """渲染深度感知草间弥生波点.
+def _imread_bgr(path: str) -> np.ndarray:
+    """读图像为 BGR ndarray. cv2 失败 (如 16bit png) 时回退 PIL."""
+    img = cv2.imread(path)
+    if img is None:
+        pil = Image.open(path).convert("RGB")
+        img = cv2.cvtColor(np.array(pil), cv2.COLOR_RGB2BGR)
+    return img
+
+
+def depth_kusama_polka_core(img: np.ndarray,
+                            palette: str = "black_red",
+                            depth_model_path: str = "models/yolo26x-depth.pt",
+                            sem_model_path: str = "models/yolo26x-sem.pt",
+                            device: str = "0",
+                            n_points: int = 20000,
+                            n_iter: int = 8,
+                            r_min: float = 1.0,
+                            r_max: float = 18.0,
+                            alpha: float = 1.5,
+                            beta: float = 0.6,
+                            sigma: float = 0.15,
+                            gamma: float = 1.2,
+                            pos_jitter: float = 0.3,
+                            overlap_gap: float = 2.5,
+                            percentile_clip: float = 2.0,
+                            multi_scale: bool = True,
+                            edge_enhance: bool = True,
+                            bg_fill: bool = True,
+                            bg_spacing: float = 20.0,
+                            semantic_aware: bool = True,
+                            target_long_edge: int = 1024,
+                            seed: int = 42,
+                            save_intermediates: bool = False,
+                            intermediates_dir: str | None = None
+                            ) -> tuple[np.ndarray, dict]:
+    """渲染深度感知草间弥生波点 (核心管线, ndarray 进出).
 
     Parameters
     ----------
+    img : 输入图像, BGR uint8 ndarray
     palette : :data:`~dotartkit.ops.depth.DEPTH_PALETTES` 键
     alpha : 深度→半径衰减指数 (>1 强深度强调)
     beta : 深度→密度指数 (<1 远景仍有点)
     sigma : 半径高斯噪声标准差 (有机变化)
     semantic_aware : True 前景/背景用不同点色
-    save_intermediates : 保存深度图/分割图/密度场可视化
+    save_intermediates : 额外保存深度图/分割图/密度场可视化到
+        ``intermediates_dir`` (可选调试输出, 与主图渲染路径无关)
 
     Returns
     -------
-    stats : dict (点数 / 深度范围 / 耗时)
+    (canvas, stats) : canvas 为 BGR uint8 ndarray;
+        stats 含点数 / 深度范围 / 耗时 (无 ``output`` 键, 由路径包装补充).
     """
     t_start = time.time()
     rng = np.random.default_rng(seed)
 
-    img = cv2.imread(input_path)
-    if img is None:
-        pil = Image.open(input_path).convert("RGB")
-        img = cv2.cvtColor(np.array(pil), cv2.COLOR_RGB2BGR)
     H0, W0 = img.shape[:2]
     scale = target_long_edge / max(H0, W0)
     if scale < 1.0:
@@ -170,13 +214,13 @@ def depth_kusama_polka(input_path: str,
 
     # Stage 1: 深度估计
     t0 = time.time()
-    depth_estimator = DepthEstimator(depth_model_path, device=device)
+    depth_estimator = _get_model("depth", depth_model_path, device)
     depth = depth_estimator.predict(img)
     t_depth = time.time() - t0
 
     # Stage 2: 语义分割
     t0 = time.time()
-    segmentor = SemanticSegmentor(sem_model_path, device=device)
+    segmentor = _get_model("sem", sem_model_path, device)
     seg = segmentor.predict(img)
     fg_mask = get_foreground_mask(seg) if semantic_aware else np.ones((H, W), dtype=np.uint8)
     t_seg = time.time() - t0
@@ -220,20 +264,9 @@ def depth_kusama_polka(input_path: str,
                 pos_jitter=pos_jitter, overlap_gap=overlap_gap, seed=seed + 1)
 
             # 跨层剪枝: 移除落入大点范围内的细点
-            if len(pts_large) > 0 and len(pts_fine) > 0 and has_scipy():
-                from scipy.spatial import cKDTree
-                tree_large = cKDTree(pts_large)
-                fine_keep = np.ones(len(pts_fine), dtype=bool)
-                for i in range(len(pts_fine)):
-                    search_r = rad_fine[i] + rad_large.max() + 2.0
-                    neighbors = tree_large.query_ball_point(pts_fine[i], search_r)
-                    for j in neighbors:
-                        d = np.linalg.norm(pts_fine[i] - pts_large[j])
-                        if d < rad_fine[i] + rad_large[j] + 1.0:
-                            fine_keep[i] = False
-                            break
-                pts_fine = pts_fine[fine_keep]
-                rad_fine = rad_fine[fine_keep]
+            if len(pts_large) > 0 and len(pts_fine) > 0:
+                pts_fine, rad_fine = prune_fine_against_large(
+                    pts_fine, rad_fine, pts_large, rad_large, gap=1.0)
 
             depth_emphasis_pts = pts_large
             depth_emphasis_rads = rad_large
@@ -297,12 +330,8 @@ def depth_kusama_polka(input_path: str,
         else:
             draw_dots_singlecolor(canvas, depth_emphasis_pts, depth_emphasis_rads, fg_dot_color)
 
-    os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
-    cv2.imwrite(output_path, canvas, [cv2.IMWRITE_PNG_COMPRESSION, 6])
-
-    if save_intermediates:
-        _save_intermediates(output_dir, depth, d_norm, seg, density, fg_mask,
-                            SemanticSegmentor.CLASS_NAMES, W, H)
+    if save_intermediates and intermediates_dir is not None:
+        _save_intermediates(intermediates_dir, d_norm, seg, density, fg_mask, W, H)
 
     t_total = time.time() - t_start
 
@@ -310,7 +339,6 @@ def depth_kusama_polka(input_path: str,
     all_radii = np.concatenate([rad_fine, depth_emphasis_rads, edge_rads, bg_rads]) \
         if n_total > 0 else np.array([0.0])
     stats = {
-        "output": output_path,
         "image_size": (W, H),
         "depth_range_m": (float(depth.min()), float(depth.max())),
         "depth_norm_range": (float(d_norm.min()), float(d_norm.max())),
@@ -324,13 +352,86 @@ def depth_kusama_polka(input_path: str,
         "fg_pixel_ratio": float(fg_mask.mean()),
         "timing": {"depth": t_depth, "seg": t_seg, "stipple": t_stipple, "total": t_total},
     }
+    return canvas, stats
+
+
+def depth_kusama_polka(input_path: str,
+                       output_path: str,
+                       palette: str = "black_red",
+                       depth_model_path: str = "models/yolo26x-depth.pt",
+                       sem_model_path: str = "models/yolo26x-sem.pt",
+                       device: str = "0",
+                       n_points: int = 20000,
+                       n_iter: int = 8,
+                       r_min: float = 1.0,
+                       r_max: float = 18.0,
+                       alpha: float = 1.5,
+                       beta: float = 0.6,
+                       sigma: float = 0.15,
+                       gamma: float = 1.2,
+                       pos_jitter: float = 0.3,
+                       overlap_gap: float = 2.5,
+                       percentile_clip: float = 2.0,
+                       multi_scale: bool = True,
+                       edge_enhance: bool = True,
+                       bg_fill: bool = True,
+                       bg_spacing: float = 20.0,
+                       semantic_aware: bool = True,
+                       target_long_edge: int = 1024,
+                       seed: int = 42,
+                       save_intermediates: bool = False,
+                       output_dir: str = "outputs") -> dict:
+    """路径入口 (薄包装): 读文件 → :func:`depth_kusama_polka_core` → 写 PNG.
+
+    保留供按路径调用的脚本使用; PIL 路径请走 :func:`generate_kusama_depth`
+    (直接走 ndarray 核心, 无临时文件).
+
+    Returns
+    -------
+    stats : dict (点数 / 深度范围 / 耗时, 含 ``output`` 路径)
+    """
+    img = _imread_bgr(input_path)
+    canvas, stats = depth_kusama_polka_core(
+        img, palette=palette,
+        depth_model_path=depth_model_path,
+        sem_model_path=sem_model_path,
+        device=device,
+        n_points=n_points,
+        n_iter=n_iter,
+        r_min=r_min,
+        r_max=r_max,
+        alpha=alpha,
+        beta=beta,
+        sigma=sigma,
+        gamma=gamma,
+        pos_jitter=pos_jitter,
+        overlap_gap=overlap_gap,
+        percentile_clip=percentile_clip,
+        multi_scale=multi_scale,
+        edge_enhance=edge_enhance,
+        bg_fill=bg_fill,
+        bg_spacing=bg_spacing,
+        semantic_aware=semantic_aware,
+        target_long_edge=target_long_edge,
+        seed=seed,
+        save_intermediates=save_intermediates,
+        intermediates_dir=output_dir if save_intermediates else None)
+
+    os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+    cv2.imwrite(output_path, canvas, [cv2.IMWRITE_PNG_COMPRESSION, 6])
+    stats["output"] = output_path
+
+    W, H = stats["image_size"]
     print(f"[depth_kusama] {output_path}  ({W}x{H}, palette={palette})")
     print(f"  Depth: {stats['depth_range_m'][0]:.2f}-{stats['depth_range_m'][1]:.2f} m  "
-          f"| Dots: {n_total} (fine={len(pts_fine)}, depth_emphasis={len(depth_emphasis_pts)}, "
-          f"edge={len(edge_pts)}, bg={len(bg_pts)})")
+          f"| Dots: {stats['n_total_dots']} (fine={stats['n_fine_dots']}, "
+          f"depth_emphasis={stats['n_depth_emphasis_dots']}, "
+          f"edge={stats['n_edge_dots']}, bg={stats['n_bg_dots']})")
+    t = stats["timing"]
     print(f"  Radius: {stats['radius_range'][0]:.1f}-{stats['radius_range'][1]:.1f} px  "
           f"| FG ratio: {stats['fg_pixel_ratio']:.1%}  "
-          f"| Time: {t_total:.1f}s (depth={t_depth:.1f}s, seg={t_seg:.1f}s, stipple={t_stipple:.1f}s)")
+          f"| Time: {t['total']:.1f}s (depth={t['depth']:.1f}s, "
+          f"seg={t['seg']:.1f}s, stipple={t['stipple']:.1f}s)")
     return stats
 
 
@@ -356,33 +457,25 @@ def generate_kusama_depth(
 ) -> Image.Image:
     """PIL 接口的深度感知草间生成.
 
-    需要 ``ultralytics`` + YOLO26 权重. 无 ultralytics 时抛 ImportError.
+    直接走 ndarray 核心 (PIL → BGR → :func:`depth_kusama_polka_core` → RGB),
+    无临时文件 / 磁盘 I/O. 需要 ``ultralytics`` + YOLO26 权重,
+    无 ultralytics 时抛 ImportError.
     """
     if not has_ultralytics():
         raise ImportError(
             "generate_kusama_depth 需要 ultralytics + YOLO26 权重. "
             "激活 polkadot-art conda 环境或 pip install ultralytics."
         )
-    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_in:
-        image.convert("RGB").save(tmp_in.name)
-        tmp_in_path = tmp_in.name
-    tmp_out_path = tmp_in_path.replace(".png", "_out.png")
-    try:
-        depth_kusama_polka(tmp_in_path, tmp_out_path,
-                           palette=palette,
-                           depth_model_path=depth_model_path,
-                           sem_model_path=sem_model_path,
-                           device=device,
-                           n_points=n_points,
-                           r_max=r_max, alpha=alpha, sigma=sigma,
-                           overlap_gap=overlap_gap,
-                           semantic_aware=semantic_aware,
-                           target_long_edge=target_long_edge,
-                           seed=seed)
-        return Image.open(tmp_out_path).convert("RGB")
-    finally:
-        for p in (tmp_in_path, tmp_out_path):
-            try:
-                os.remove(p)
-            except OSError:
-                pass
+    img = cv2.cvtColor(np.asarray(image.convert("RGB")), cv2.COLOR_RGB2BGR)
+    canvas, _stats = depth_kusama_polka_core(
+        img, palette=palette,
+        depth_model_path=depth_model_path,
+        sem_model_path=sem_model_path,
+        device=device,
+        n_points=n_points,
+        r_max=r_max, alpha=alpha, sigma=sigma,
+        overlap_gap=overlap_gap,
+        semantic_aware=semantic_aware,
+        target_long_edge=target_long_edge,
+        seed=seed)
+    return Image.fromarray(cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB))

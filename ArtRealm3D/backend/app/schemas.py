@@ -35,11 +35,13 @@ class Chapter(BaseModel):
     duration: int
 
 
-class QuizQuestion(BaseModel):
+class QuizQuestionPublic(BaseModel):
+    """详情接口下发的测验题：刻意不含 answer/explain（防泄露契约）。
+
+    答案与解析只能在 POST 判分结果的 per_question 中获得。
+    """
     q: str
     options: list[str]
-    answer: int
-    explain: str
 
 
 class MasterpieceDetail(BaseModel):
@@ -57,7 +59,7 @@ class MasterpieceDetail(BaseModel):
     hero_palette: list[str]
     layers: list[dict[str, Any]]
     chapters: list[Chapter]
-    quiz: list[QuizQuestion]
+    quiz: list[QuizQuestionPublic]
 
 
 class QuizSubmission(BaseModel):

@@ -18,6 +18,8 @@ class OpenAIProvider(ImageProvider):
     needs_api_key = True
     needs_base_url = True
     default_base_url = "https://api.openai.com/v1"
+    # DALL·E 3 supported sizes
+    supported_sizes = ["1024x1024", "1024x1792", "1792x1024"]
 
     def _env_api_key(self) -> str:
         return settings.openai_api_key
@@ -29,6 +31,7 @@ class OpenAIProvider(ImageProvider):
         return bool(self.api_key)
 
     def _generate(self, prompt, negative_prompt, size, n):
+        self.notes.append("该模型不支持负面提示词，负面提示词设置已被忽略")
         url = f"{self.base_url.rstrip('/')}/images/generations"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -58,7 +61,6 @@ class OpenAIProvider(ImageProvider):
                         url=self.file_url(path),
                         provider=self.name,
                         revised_prompt=item.get("revised_prompt", prompt),
-                        local_path=str(path),
                     )
                 )
             elif item.get("url"):

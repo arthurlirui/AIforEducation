@@ -37,6 +37,23 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"],
                    allow_methods=["*"], allow_headers=["*"])
 app.include_router(demo_router)
 
+# 桌面端承载完整前端 (六个视图), 因此工作台 API 也必须挂载:
+# 否则 /api/projects 等 404 → 画作库/分割/组装页面"无反应"。
+from ..gui.api import routers as gui_routers  # noqa: E402
+from ..gui.server import task_queue  # noqa: E402
+from .api import set_gpu_lock  # noqa: E402
+
+for _r in (gui_routers.projects_router, gui_routers.objects_router,
+           gui_routers.segment_router, gui_routers.gs_router,
+           gui_routers.scene_router, gui_routers.keyframes_router,
+           gui_routers.compose_router, gui_routers.tasks_router,
+           gui_routers.undo_router):
+    app.include_router(_r)
+
+# demo 推理与 gui 任务队列共享同一把 GPU 互斥锁 (避免并发抢占显存):
+# TaskQueue worker 执行任务前先获取 gpu_lock, /api/demo/run 同样。
+set_gpu_lock(task_queue.gpu_lock)
+
 
 @app.get("/api/demo/health")
 def health():

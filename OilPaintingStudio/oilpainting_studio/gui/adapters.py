@@ -41,25 +41,25 @@ def run_segmentation_task(task: TaskInfo, store: ProjectStore) -> dict:
     """stage1 全图分割 + 深度 → 导入项目布局（store.import_stage1）。"""
     settings = _settings()
     painting = store.abspath(store.meta.painting.path)
-    task.log.append(f"分割开始: {painting.name}")
+    task.append_log(f"分割开始: {painting.name}")
     task.progress = 0.1
 
     objects, bg_mask, bg_img, detector = run_segmentation(
         painting, store.stage1_dir, settings)
-    task.log.append(f"分割完成: {len(objects)} 物体 (detector={detector})")
+    task.append_log(f"分割完成: {len(objects)} 物体 (detector={detector})")
     task.progress = 0.6
 
     # 背景/深度落位到项目布局 (revive 已直接写 stage1_dir, 重命名到位即可)
     for src, dst_name in ((bg_mask, "background_mask.png"), (bg_img, "background.png")):
         dst = store.stage1_dir / dst_name
+        if not src.exists():
+            raise FileNotFoundError(f"revive 未产出背景文件: {src}")
         if src.resolve() != dst.resolve():
             shutil.move(str(src), dst)
-        elif src.name != dst_name:
-            shutil.move(str(src), str(dst))
 
     depth_path = run_depth_estimation(
         painting, objects, store.stage1_dir, settings)
-    task.log.append(f"深度图: {depth_path.name}")
+    task.append_log(f"深度图: {depth_path.name}")
     task.progress = 0.9
 
     store.import_stage1(objects, detector)
@@ -123,7 +123,7 @@ def run_gs_task(task: TaskInfo, store: ProjectStore,
             crop_path=store.abspath(f"stage1/objects/{ometa.object_id:02d}/{ometa.crop_path}"),
             depth_range=tuple(ometa.depth_range),
         )
-        task.log.append(f"TripoSplat: {ometa.label} #{ometa.object_id} "
+        task.append_log(f"TripoSplat: {ometa.label} #{ometa.object_id} "
                         f"(mask v{ometa.mask_version})")
         rec = generate_object_3dgs(obj, painting, depth_path, settings, gs_dir)
 
@@ -148,14 +148,16 @@ def run_gs_task(task: TaskInfo, store: ProjectStore,
         time.sleep(0.01)
 
     # stage2.json 汇总（对齐 Stage2Output / GSModelRegistry）
+    # 合并语义: 同 object_id 的新记录替换旧记录（重跑后指向新版 PLY）
     payload = {"models": records}
     gs_index = store.stage2_dir / "stage2.json"
     if gs_index.exists():
         try:
             prev = read_json(gs_index)
-            known = {m["object_id"] for m in prev.get("models", [])}
-            payload["models"] = prev["models"] + [
-                r for r in records if r["object_id"] not in known]
+            merged = {m["object_id"]: m for m in prev.get("models", [])}
+            for r in records:
+                merged[r["object_id"]] = r
+            payload["models"] = list(merged.values())
         except Exception:
             pass
     atomic_write_json(gs_index, payload)
@@ -175,28 +177,25 @@ def run_gs_task(task: TaskInfo, store: ProjectStore,
 
 def run_compose_task(task: TaskInfo, store: ProjectStore,
                      model: str, prompt: str, duration_sec: int) -> dict:
-    """stage5 合成。ComfyUI 不可用时产出占位 mp4（流程可验证）。"""
+    """stage5 合成。当前为占位演示合成（三张纯色帧 mp4），不调用 ComfyUI。
+
+    如实上报 comfy_used=False；接入真实推理时改为调用 revive.stage5。
+    """
     from datetime import datetime
 
-    run_dir = store.root / "stage5" / "runs" / datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+    run_dir = store.root / "stage5" / "runs" / datetime.now().strftime("%Y-%m-%dT%H-%M-%S-%f")
     run_dir.mkdir(parents=True, exist_ok=True)
     atomic_write_json(run_dir / "params.json", {
         "model": model, "prompt": prompt, "duration_sec": duration_sec})
 
-    comfy_ok = False
-    try:
-        from ..common.comfy.client import ComfyClient  # noqa: F401
-        from ..revive.stage5.workflow import build_wan_workflow  # noqa: F401
-        comfy_ok = True
-    except Exception as e:
-        task.log.append(f"ComfyUI 工作流不可用 ({e.__class__.__name__})，生成占位视频")
+    task.append_log("占位演示合成（未调用 ComfyUI 真实推理）")
 
     for step in range(10):
         if task.cancel_requested:
             raise InterruptedError("用户取消")
         time.sleep(0.05)
         task.progress = (step + 1) / 10 * 0.9
-        task.log.append(f"sampler {step + 1}/10")
+        task.append_log(f"sampler {step + 1}/10")
 
     # 占位视频: 三张纯色帧的 mp4（ffmpeg 缺失时退化为 .mp4 占位文件）
     out = run_dir / "output.mp4"
@@ -220,4 +219,8 @@ def run_compose_task(task: TaskInfo, store: ProjectStore,
 
     store.set_stage("compose", StageStatus.DONE, artifact=str(out.relative_to(store.root)))
     task.progress = 1.0
-    return {"output": str(out.relative_to(store.root)), "comfy_used": comfy_ok}
+    return {
+        "output": str(out.relative_to(store.root)),
+        "comfy_used": False,  # 如实上报: 当前为占位演示合成
+        "note": "占位演示合成: 未调用 ComfyUI; keyframe_ids/depth_weight/canny_weight/aspect 当前被忽略",
+    }

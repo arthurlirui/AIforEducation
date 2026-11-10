@@ -48,7 +48,14 @@ class DepthEstimator:
     def predict(self, image: np.ndarray) -> np.ndarray:
         H, W = image.shape[:2]
         results = self.model(image, device=self.device, verbose=False)
-        depth = results[0].depth.data.cpu().numpy()
+        # 防御: 不同 ultralytics 版本的结果接口可能缺 depth 属性
+        depth_obj = getattr(results[0], "depth", None)
+        if depth_obj is None or not hasattr(depth_obj, "data"):
+            raise RuntimeError(
+                f"ultralytics 结果对象缺少可用的 depth 输出 "
+                f"(type={type(results[0]).__name__}); 请确认模型为 YOLO26 "
+                f"深度权重且 ultralytics 版本兼容")
+        depth = depth_obj.data.cpu().numpy()
         if depth.shape != (H, W):
             depth = cv2.resize(depth, (W, H), interpolation=cv2.INTER_CUBIC)
         return depth.astype(np.float32)
@@ -78,7 +85,14 @@ class SemanticSegmentor:
     def predict(self, image: np.ndarray) -> np.ndarray:
         H, W = image.shape[:2]
         results = self.model(image, device=self.device, verbose=False)
-        seg = results[0].semantic_mask.data.cpu().numpy()
+        # 防御: 不同 ultralytics 版本的结果接口可能缺 semantic_mask 属性
+        seg_obj = getattr(results[0], "semantic_mask", None)
+        if seg_obj is None or not hasattr(seg_obj, "data"):
+            raise RuntimeError(
+                f"ultralytics 结果对象缺少可用的 semantic_mask 输出 "
+                f"(type={type(results[0]).__name__}); 请确认模型为 YOLO26 "
+                f"分割权重且 ultralytics 版本兼容")
+        seg = seg_obj.data.cpu().numpy()
         if seg.shape != (H, W):
             seg = cv2.resize(seg, (W, H), interpolation=cv2.INTER_NEAREST)
         return seg.astype(np.uint8)

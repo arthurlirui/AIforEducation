@@ -1,6 +1,6 @@
 <script setup>
 // 关键帧与线稿 (§4.5): 快照列表 + 线稿绘制
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { api } from '../api.js'
 import { t } from '../i18n.js'
 
@@ -24,19 +24,24 @@ async function load() {
   } catch (e) { emit('notify-error', e) }
 }
 
+let selectSeq = 0  // 请求序号守卫: 快速切换时只认最后一次 select
+
 function select(kf) {
   selected.value = kf
-  setTimeout(() => {
+  const seq = ++selectSeq
+  nextTick(() => {
+    if (seq !== selectSeq) return  // 已被更晚的 select 取代
     const c = canvasRef.value
     if (!c) return
     const img = new Image()
     img.onload = () => {
+      if (seq !== selectSeq) return  // 竞态: 后完成的旧图不覆盖新选择
       c.width = img.width; c.height = img.height
       ctx = c.getContext('2d')
       ctx.drawImage(img, 0, 0)
     }
     img.src = api.keyframeUrl(props.project.project_id, kf.keyframe_id, 'rgb')
-  }, 50)
+  })
 }
 
 function pos(e) {

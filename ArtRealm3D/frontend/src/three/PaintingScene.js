@@ -24,6 +24,7 @@ export class PaintingScene {
     this.target = null            // camera focus target
     this.pointer = { x: 0, y: 0 } // normalized -1..1
     this.breathT = 0
+    this.clock = new THREE.Clock() // 帧率无关的呼吸动画计时
     this.disposed = false
 
     this._initRenderer()
@@ -66,11 +67,13 @@ export class PaintingScene {
       new THREE.MeshBasicMaterial({ color: 0x07080e }),
     )
     backdrop.position.z = -34
+    this.backdropMesh = backdrop // dispose 时释放 geometry/material
     this.scene.add(backdrop)
 
     // painting frame (thin dark box around the layer stack)
     const frameGroup = new THREE.Group()
     const frameMat = new THREE.MeshStandardMaterial({ color: 0x1b1712, roughness: 0.85 })
+    this.frameMat = frameMat // 4 根 bar 共享，dispose 时只释放一次
     const fw = 18.4, fh = 13.9, ft = 0.35
     const bars = [
       [0, fh / 2, fw, ft], [0, -fh / 2, fw, ft],
@@ -82,6 +85,7 @@ export class PaintingScene {
       frameGroup.add(bar)
     }
     frameGroup.position.z = 3.2
+    this.frameGroup = frameGroup // dispose 时释放每根 bar 的 geometry
     this.scene.add(frameGroup)
 
     this._loadLayers()
@@ -176,7 +180,9 @@ export class PaintingScene {
   _animate = () => {
     if (this.disposed) return
     this._raf = requestAnimationFrame(this._animate)
-    this.breathT += 0.016
+    // 用 Clock delta 累加而非固定 0.016：高刷新率屏（如 144Hz）上
+    // 固定步长会让呼吸速度快 2.4 倍；封顶 50ms 防止切后台回来后跳变
+    this.breathT += Math.min(this.clock.getDelta(), 0.05)
 
     // idle breathing: each layer floats slightly out of phase
     for (let i = 0; i < this.layers.length; i++) {
@@ -214,7 +220,19 @@ export class PaintingScene {
       if (l.mesh.material.map) l.mesh.material.map.dispose()
       l.mesh.material.dispose()
     }
+    // backdrop 与画框不在 this.layers 里：不释放的话每次进出导览页
+    // 都会泄漏一组 GPU geometry/material，反复切画后累积
+    if (this.backdropMesh) {
+      this.backdropMesh.geometry.dispose()
+      this.backdropMesh.material.dispose()
+    }
+    if (this.frameGroup) {
+      for (const bar of this.frameGroup.children) bar.geometry.dispose()
+      if (this.frameMat) this.frameMat.dispose()
+    }
     this.renderer.dispose()
+    // 显式归还 WebGL 上下文，避免反复进出页面耗尽浏览器的 context 配额
+    this.renderer.forceContextLoss()
     if (this.renderer.domElement.parentNode === this.container) {
       this.container.removeChild(this.renderer.domElement)
     }

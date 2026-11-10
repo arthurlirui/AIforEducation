@@ -221,9 +221,13 @@ def run_segmentation(
             settings.yolo_iou_threshold,
         )
         detector = "yolo"
-    except (ImportError, Exception) as e:
+    except (ImportError, FileNotFoundError) as e:
+        # 仅依赖缺失/权重文件缺失降级 mock; 推理期错误(CUDA OOM 等)上抛让调用方感知
         logger.warning("YOLO 不可用 (%s)，使用 mock 分割", e)
         detections = []
+    except Exception as e:
+        logger.error("YOLO 推理失败 (%s)，上抛", e)
+        raise
     if not detections:
         if detector == "yolo":
             logger.warning("YOLO 检出 0 物体，降级为 mock 分割")

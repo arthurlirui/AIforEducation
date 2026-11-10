@@ -19,16 +19,28 @@ logger = logging.getLogger(__name__)
 
 
 def estimate_depth_da_v2(image: np.ndarray, model_path: str) -> np.ndarray:
-    """用 Depth Anything V2 估计深度。返回 float32 深度图（越大越远）。"""
+    """用 Depth Anything V2 估计深度。返回 float32 深度图（越大越远）。
+
+    模型构建/权重加载失败（包不兼容、权重缺失）抛 ImportError —— 与依赖
+    缺失同类, 由调用方降级 mock; 真正的推理期错误原样上抛。
+    """
     import torch
     from depth_anything_v2.dpt import DepthAnythingV2
 
-    model = DepthAnythingV2(encoder="vitl", features=256, out_channels=1)
-    state = torch.load(model_path, map_location="cpu")
-    model.load_state_dict(state)
+    try:
+        model = DepthAnythingV2(encoder="vitl", features=256, out_channels=1)
+    except Exception as e:
+        # 构造失败 = 安装的包与调用不兼容（依赖不可用, 非推理错误）
+        raise ImportError(f"DA-V2 模型构建失败（依赖不兼容）: {e}") from e
+    try:
+        state = torch.load(model_path, map_location="cpu")
+        model.load_state_dict(state)
+    except (FileNotFoundError, RuntimeError, KeyError) as e:
+        # 权重缺失/损坏 → 依赖不可用
+        raise ImportError(f"DA-V2 权重不可用: {model_path} ({e})") from e
     model.eval()
     with torch.no_grad():
-        depth = model.infer_image(image)
+        depth = model.infer_image(image)  # 推理期错误（CUDA OOM 等）不捕获, 上抛
     return depth.astype(np.float32)
 
 
@@ -81,9 +93,13 @@ def run_depth_estimation(
     try:
         depth = estimate_depth_da_v2(image_rgb, settings.da_v2_model)
         logger.info("Depth Anything V2 深度估计完成")
-    except (ImportError, Exception) as e:
+    except (ImportError, FileNotFoundError) as e:
+        # 仅依赖/权重缺失降级 mock; 推理期错误上抛, 避免评估的是假深度
         logger.warning("DA-V2 不可用 (%s)，使用 mock 深度", e)
         depth = estimate_depth_mock(image_rgb)
+    except Exception as e:
+        logger.error("DA-V2 推理失败 (%s)，上抛", e)
+        raise
 
     depth = normalize_depth_by_objects(depth, objects, settings)
 

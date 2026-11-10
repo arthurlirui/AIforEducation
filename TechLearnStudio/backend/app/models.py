@@ -1,4 +1,8 @@
-"""SQLModel data models for courses, frames, sources, version deltas."""
+"""SQLModel data models: courses + frames.
+
+注意（B2）：原 Source / VersionDelta 两个模型定义后从未被任何代码读写
+（frame 级 diff 未实现），已删除以免误导维护者；实现增量版本时再按需建模。
+"""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -32,22 +36,3 @@ class Frame(SQLModel, table=True):
     blocks_json: str = "[]"  # 内容块 JSON（见设计文档 §6.1）
     notes: str = ""  # 演讲者备注
     version: int = 1
-
-
-class Source(SQLModel, table=True):
-    id: str = Field(primary_key=True)
-    kind: str = "web"  # web|git|pdf|rss
-    url: str = ""
-    poll_cron: str = "0 3 * * *"
-    last_hash: str = ""
-    last_checked: datetime | None = Field(default=None)
-
-
-class VersionDelta(SQLModel, table=True):
-    id: str = Field(primary_key=True)
-    course_id: str = Field(index=True)
-    from_version: int
-    to_version: int
-    changed_frames: str = "[]"  # JSON list of frame ids
-    reason: str = "manual"
-    created_at: datetime = Field(default_factory=_now)

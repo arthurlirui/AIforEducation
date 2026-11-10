@@ -163,16 +163,18 @@ def test_api_device(client):
 
 def test_api_paintings_upload_and_run(client, demo_painting):
     # 上传示例画作
-    r = client.post("/api/demo/paintings",
-                    data={"name": "村庄"},
-                    files={"painting": ("v.png", open(demo_painting, "rb"), "image/png")})
+    with open(demo_painting, "rb") as f:
+        r = client.post("/api/demo/paintings",
+                        data={"name": "村庄"},
+                        files={"painting": ("v.png", f, "image/png")})
     assert r.status_code == 201, r.text
     meta = r.json()
     assert meta["width"] == 320 and meta["height"] == 240
 
     # 重复上传 409
-    r = client.post("/api/demo/paintings", data={"name": "村庄"},
-                    files={"painting": ("v.png", open(demo_painting, "rb"), "image/png")})
+    with open(demo_painting, "rb") as f:
+        r = client.post("/api/demo/paintings", data={"name": "村庄"},
+                        files={"painting": ("v.png", f, "image/png")})
     assert r.status_code == 409
 
     # 列表
@@ -201,8 +203,9 @@ def test_api_paintings_upload_and_run(client, demo_painting):
 
 def test_api_run_auto_tier(client, demo_painting):
     """auto 档: 有 CUDA 的机器上走 GPU 真模型, 无依赖机器落 mock — 两者都必须成功。"""
-    client.post("/api/demo/paintings", data={"name": "auto村"},
-                files={"painting": ("v.png", open(demo_painting, "rb"), "image/png")})
+    with open(demo_painting, "rb") as f:
+        client.post("/api/demo/paintings", data={"name": "auto村"},
+                    files={"painting": ("v.png", f, "image/png")})
     r = client.post("/api/demo/run", json={"painting": "auto村", "prefer": "auto"})
     assert r.status_code == 200, r.text
     run = r.json()

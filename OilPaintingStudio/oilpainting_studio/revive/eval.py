@@ -10,6 +10,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from ..common.imio import imread_
 from .schemas import Stage3Output, Stage4Output
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ def eval_style_consistency(
     if not ret:
         return 0.0
 
-    painting = cv2.imread(str(painting_path))
+    painting = imread_(painting_path)
     if painting is None:
         return 0.0
 
@@ -49,7 +50,7 @@ def eval_depth_fidelity(stage4: Stage4Output) -> float:
     """深度结构忠实度：关键帧深度图方差。"""
     variances = []
     for kf in stage4.keyframes:
-        d = cv2.imread(str(kf.depth_path), cv2.IMREAD_UNCHANGED)
+        d = imread_(kf.depth_path, cv2.IMREAD_UNCHANGED)
         if d is not None:
             variances.append(float(np.var(d.astype(np.float32) / 65535.0)))
     return float(np.mean(variances)) if variances else 0.0

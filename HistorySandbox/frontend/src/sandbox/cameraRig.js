@@ -18,11 +18,20 @@ export class CameraRig {
 
     this._drag = null
     dom.addEventListener('pointerdown', (e) => this._onDown(e))
-    window.addEventListener('pointermove', (e) => this._onMove(e))
-    window.addEventListener('pointerup', () => this._onUp())
+    // keep references to the window handlers so dispose() can remove them
+    this._boundMove = (e) => this._onMove(e)
+    this._boundUp = () => this._onUp()
+    window.addEventListener('pointermove', this._boundMove)
+    window.addEventListener('pointerup', this._boundUp)
     dom.addEventListener('wheel', (e) => this._onWheel(e), { passive: false })
     // gentle idle auto-rotation
     this.autoRotate = false
+  }
+
+  /** Remove window-level listeners; called by the engine's dispose(). */
+  dispose() {
+    window.removeEventListener('pointermove', this._boundMove)
+    window.removeEventListener('pointerup', this._boundUp)
   }
 
   _onDown(e) {

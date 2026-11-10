@@ -47,10 +47,13 @@ def _norm_clip(
 
 
 def _concat(exe: str, clips: list[Path], out: Path) -> bool:
-    """concat demuxer 拼接。"""
+    """concat demuxer 拼接（路径中的单引号转义, 避免 demuxer 解析错乱）。"""
+    def _q(p: Path) -> str:
+        return p.as_posix().replace("'", "'\\''")
+
     list_file = out.parent / "concat_list.txt"
     list_file.write_text(
-        "\n".join(f"file '{c.as_posix()}'" for c in clips), encoding="utf-8"
+        "\n".join(f"file '{_q(c)}'" for c in clips), encoding="utf-8"
     )
     ok, err = run_ffmpeg(
         ["-y", "-f", "concat", "-safe", "0", "-i", str(list_file),

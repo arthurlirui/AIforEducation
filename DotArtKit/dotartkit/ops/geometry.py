@@ -72,6 +72,35 @@ def gradient_magnitude(d_norm: np.ndarray) -> np.ndarray:
     return m.astype(np.float32)
 
 
+def _gaussian_smooth(h: np.ndarray, sigma: float) -> np.ndarray:
+    """高斯平滑 (scipy 可用时); 无 scipy 时 3×3 均值滤波近似."""
+    if sigma <= 0:
+        return h
+    try:
+        from scipy.ndimage import gaussian_filter
+        return gaussian_filter(h, sigma=sigma)
+    except ImportError:
+        k = np.ones((3, 3), np.float64) / 9.0
+        pad = np.pad(h, 1, mode="edge")
+        return sum(k[i, j] * pad[i:i + h.shape[0], j:j + h.shape[1]]
+                   for i in range(3) for j in range(3))
+
+
+def _smooth_and_derivs(d_norm: np.ndarray,
+                       smooth_sigma: float) -> tuple:
+    """高度场 h = 1 - d̂ 平滑 + 全部一/二阶导数 (曲率函数共用, 避免重复计算).
+
+    返回 (hx, hy, hxx, hyy, hxy).
+    """
+    h = _gaussian_smooth(1.0 - d_norm.astype(np.float64), smooth_sigma)
+    hx = _central_diff_1d(h, axis=1)
+    hy = _central_diff_1d(h, axis=0)
+    hxx = _second_diff(h, axis=1)
+    hyy = _second_diff(h, axis=0)
+    hxy = _central_diff_1d(hx, axis=0)
+    return hx, hy, hxx, hyy, hxy
+
+
 def mean_curvature(d_norm: np.ndarray,
                    smooth_sigma: float = 1.5) -> np.ndarray:
     """高度场 h = 1 - d̂ 的平均曲率 H 的符号化归一版本 κ_mean ∈ [-1, 1].
@@ -80,24 +109,9 @@ def mean_curvature(d_norm: np.ndarray,
     κ < 0 → 凹面/鞍面
 
     smooth_sigma > 0 时先做高斯平滑 (抑制深度估计噪声的二阶放大).
+    平坦场景 (max|H| < 1e-6) 直接返回 0 场, 避免把噪声拉满到 ±1.
     """
-    h = 1.0 - d_norm.astype(np.float64)
-    if smooth_sigma > 0:
-        try:
-            from scipy.ndimage import gaussian_filter
-            h = gaussian_filter(h, sigma=smooth_sigma)
-        except ImportError:
-            # 无 scipy: 3x3 均值滤波近似
-            k = np.ones((3, 3), np.float64) / 9.0
-            pad = np.pad(h, 1, mode="edge")
-            h = sum(k[i, j] * pad[i:i + h.shape[0], j:j + h.shape[1]]
-                    for i in range(3) for j in range(3))
-
-    hx = _central_diff_1d(h, axis=1)
-    hy = _central_diff_1d(h, axis=0)
-    hxx = _second_diff(h, axis=1)
-    hyy = _second_diff(h, axis=0)
-    hxy = _central_diff_1d(hx, axis=0)
+    hx, hy, hxx, hyy, hxy = _smooth_and_derivs(d_norm, smooth_sigma)
 
     denom = (1.0 + hx ** 2 + hy ** 2) ** 1.5
     # 高度场平均曲率 (标准公式). 注意符号: 球顶 (h 极大) 的 H < 0,
@@ -105,38 +119,33 @@ def mean_curvature(d_norm: np.ndarray,
     H = -((1.0 + hy ** 2) * hxx - 2.0 * hx * hy * hxy
           + (1.0 + hx ** 2) * hyy) / (2.0 * denom + 1e-12)
 
-    # 归一: 除以最大 |H| 后裁剪, 保留缓变场的相对差异 (避免 p98 饱和)
+    # 归一: 除以最大 |H| 后裁剪; 信噪比防护 — 近似平坦的深度图上
+    # max|H| 是噪声, 归一会把噪声当曲率拉满, 直接返回 0 场.
     h_abs = np.abs(H)
     hi = h_abs.max()
-    if hi > 1e-12:
+    if hi > 1e-6:
         H = np.clip(H / hi, -1.0, 1.0)
+    else:
+        H = np.zeros_like(H)
     return H.astype(np.float32)
 
 
 def gaussian_curvature_sign(d_norm: np.ndarray,
                             smooth_sigma: float = 1.5) -> np.ndarray:
-    """高斯曲率 K 的符号归一版本 (诊断用). K>0 椭圆点, K<0 鞍点."""
-    h = 1.0 - d_norm.astype(np.float64)
-    if smooth_sigma > 0:
-        try:
-            from scipy.ndimage import gaussian_filter
-            h = gaussian_filter(h, sigma=smooth_sigma)
-        except ImportError:
-            pad = np.pad(h, 1, mode="edge")
-            h = sum(np.ones((3, 3))[i, j] / 9.0 *
-                    pad[i:i + h.shape[0], j:j + h.shape[1]]
-                    for i in range(3) for j in range(3))
-    hx = _central_diff_1d(h, axis=1)
-    hy = _central_diff_1d(h, axis=0)
-    hxx = _second_diff(h, axis=1)
-    hyy = _second_diff(h, axis=0)
-    hxy = _central_diff_1d(hx, axis=0)
+    """高斯曲率 K 的符号归一版本 (诊断用). K>0 椭圆点, K<0 鞍点.
+
+    平坦场景 (max|K| < 1e-6) 直接返回 0 场 (同 mean_curvature 的
+    信噪比防护).
+    """
+    hx, hy, hxx, hyy, hxy = _smooth_and_derivs(d_norm, smooth_sigma)
     # 高斯曲率自然符号: 球顶 (椭圆点) K > 0, 鞍点 K < 0 — 不翻转
     K = (hxx * hyy - hxy ** 2) / (1.0 + hx ** 2 + hy ** 2 + 1e-12) ** 2
     k_abs = np.abs(K)
     hi = k_abs.max()
-    if hi > 1e-12:
+    if hi > 1e-6:
         K = np.clip(K / hi, -1.0, 1.0)
+    else:
+        K = np.zeros_like(K)
     return K.astype(np.float32)
 
 

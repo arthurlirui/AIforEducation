@@ -26,6 +26,11 @@ export async function generateImage(payload) {
   return data
 }
 
+export async function composePreview(payload) {
+  const { data } = await http.post('/compose-preview', payload)
+  return data
+}
+
 export async function getArticles() {
   const { data } = await http.get('/teaching')
   return data

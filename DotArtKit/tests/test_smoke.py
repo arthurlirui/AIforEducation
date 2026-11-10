@@ -5,6 +5,7 @@ DL 模式 (kusama_depth) 仅在 ultralytics 可用时跑; learned 走无 torch �
 """
 from __future__ import annotations
 
+import cv2
 import numpy as np
 import pytest
 from PIL import Image
@@ -76,6 +77,69 @@ class TestKusamaBasic:
     def test_scipy_probe_no_crash(self):
         # 探测函数不抛异常即可 (True/False 均合法, 退化路径不报警是已知待办)
         assert isinstance(has_scipy(), bool)
+
+    def test_ndarray_core_matches_path_wrapper(self, tiny_image, tmp_path):
+        """S4 回归: PIL 适配 (ndarray 核心, 零磁盘 I/O) 与路径薄包装输出逐位一致."""
+        from dotartkit.styles.kusama_basic import kusama_polka, kusama_polka_core
+        kw = dict(seed=5, n_points=400, n_iter=3, r_max=3.0,
+                  palette="yellow_black")
+        out_pil = generate("kusama_basic", tiny_image, **kw)   # PIL → ndarray 核心
+        # 路径薄包装: 读 PNG → 核心 → 写 PNG
+        inp = tmp_path / "in.png"
+        tiny_image.save(inp)
+        outp = tmp_path / "out.png"
+        canvas = kusama_polka(str(inp), str(outp), **kw)
+        # ndarray 核心: 同输入 (imread) 同 seed → 与包装返回的 canvas 逐位相等
+        img_bgr = cv2.imread(str(inp))
+        assert np.array_equal(kusama_polka_core(img_bgr, **kw), canvas)
+        # PIL 适配输出与包装写出的 PNG 逐位相等 (同 seed 同输入)
+        assert np.array_equal(np.array(out_pil.convert("RGB")),
+                              np.array(Image.open(outp).convert("RGB")))
+        # 无临时文件残留: 目录里只应有输入/输出两个文件
+        assert sorted(p.name for p in tmp_path.iterdir()) == ["in.png", "out.png"]
+
+
+class TestKusamaDepthAdapters:
+    """S4 回归: kusama_depth 的 PIL 适配与路径包装走同一 ndarray 核心.
+
+    mock 掉模型加载 (_get_model), 无需 ultralytics/权重即可在任何环境运行;
+    伪分割把右半置为前景类, 覆盖双色绘制路径.
+    """
+
+    def test_ndarray_core_matches_path_wrapper(self, monkeypatch, tiny_image,
+                                               tmp_path):
+        import dotartkit.styles.kusama_depth as kd
+
+        class FakeDepth:
+            def predict(self, img):
+                h, w = img.shape[:2]
+                return np.tile(np.linspace(0.5, 2.5, w, dtype=np.float32), (h, 1))
+
+        class FakeSem:
+            def predict(self, img):
+                h, w = img.shape[:2]
+                seg = np.zeros((h, w), np.uint8)
+                seg[:, w // 2:] = 11      # person → 前景, 覆盖双色绘制
+                return seg
+
+        monkeypatch.setattr(kd, "_get_model",
+                            lambda kind, path, device:
+                            FakeDepth() if kind == "depth" else FakeSem())
+        monkeypatch.setattr(kd, "has_ultralytics", lambda: True)
+
+        kw = dict(seed=5, n_points=300, r_max=6.0, overlap_gap=3.0)
+        out_pil = kd.generate_kusama_depth(tiny_image, **kw)   # PIL → ndarray 核心
+        inp = tmp_path / "in.png"
+        tiny_image.save(inp)
+        outp = tmp_path / "out.png"
+        stats = kd.depth_kusama_polka(str(inp), str(outp), **kw)  # 路径薄包装
+        assert stats["n_total_dots"] > 0
+        assert stats["output"] == str(outp)
+        # PIL 适配输出与包装写出的 PNG 逐位相等 (同 seed 同输入)
+        assert np.array_equal(np.array(out_pil.convert("RGB")),
+                              np.array(Image.open(outp).convert("RGB")))
+        # 无临时文件残留: 目录里只应有输入/输出两个文件
+        assert sorted(p.name for p in tmp_path.iterdir()) == ["in.png", "out.png"]
 
 
 class TestLearned:

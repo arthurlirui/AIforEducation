@@ -37,6 +37,8 @@ def setup_module(_):
     env = os.environ.copy()
     env["TLS_DB_PATH"] = str(_TMP_DB)
     env["TLS_ADMIN_TOKEN"] = "e2e-token"
+    # S5：让本进程内的 compose 走真实 HTTP 拿动画 SVG（子进程 backend 也一并继承，无害）
+    os.environ["TLS_BACKEND_URL"] = BASE
     _proc = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "app.main:app",
          "--host", "127.0.0.1", "--port", "8799", "--log-level", "warning"],
@@ -56,10 +58,13 @@ def teardown_module(_):
     if _proc:
         _proc.terminate()
         _proc.wait(timeout=5)
+    os.environ.pop("TLS_BACKEND_URL", None)  # 不泄漏给后续测试模块
     from app import db as _db
     _db.engine.dispose()
-    if _TMP_DB.exists():
-        _TMP_DB.unlink()
+    # 清理子进程 DB 及其 WAL/SHM 旁文件（SQLite WAL 模式遗留）
+    for p in (_TMP_DB, Path(str(_TMP_DB) + "-wal"), Path(str(_TMP_DB) + "-shm")):
+        if p.exists():
+            p.unlink()
 
 
 def test_e2e_push_and_read():
@@ -88,10 +93,14 @@ def test_e2e_push_and_read():
     assert "formula" in layouts
     assert "diagram" in layouts  # motionCanvas 帧
 
-    # 验证 motionCanvas block 存在
+    # 验证 motionCanvas block 存在，且 fallbackSvg 是经真实 HTTP 从 backend
+    # 拿到的动画 SVG（S5：studio 无本地 anim 副本，TLS_BACKEND_URL 指向子进程）
     diag = next(f for f in frames if f["layout"] == "diagram")
     blocks = json.loads(diag["blocks_json"])
-    assert any(b["type"] == "motionCanvas" for b in blocks)
+    mc = next(b for b in blocks if b["type"] == "motionCanvas")
+    assert mc["sceneRef"] == "convolution"
+    assert mc["fallbackSvg"].lstrip().startswith("<svg")
+    assert "animate" in mc["fallbackSvg"].lower()  # 真实动画，非占位图
 
     # 前端：sandbox 运行
     r = httpx.post(f"{BASE}/api/sandbox/run", json={"lang": "python", "code": "print(1)"})

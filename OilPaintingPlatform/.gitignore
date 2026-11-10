@@ -4,9 +4,12 @@ __pycache__/
 .venv/
 venv/
 output/
+# gallery.json is runtime data (auto-created as an empty array on first run)
+backend/app/data/gallery.json
 *.log
 .DS_Store
 node_modules/
 dist/
 .vite/
 *.local
+.pytest_cache/

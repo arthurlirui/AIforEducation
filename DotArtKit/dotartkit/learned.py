@@ -19,7 +19,7 @@
        - 深度对齐 (近景大点)
        - 曲率对齐: 凸面 (κ>0, 球顶) 半径放大, 凹/鞍面缩小
        - 凹面密度加密: 密度头在 κ<0 处输出更高密度 (顺应表面转折)
-       - 蓝噪声频谱 + 覆盖率 + 半径直方图
+       - 覆盖率 + 半径直方图 (soft-histogram, 可微)
 """
 
 from __future__ import annotations
@@ -88,6 +88,7 @@ if _HAS_TORCH:
             输入 6 通道: d̂, I_gray, |∇d̂|, |∇I|, κ_mean (符号), K 符号.
             """
             from .ops.geometry import geometry_fields
+            self.to(device)   # 幂等: 推理路径参数须与输入张量同 device
             d_tensor = torch.from_numpy(d_norm).float().unsqueeze(0).unsqueeze(0)
             g_tensor = torch.from_numpy(gray).float().unsqueeze(0).unsqueeze(0)
 
@@ -112,8 +113,9 @@ if _HAS_TORCH:
             self.eval()
             with torch.no_grad():
                 radius, density = self.forward(x)
-            return (radius.squeeze().cpu().numpy(),
-                    density.squeeze().cpu().numpy())
+            # 显式维度索引: H 或 W 为 1 时 squeeze() 会错误降维
+            return (radius.squeeze(0).squeeze(0).cpu().numpy(),
+                    density.squeeze(0).squeeze(0).cpu().numpy())
 
 else:
     # torch 不可用时定义占位符, 实例化即抛 ImportError
@@ -168,7 +170,7 @@ if _HAS_TORCH:
                 hist = hist / hist.sum()
                 self.register_buffer('target_hist', torch.from_numpy(hist).float())
 
-        def forward(self, radius, density, d_norm, d_grad, kappa=None):
+        def forward(self, radius, density, d_norm, kappa=None):
             losses = {}
             near_weight = 1.0 - d_norm
             r_min = radius.min()
@@ -190,8 +192,15 @@ if _HAS_TORCH:
             approx_coverage = (density * torch.pi * radius ** 2).mean()
             losses['coverage'] = (approx_coverage - self.target_coverage) ** 2
 
+            # soft-histogram: 对 bin 中心的三角核加权求和 (可微).
+            # torch.histc 不支持 autograd, 历史版本该项对训练无梯度贡献.
             r_flat = r_norm.flatten()
-            hist_pred = torch.histc(r_flat, bins=self.n_bins, min=0, max=1)
+            width = 1.0 / self.n_bins
+            centers = (torch.arange(self.n_bins, device=radius.device,
+                                    dtype=torch.float32) + 0.5) * width
+            tri = torch.clamp(1.0 - (r_flat[:, None] - centers[None, :]).abs()
+                              / width, min=0.0)
+            hist_pred = tri.sum(dim=0)
             hist_pred = hist_pred / (hist_pred.sum() + 1e-8)
             losses['histogram'] = F.mse_loss(hist_pred, self.target_hist)
 
@@ -267,7 +276,7 @@ def train_depth_radius_net(
         for x, d_n, d_gr, k in features:
             optimizer.zero_grad()
             radius, density = model(x)
-            losses = criterion(radius, density, d_n, d_gr, kappa=k)
+            losses = criterion(radius, density, d_n, kappa=k)
             losses['total'].backward()
             optimizer.step()
             total_loss += losses['total'].item()
@@ -396,7 +405,7 @@ def generate_learned(
         import torch as _torch
         m = DepthRadiusNet(r_min=r_min, r_max=r_max)
         m.load_state_dict(_torch.load(ckpt_path, map_location=device))
-        m.eval()
+        m.to(device).eval()
         model = m
     if model is not None:
         if not _HAS_TORCH:

@@ -16,6 +16,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from ...common.imio import imwrite_
 from ..config import Settings
 from ..schemas import Stage3Output, KeyframeSpec
 
@@ -100,7 +101,8 @@ def run_keyframe_generation(
 ) -> list[KeyframeSpec]:
     """生成多张关键帧（3D 渲染 + 深度 + 边缘）。
 
-    如果有手绘关键帧线稿，在对应帧上叠加线稿指引。
+    注: 手绘关键帧线稿（CLI --keyframe）当前在模块 3 消费（stage1 解析后
+    用于重定位指引），本模块不叠加线稿，lineart_path 恒为 None。
     """
     stage4_dir = project_dir / "stage4"
     kf_dir = stage4_dir / "keyframes"
@@ -119,33 +121,28 @@ def run_keyframe_generation(
         rgb, depth = render_keyframe_from_scene(
             stage3.edited_scene_ply_path, offsets[i], h, w, focal)
 
-        # 叠加手绘关键帧线稿（如果有）
-        lineart_path = None
-        if i < len(stage3.__pydantic_fields__):  # 不会触发，保留逻辑
-            pass
-
         # 保存
         render_path = kf_dir / f"keyframe_{i:04d}.png"
         depth_path = kf_dir / f"depth_{i:04d}.png"
         edge_path = kf_dir / f"edge_{i:04d}.png"
 
-        cv2.imwrite(str(render_path), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
+        imwrite_(render_path, cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
 
         d_min, d_max = depth.min(), depth.max()
         if d_max - d_min > 1e-6:
             depth_u16 = ((depth - d_min) / (d_max - d_min) * 65535).astype(np.uint16)
         else:
             depth_u16 = np.zeros((h, w), dtype=np.uint16)
-        cv2.imwrite(str(depth_path), depth_u16)
+        imwrite_(depth_path, depth_u16)
 
         # 边缘图（Canny）
         gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
         edges = cv2.Canny(gray, 50, 150)
-        cv2.imwrite(str(edge_path), edges)
+        imwrite_(edge_path, edges)
 
         keyframes.append(KeyframeSpec(
             frame_index=i,
-            lineart_path=lineart_path,
+            lineart_path=None,  # 手绘线稿在模块 3 消费, 模块 4 不叠加 (见 docstring)
             render_path=render_path,
             depth_path=depth_path,
             edge_path=edge_path,

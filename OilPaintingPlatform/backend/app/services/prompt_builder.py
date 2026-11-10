@@ -52,9 +52,13 @@ def compose_prompt(
     if extra_keywords:
         parts.append(extra_keywords.strip())
 
-    # Hint at medium if the user did not mention it
-    lower = user_prompt.lower()
-    if "oil painting" not in lower and "油画" not in user_prompt:
+    # Hint at medium if neither the user prompt nor the already-joined
+    # parts (style keywords / extra keywords) mention it
+    combined = ", ".join(parts)
+    if (
+        "oil painting" not in combined.lower()
+        and "油画" not in user_prompt
+    ):
         parts.append("oil painting on canvas")
 
     if style.reference_artists:

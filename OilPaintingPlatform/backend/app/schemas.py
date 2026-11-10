@@ -14,7 +14,7 @@ class StylePreset(BaseModel):
     description: str
     prompt_keywords: List[str] = Field(
         default_factory=list,
-        description="Keywords appended to the user prompt to enforce style",
+        description="Keywords appended to the user prompt to enforce style"
     )
     negative_keywords: List[str] = Field(default_factory=list)
     reference_artists: List[str] = Field(default_factory=list)
@@ -33,7 +33,11 @@ class GenerateRequest(BaseModel):
     provider: Optional[str] = Field(
         None, description="生图模型提供方；留空则使用默认"
     )
-    size: Optional[str] = Field(None, description="图像尺寸，如 1024x1024")
+    size: Optional[str] = Field(
+        None,
+        pattern=r"^\d{2,5}x\d{2,5}$",
+        description="图像尺寸，格式为 宽x高，如 1024x1024",
+    )
     n: int = Field(1, ge=1, le=4, description="生成数量")
     extra_keywords: Optional[str] = Field(
         None, description="用户附加关键词，会拼接到提示词末尾"
@@ -48,7 +52,6 @@ class GeneratedImage(BaseModel):
     provider: str
     revised_prompt: Optional[str] = None
     seed: Optional[int] = None
-    local_path: Optional[str] = None
 
 
 class GenerateResponse(BaseModel):
@@ -57,6 +60,18 @@ class GenerateResponse(BaseModel):
     style: StylePreset
     provider: str
     elapsed_ms: int
+    notes: List[str] = Field(
+        default_factory=list,
+        description="给用户的提示信息，如所选模型忽略了某些参数",
+    )
+    fallback_from: Optional[str] = Field(
+        None,
+        description="所选 provider 不可用而回退 mock 占位图时，记录原请求的 provider 名；正常路径为 None",
+    )
+
+
+class ComposePreviewResponse(BaseModel):
+    composed_prompt: str
 
 
 class TeachingArticle(BaseModel):
@@ -103,3 +118,7 @@ class ProviderInfo(BaseModel):
     needs_base_url: bool
     free: bool
     default_base_url: Optional[str] = None
+    supported_sizes: List[str] = Field(
+        default_factory=list,
+        description="该 provider 支持的尺寸列表（空表示不限）",
+    )

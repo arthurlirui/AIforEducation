@@ -4,10 +4,13 @@ import { getGallery } from '../api'
 
 const items = ref([])
 const loading = ref(true)
+const error = ref('')
 
 onMounted(async () => {
   try {
     items.value = await getGallery(50)
+  } catch (e) {
+    error.value = '画廊加载失败，请检查网络或后端服务后重试'
   } finally {
     loading.value = false
   }
@@ -20,6 +23,10 @@ onMounted(async () => {
     <p class="section-sub">平台生成的油画作品集</p>
 
     <div v-if="loading" class="empty-state"><div class="spinner"></div></div>
+    <div v-else-if="error" class="empty-state">
+      <p>{{ error }}</p>
+      <button class="btn btn-outline" style="margin-top:12px;" @click="$router.go(0)">重试</button>
+    </div>
     <div v-else-if="items.length === 0" class="empty-state">
       <p>画廊还是空的，去 <a href="/create">AI 创作</a> 生成第一幅作品吧！</p>
     </div>

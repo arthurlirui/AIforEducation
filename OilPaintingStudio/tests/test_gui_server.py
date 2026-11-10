@@ -34,13 +34,16 @@ from oilpainting_studio.gui.tasks import get_queue  # noqa: E402
 
 @pytest.fixture()
 def client():
-    # 重置 registry 指向临时 projects 根, 避免污染真实目录
+    # 重置 registry 指向临时 projects 根, 避免污染真实目录;
+    # 同时重置 task_queue 任务表, 避免上一测试残留 worker 任务
+    # 操作已删除的临时目录
     import oilpainting_studio.gui.server as srv
     tmp = Path(__file__).parent / "_tmp_projects"
     if tmp.exists():
         import shutil
         shutil.rmtree(tmp)
     srv.registry = ProjectRegistry(tmp)
+    srv.task_queue.reset()
     yield TestClient(app)
     import shutil
     shutil.rmtree(tmp, ignore_errors=True)
@@ -77,9 +80,10 @@ TaskClient = TestClient  # alias for type hint readability
 
 
 def _make_project(client, painting_png, name="测试项目"):
-    r = client.post("/api/projects",
-                    data={"name": name},
-                    files={"painting": ("p.png", open(painting_png, "rb"), "image/png")})
+    with open(painting_png, "rb") as f:
+        r = client.post("/api/projects",
+                        data={"name": name},
+                        files={"painting": ("p.png", f, "image/png")})
     assert r.status_code == 201, r.text
     return r.json()["project_id"]
 
@@ -115,8 +119,9 @@ def test_create_list_get_delete_project(client, painting_png):
     assert client.get(f"/api/projects/{pid}/painting?thumb=true").status_code == 200
 
     # 重名冲突
-    r = client.post("/api/projects", data={"name": "测试项目"},
-                    files={"painting": ("p.png", open(painting_png, "rb"), "image/png")})
+    with open(painting_png, "rb") as f:
+        r = client.post("/api/projects", data={"name": "测试项目"},
+                        files={"painting": ("p.png", f, "image/png")})
     assert r.status_code == 409
 
     # 删除 → 回收站
@@ -427,6 +432,143 @@ def test_compose_run_placeholder_video(client, seg_project):
     assert out_rel.endswith("output.mp4")
     st = client.get(f"/api/projects/{pid}").json()["pipeline_state"]["compose"]
     assert st["status"] == "done"
+
+
+# ────────────────────────── undo 持久化 (G8, §3.3) ──────────────────────────
+
+def _restart_registry(client):
+    """模拟进程重启: 丢弃 registry 缓存, 重新从磁盘 open。"""
+    import oilpainting_studio.gui.server as srv
+    srv.registry = ProjectRegistry(srv.registry.projects_root)
+
+
+def test_undo_persisted_across_restart(client, painting_png):
+    """push 若干 undo → 重启(重开 registry) → 栈恢复, undo/redo 行为正确。"""
+    pid = _make_project(client, painting_png, name="undo持久化")
+    r = client.post(f"/api/projects/{pid}/segment/run", json={})
+    assert _wait_task(client, r.json()["task_id"])["status"] == "done"
+    oid = client.get(f"/api/projects/{pid}/objects").json()[0]["object_id"]
+    mask_url = f"/api/projects/{pid}/objects/{oid}/mask"
+    before = client.get(mask_url).content
+
+    # 两条可撤销操作: 1 笔 mask paint (文件快照) + 1 次 object.update (JSON)
+    r = client.put(mask_url, json={"strokes": [{"x": 40, "y": 40, "radius": 6}]})
+    assert r.status_code == 200
+    painted = client.get(mask_url).content
+    assert painted != before
+    assert client.put(f"/api/projects/{pid}/objects/{oid}",
+                      json={"rejected": True}).status_code == 200
+    assert client.get(f"/api/projects/{pid}").json()["undo_depth"] == 2
+
+    # "重启" → 缓存实例全部丢弃, 重新 open 同一项目目录
+    _restart_registry(client)
+    assert client.get(f"/api/projects/{pid}").json()["undo_depth"] == 2
+
+    # undo 逆序恢复: 先撤 object.update, 再撤 mask paint (快照文件读回)
+    r = client.post(f"/api/projects/{pid}/undo")
+    assert r.json()["op"] == "object.update"
+    assert client.get(f"/api/projects/{pid}/objects/{oid}").json()["rejected"] is False
+
+    r = client.post(f"/api/projects/{pid}/undo")
+    assert r.json()["op"] == "mask.paint"
+    assert client.get(mask_url).content == before
+
+    # redo 也跨重启可用
+    _restart_registry(client)
+    assert client.post(f"/api/projects/{pid}/undo/redo").json()["op"] == "mask.paint"
+    assert client.get(mask_url).content == painted
+
+
+def test_undo_rolling_cap_cleans_oldest_snapshots(client, painting_png):
+    """push 55 条 → 栈长 50, 被淘汰条目的快照文件已删除。"""
+    pid = _make_project(client, painting_png, name="undo滚动")
+    r = client.post(f"/api/projects/{pid}/segment/run", json={})
+    assert _wait_task(client, r.json()["task_id"])["status"] == "done"
+    oid = client.get(f"/api/projects/{pid}/objects").json()[0]["object_id"]
+    mask_url = f"/api/projects/{pid}/objects/{oid}/mask"
+
+    for i in range(55):
+        r = client.put(mask_url, json={"strokes": [{"x": 20 + i, "y": 30, "radius": 3}]})
+        assert r.status_code == 200
+
+    import oilpainting_studio.gui.server as srv
+    store = srv.registry.get(pid)
+    assert store.undo_depth == 50
+
+    manifest = json.loads((store.root / ".undo" / "undo.json")
+                          .read_text(encoding="utf-8"))
+    assert len(manifest["undo"]) == 50 and manifest["redo"] == []
+    # 磁盘快照与 manifest 引用一一对应: 淘汰条目的文件已被清理, 无孤儿
+    referenced = set()
+    for e in manifest["undo"]:
+        for v in (e["before"], e["after"]):
+            assert v.startswith("file:.undo/")
+            referenced.add(v[len("file:.undo/"):])
+    on_disk = {p.name for p in (store.root / ".undo").iterdir() if p.name != "undo.json"}
+    assert on_disk == referenced
+    # 回载后仍是 50 条
+    _restart_registry(client)
+    assert client.get(f"/api/projects/{pid}").json()["undo_depth"] == 50
+
+
+def test_open_with_corrupt_undo_manifest(tmp_path, painting_png):
+    """manifest 损坏 / 条目快照缺失时 open 不崩, 跳过坏条目。"""
+    from oilpainting_studio.gui.models import UndoEntry
+    from oilpainting_studio.gui.store import ProjectStore
+
+    reg = ProjectRegistry(tmp_path)
+    store = reg.create("持久化测试", painting_png)
+    # 1 条正常 JSON 条目 + 1 条引用缺失快照的位图条目
+    store.push_undo(UndoEntry(op="scene.camera", target="scene.json#camera",
+                              before=None, after={"fov": 55.0}))
+    store.push_undo(UndoEntry(op="mask.paint", target="stage1/objects/00/mask.png",
+                              before="file:.undo/missing.png",
+                              after="file:.undo/gone.png"))
+
+    reopened = ProjectStore.open(store.root)
+    assert reopened.undo_depth == 1          # 坏快照条目被跳过
+    assert reopened._undo[0].op == "scene.camera"
+
+    # redo 栈同样校验: 手工在 manifest 里塞一条坏 redo 条目 → 重开后被跳过
+    mpath = store.root / ".undo" / "undo.json"
+    manifest = json.loads(mpath.read_text(encoding="utf-8"))
+    manifest["redo"] = [{"op": "mask.paint",
+                         "target": "stage1/objects/00/mask.png",
+                         "before": "file:.undo/gone.png",
+                         "after": "file:.undo/gone2.png"}]
+    mpath.write_text(json.dumps(manifest), encoding="utf-8")
+    reopened = ProjectStore.open(store.root)
+    assert reopened.undo_depth == 1 and reopened._redo == []
+
+    # manifest 损坏 → 从空栈开始, 不抛异常
+    mpath.write_text("{not-json", encoding="utf-8")
+    reopened = ProjectStore.open(store.root)
+    assert reopened.undo_depth == 0 and reopened._redo == []
+
+    # manifest 结构异常 / 条目字段损坏 → 同样不崩
+    mpath.write_text(json.dumps({"undo": [42, "x"]}), encoding="utf-8")
+    reopened = ProjectStore.open(store.root)
+    assert reopened.undo_depth == 0
+
+
+def test_export_zip_excludes_undo(client, painting_png):
+    """导出 zip 不含 .undo/ 内部状态。"""
+    pid = _make_project(client, painting_png, name="导出项目")
+    r = client.post(f"/api/projects/{pid}/segment/run", json={})
+    assert _wait_task(client, r.json()["task_id"])["status"] == "done"
+    oid = client.get(f"/api/projects/{pid}/objects").json()[0]["object_id"]
+    assert client.put(f"/api/projects/{pid}/objects/{oid}/mask",
+                      json={"strokes": [{"x": 10, "y": 10, "radius": 4}]}).status_code == 200
+
+    import io
+    import zipfile
+    r = client.get(f"/api/projects/{pid}/export")
+    assert r.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(r.content)) as zf:
+        names = zf.namelist()
+    assert names, "zip 不应为空"
+    assert not any(n.startswith(".undo/") for n in names)
+    assert any(n == "project.json" for n in names)
 
 
 # ────────────────────────── 任务队列 (§6) ──────────────────────────

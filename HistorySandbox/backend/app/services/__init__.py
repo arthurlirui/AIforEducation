@@ -1,9 +1,12 @@
 """In-memory scenario registry: loads built-in sandbox plays from app/data."""
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from ..models import HistoricalEvent
+
+logger = logging.getLogger(__name__)
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
@@ -16,7 +19,13 @@ def _load_all() -> None:
     if _LOADED:
         return
     for fp in sorted(DATA_DIR.glob("event_*.json")):
-        event = HistoricalEvent.model_validate_json(fp.read_text(encoding="utf-8"))
+        # One malformed data file (e.g. a hand-edited scenario) must not take
+        # the whole backend down: log it and keep the other plays playable.
+        try:
+            event = HistoricalEvent.model_validate_json(fp.read_text(encoding="utf-8"))
+        except Exception:
+            logger.exception("跳过无法解析的剧本文件：%s", fp.name)
+            continue
         _EVENTS[event.id] = event
     _LOADED = True
 

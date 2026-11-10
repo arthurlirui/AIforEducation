@@ -69,6 +69,7 @@ class MockProvider(ImageProvider):
     display_name = "Mock（内置占位图）"
     description = "无需配置，生成 SVG 占位图用于演示"
     is_free = True
+    supported_sizes = ["1024x1024", "1024x1792", "1792x1024", "768x768", "512x512"]
 
     def available(self) -> bool:
         return True
@@ -76,7 +77,7 @@ class MockProvider(ImageProvider):
     def _generate(self, prompt, negative_prompt, size, n):
         images: List[GeneratedImage] = []
         for i in range(n):
-            seed = abs(hash(prompt)) % 100000 + i
+            seed = int(hashlib.md5(prompt.encode("utf-8")).hexdigest()[:8], 16) % 100000 + i
             svg = _svg(prompt, "Mock Style", seed)
             path = self.save_image_bytes(svg, ext="svg")
             images.append(
@@ -85,7 +86,6 @@ class MockProvider(ImageProvider):
                     provider=self.name,
                     revised_prompt=prompt,
                     seed=seed,
-                    local_path=str(path),
                 )
             )
         return images

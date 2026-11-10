@@ -26,8 +26,12 @@ from .benday import generate_benday  # noqa: F401
 from .warp import generate_warp  # noqa: F401
 from .stipple_pure import generate_stipple  # noqa: F401
 from .vogel import generate_vogel  # noqa: F401
-from .kusama_basic import generate_kusama_basic, kusama_polka  # noqa: F401
-from .kusama_depth import generate_kusama_depth, depth_kusama_polka  # noqa: F401
+from .kusama_basic import (  # noqa: F401
+    generate_kusama_basic, kusama_polka, kusama_polka_core,
+)
+from .kusama_depth import (  # noqa: F401
+    generate_kusama_depth, depth_kusama_polka, depth_kusama_polka_core,
+)
 
 __all__ = [
     "generate_seurat",
@@ -37,6 +41,8 @@ __all__ = [
     "generate_vogel",
     "generate_kusama_basic",
     "kusama_polka",
+    "kusama_polka_core",
     "generate_kusama_depth",
     "depth_kusama_polka",
+    "depth_kusama_polka_core",
 ]

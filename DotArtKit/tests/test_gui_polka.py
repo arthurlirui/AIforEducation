@@ -90,6 +90,16 @@ class TestLoadAndDepth:
         doc.ensure_depth("luminance")   # 第二次应跳过重算
         assert doc.depth_raw is d1
 
+    def test_ensure_depth_semantic_aware_recompute(self, doc):
+        """P1 回归: 切换 semantic_aware 开关必须触发重算 (fg_mask 不滞留)."""
+        doc.ensure_depth("luminance", semantic_aware=False)
+        d1 = doc.depth_raw
+        doc.ensure_depth("luminance", semantic_aware=True)   # 开关变化 → 重算
+        assert doc.depth_raw is not d1
+        d2 = doc.depth_raw
+        doc.ensure_depth("luminance", semantic_aware=True)   # 开关不变 → 跳过
+        assert doc.depth_raw is d2
+
     def test_unknown_backend(self, doc):
         with pytest.raises(ValueError):
             doc.ensure_depth("miDaS_v3")
@@ -168,6 +178,116 @@ class TestGenerate:
     def test_generate_without_depth_raises(self, doc):
         with pytest.raises(RuntimeError):
             doc.generate()
+
+
+# ---------------------------------------------------------------------------
+# 边缘/背景点半径参数化 (P5)
+# ---------------------------------------------------------------------------
+
+class TestRadiusParams:
+    @staticmethod
+    def _make_edges(doc):
+        # 亮方块制造 Canny 边缘 (与 test_edge_and_bg_dots 相同手法)
+        doc.image[40:80, 60:100] = 255
+        doc.gray = cv2.cvtColor(doc.image, cv2.COLOR_RGB2GRAY)
+        doc.ensure_depth("luminance")
+
+    def test_edge_dot_radius(self, doc):
+        self._make_edges(doc)
+        doc.generate(n_points=200, r_max=2.0, edge_dots=True, bg_fill=False,
+                     edge_dot_radius=2.5, seed=3)
+        edge_rs = [d.r for d in doc.dots if d.role == "edge"]
+        assert edge_rs, "应有边缘点"
+        assert all(r == 2.5 for r in edge_rs)
+
+    def test_bg_dot_radius_constant(self, doc):
+        # jitter=(1.0,1.0) → 背景点半径恒等于 bg_dot_radius
+        doc.ensure_depth("luminance")
+        doc.generate(n_points=200, r_max=2.0, edge_dots=False, bg_fill=True,
+                     bg_spacing=6.0, bg_dot_radius=3.0,
+                     bg_radius_jitter=(1.0, 1.0), seed=3)
+        bg_rs = [d.r for d in doc.dots if d.role == "bg"]
+        assert bg_rs, "应有背景点"
+        assert all(r == 3.0 for r in bg_rs)
+
+    def test_bg_radius_jitter_bounds(self, doc):
+        doc.ensure_depth("luminance")
+        doc.generate(n_points=200, r_max=2.0, edge_dots=False, bg_fill=True,
+                     bg_spacing=6.0, bg_dot_radius=2.0,
+                     bg_radius_jitter=(0.8, 1.2), seed=3)
+        bg_rs = [d.r for d in doc.dots if d.role == "bg"]
+        assert bg_rs and all(1.6 <= r <= 2.4 for r in bg_rs)
+
+    def test_defaults_unchanged(self, doc):
+        """P5 回归: 默认值保持旧行为 (边缘 1.3, 背景 ~1.0·U(0.7,1.3)),
+        且显式传默认参数与缺省调用逐点一致."""
+        self._make_edges(doc)
+        doc.generate(n_points=200, r_max=2.0, edge_dots=True, bg_fill=True,
+                     bg_spacing=6.0, seed=3)
+        dots_default = [(d.x, d.y, d.r, d.role) for d in doc.dots]
+        edge_rs = [d.r for d in doc.dots if d.role == "edge"]
+        bg_rs = [d.r for d in doc.dots if d.role == "bg"]
+        assert edge_rs and all(r == 1.3 for r in edge_rs)
+        assert bg_rs and all(0.7 <= r <= 1.3 for r in bg_rs)
+        # 显式传默认值 → 与缺省调用逐点一致
+        doc.generate(n_points=200, r_max=2.0, edge_dots=True, bg_fill=True,
+                     bg_spacing=6.0, seed=3, edge_dot_radius=1.3,
+                     bg_dot_radius=1.0, bg_radius_jitter=(0.7, 1.3))
+        dots_explicit = [(d.x, d.y, d.r, d.role) for d in doc.dots]
+        assert dots_explicit == dots_default
+
+
+# ---------------------------------------------------------------------------
+# 特征通道方向性: 低值 = 大点 (S1/S2/S3 回归)
+# ---------------------------------------------------------------------------
+
+class TestFeatureDirections:
+    """全部 6 通道的方向性半径测试.
+
+    用平滑圆顶图 (中心暗=近=凸): d̂ = (r/R)², 中心 r=0 处
+    - depth:       d̂=0 (近)         → 低值 → 大点
+    - luminance:   暗               → 低值 → 大点
+    - curvature:   凸顶 κ>0 最大     → (1-κ)/2 低 → 大点
+    - gaussian_curv: 球顶 K>0 最大   → (1-K)/2 低 → 大点
+    - hybrid:      近 + 凸          → 低值 → 大点
+    - gradient:    平坦 (∇d̂=0)      → 低值 → 大点
+    故标准 power 激活下, 6 通道在中心圆域的点半径均值都应大于外围环带.
+    """
+
+    @pytest.fixture
+    def dome_doc(self):
+        H, W = 120, 160
+        yy, xx = np.mgrid[0:H, 0:W]
+        r = np.hypot(xx - W / 2, yy - H / 2)
+        R = 100.0
+        gray = (255 * np.clip(r / R, 0, 1) ** 2).astype(np.uint8)
+        img = np.stack([gray] * 3, axis=-1)
+        d = PolkaDocument()
+        d.load_image(img)
+        d.ensure_depth("luminance")
+        return d
+
+    @staticmethod
+    def _region_mean_radius(doc, r_lo, r_hi):
+        cx, cy = 80.0, 60.0
+        rs = [d.r for d in doc.dots
+              if r_lo <= np.hypot(d.x - cx, d.y - cy) <= r_hi]
+        return float(np.mean(rs)) if rs else 0.0
+
+    @pytest.mark.parametrize("feature", [
+        "depth", "luminance", "curvature",
+        "gradient", "gaussian_curv", "hybrid",
+    ])
+    def test_low_value_gets_big_dots(self, dome_doc, feature):
+        dome_doc.generate(n_points=800, r_max=6.0, sigma=0.0,
+                          activation="power", feature=feature,
+                          prune="none", edge_dots=False,
+                          bg_fill=False, seed=11)
+        center = self._region_mean_radius(dome_doc, 0.0, 25.0)
+        annulus = self._region_mean_radius(dome_doc, 60.0, 85.0)
+        assert center > annulus, \
+            f"{feature}: 中心 (低特征值) 半径均值 {center:.2f} " \
+            f"应大于外围 {annulus:.2f} (低值=大点约定)"
 
 
 # ---------------------------------------------------------------------------

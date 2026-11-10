@@ -72,8 +72,18 @@ class ProjectStore:
         self.root = root
         self.meta = meta
         self._lock = threading.RLock()
+        self._obj_locks: dict[int, threading.Lock] = {}  # mask 笔刷 per-object 写锁
+        self._obj_locks_guard = threading.Lock()
         self._undo: list[UndoEntry] = []
         self._redo: list[UndoEntry] = []
+        self._load_undo_manifest()  # 启动回载持久化栈 (G8, 无 manifest 时为 no-op)
+
+    def object_lock(self, object_id: int) -> threading.Lock:
+        """per-object 写锁（mask 笔刷并发提交串行化, 版本号与内容保持一致）。"""
+        with self._obj_locks_guard:
+            if object_id not in self._obj_locks:
+                self._obj_locks[object_id] = threading.Lock()
+            return self._obj_locks[object_id]
 
     # ── 基础目录 ──
 
@@ -190,8 +200,9 @@ class ProjectStore:
         return ObjectMeta.model_validate(read_json(p))
 
     def save_object(self, obj: ObjectMeta) -> None:
-        atomic_write_json(self.object_meta_path(obj.object_id),
-                          json.loads(obj.model_dump_json()))
+        with self._lock:
+            atomic_write_json(self.object_meta_path(obj.object_id),
+                              json.loads(obj.model_dump_json()))
 
     def import_stage1(self, objects: list[SegmentedObject], detector: str) -> None:
         """把 revive stage1 输出导入项目目录布局（§3.2 版本化 objects/）。
@@ -240,6 +251,12 @@ class ProjectStore:
             self.set_stage("segment", StageStatus.DONE,
                            artifact="stage1/stage1.json", detail=f"detector={detector}")
 
+            # 清理 revive 落在 stage1 根下的中间产物（已导入 objects/ 布局, 原文件属垃圾）
+            for stale in self.stage1_dir.glob("mask_obj*.png"):
+                stale.unlink(missing_ok=True)
+            for stale in self.stage1_dir.glob("crop_obj*.png"):
+                stale.unlink(missing_ok=True)
+
     # ── scene.json ──
 
     def scene_path(self) -> Path:
@@ -252,7 +269,8 @@ class ProjectStore:
         return SceneGraph.model_validate(read_json(p))
 
     def save_scene(self, graph: SceneGraph) -> None:
-        atomic_write_json(self.scene_path(), json.loads(graph.model_dump_json()))
+        with self._lock:
+            atomic_write_json(self.scene_path(), json.loads(graph.model_dump_json()))
 
     def build_scene_from_stage2(self, registry_payload: dict) -> SceneGraph:
         """stage2 完成后：为每个非 rejected 且有 PLY 的物体建节点。"""
@@ -271,14 +289,101 @@ class ProjectStore:
                 source_ply=rec["ply_rel"]))
         return graph
 
-    # ── undo / redo（§3.3）──
+    # ── undo / redo（§3.3, 持久化到 .undo/undo.json）──
+
+    UNDO_SNAPSHOT_PREFIX = "file:.undo/"
+
+    def _undo_dir(self) -> Path:
+        return self.root / ".undo"
+
+    def _undo_manifest_path(self) -> Path:
+        return self._undo_dir() / "undo.json"
+
+    def _entry_snapshots(self, entry: UndoEntry) -> list[str]:
+        """entry 的 before/after 引用的 .undo/ 快照文件名（非文件标记忽略）。"""
+        out = []
+        for v in (entry.before, entry.after):
+            if isinstance(v, str) and v.startswith(self.UNDO_SNAPSHOT_PREFIX):
+                out.append(v[len(self.UNDO_SNAPSHOT_PREFIX):])
+        return out
+
+    def _load_undo_manifest(self) -> None:
+        """启动回载 .undo/undo.json 重建 undo/redo 栈。
+
+        快照文件缺失或条目损坏的条目跳过（warning）, 不阻断项目打开;
+        manifest 整体损坏时从空栈开始。
+        """
+        p = self._undo_manifest_path()
+        if not p.exists():
+            return
+        try:
+            payload = read_json(p)
+        except (OSError, json.JSONDecodeError) as e:
+            logger.warning("undo manifest 损坏, 忽略: %s", e)
+            return
+        if not isinstance(payload, dict):
+            logger.warning("undo manifest 格式异常, 忽略")
+            return
+        self._undo = self._load_undo_stack(payload.get("undo"), "undo")
+        self._redo = self._load_undo_stack(payload.get("redo"), "redo")
+
+    def _load_undo_stack(self, items: object, name: str) -> list[UndoEntry]:
+        if not isinstance(items, list):
+            return []
+        out: list[UndoEntry] = []
+        for raw in items:
+            try:
+                e = UndoEntry.model_validate(raw)
+            except Exception as ex:
+                logger.warning("跳过损坏的 %s 条目: %s", name, ex)
+                continue
+            if any(not (self._undo_dir() / rel).is_file()
+                   for rel in self._entry_snapshots(e)):
+                logger.warning("跳过 %s 条目(快照文件缺失): %s %s", name, e.op, e.target)
+                continue
+            out.append(e)
+        return out
+
+    def _save_undo_manifest(self) -> None:
+        """原子写栈 manifest（调用方需持 self._lock）。
+
+        持久化为尽力而为: 写失败仅 warning, 不影响内存栈语义。
+        """
+        payload = {
+            "undo": [json.loads(e.model_dump_json()) for e in self._undo],
+            "redo": [json.loads(e.model_dump_json()) for e in self._redo],
+        }
+        try:
+            atomic_write_json(self._undo_manifest_path(), payload)
+        except OSError as e:
+            logger.warning("undo manifest 写入失败(仅影响持久化): %s", e)
+
+    def _gc_snapshots(self, dropped: list[UndoEntry]) -> None:
+        """删除被淘汰/清空条目引用且不再被任何保留条目引用的快照文件。
+
+        调用方需持 self._lock; 只删 dropped 条目引用的文件, 不做全目录
+        扫描（并发笔刷可能在 push 前刚落盘快照, 全目录 GC 会误删）。
+        """
+        candidates = set()
+        for e in dropped:
+            candidates.update(self._entry_snapshots(e))
+        if not candidates:
+            return
+        referenced = set()
+        for e in (*self._undo, *self._redo):
+            referenced.update(self._entry_snapshots(e))
+        for name in candidates - referenced:
+            (self._undo_dir() / name).unlink(missing_ok=True)
 
     def push_undo(self, entry: UndoEntry) -> None:
         with self._lock:
             self._undo.append(entry)
+            dropped = self._redo
+            self._redo = []
             if len(self._undo) > self.MAX_UNDO:
-                self._undo.pop(0)
-            self._redo.clear()
+                dropped.append(self._undo.pop(0))
+            self._save_undo_manifest()
+            self._gc_snapshots(dropped)
 
     def undo(self) -> UndoEntry | None:
         with self._lock:
@@ -286,6 +391,7 @@ class ProjectStore:
                 return None
             e = self._undo.pop()
             self._redo.append(e)
+            self._save_undo_manifest()
             return e
 
     def redo(self) -> UndoEntry | None:
@@ -294,6 +400,7 @@ class ProjectStore:
                 return None
             e = self._redo.pop()
             self._undo.append(e)
+            self._save_undo_manifest()
             return e
 
     @property
@@ -312,15 +419,30 @@ class ProjectStore:
         return [KeyframeMeta.model_validate(x) for x in read_json(p)]
 
     def save_keyframes(self, frames: list[KeyframeMeta]) -> None:
-        atomic_write_json(self.keyframes_index(),
-                          [json.loads(k.model_dump_json()) for k in frames])
+        with self._lock:
+            atomic_write_json(self.keyframes_index(),
+                              [json.loads(k.model_dump_json()) for k in frames])
 
     # ── 导出 ──
 
     def export_zip(self, dest: Path) -> Path:
+        """打包项目目录为 zip, 供整目录迁移/交付。
+
+        排除 .undo/（undo 内部状态: manifest + 位图快照, 接收端回载时
+        会自动重建）与 exports/ 自身（避免 zip 套 zip 递归膨胀）。
+        """
+        import zipfile
         base = self.root.name
-        out = shutil.make_archive(str(dest / base), "zip", self.root)
-        return Path(out)
+        dest.mkdir(parents=True, exist_ok=True)
+        out = dest / f"{base}.zip"
+        with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zf:
+            for p in sorted(self.root.rglob("*")):
+                rel = p.relative_to(self.root)
+                if rel.parts and rel.parts[0] in (".undo", "exports"):
+                    continue
+                if p.is_file():
+                    zf.write(p, rel.as_posix())
+        return out
 
 
 _PALETTE = ["#5b8cff", "#3fbf7f", "#e6b54c", "#9d7bff",
@@ -359,15 +481,18 @@ class ProjectRegistry:
 
     def get(self, project_id: str) -> ProjectStore:
         with self._lock:
-            if project_id in self._stores:
-                return self._stores[project_id]
-        slug = self._slug_of(project_id)
-        if slug is None:
-            raise KeyError(f"project {project_id} 不存在")
-        store = ProjectStore.open(self.projects_root / slug)
-        with self._lock:
-            self._stores[project_id] = store
-        return store
+            # setdefault 语义: 并发 miss 时只 open 一次, 后写不再覆盖先写实例
+            # (覆盖会丢掉旧实例上的内存态; undo 栈虽已持久化, 但实例复用
+            # 仍免去重复回载与 manifest 竞写)
+            store = self._stores.get(project_id)
+            if store is not None:
+                return store
+            slug = self._slug_of(project_id)
+            if slug is None:
+                raise KeyError(f"project {project_id} 不存在")
+            store = ProjectStore.open(self.projects_root / slug)
+            self._stores.setdefault(project_id, store)
+            return self._stores[project_id]
 
     def create(self, name: str, painting_src: Path) -> ProjectStore:
         store = ProjectStore.create(self.projects_root, name, painting_src)

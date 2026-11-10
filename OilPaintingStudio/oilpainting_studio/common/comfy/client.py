@@ -150,7 +150,21 @@ class ComfyClient:
                     return await self._collect_outputs(node_out, save_to)
                 await asyncio.sleep(POLL_INTERVAL)
                 elapsed += POLL_INTERVAL
+            # 超时: 通知 ComfyUI 中断当前任务, 避免其继续占 GPU 阻塞后续提交
+            await self._interrupt(prompt_id)
             raise TimeoutError(f"ComfyUI 任务超时 ({timeout}s): prompt_id={prompt_id}")
+
+    async def _interrupt(self, prompt_id: str) -> None:
+        """超时后请求 ComfyUI /interrupt 清理队列。失败仅记日志。"""
+        try:
+            r = await self._get_http().post(f"{self.base_url}/interrupt", timeout=10)
+            if r.status_code != 200:
+                logger.warning("ComfyUI /interrupt 返回 HTTP %s (prompt_id=%s)",
+                               r.status_code, prompt_id)
+            else:
+                logger.info("ComfyUI 已请求中断超时任务 prompt_id=%s", prompt_id)
+        except httpx.HTTPError as e:
+            logger.warning("ComfyUI /interrupt 调用失败 (prompt_id=%s): %s", prompt_id, e)
 
     async def _collect_outputs(
         self, node_out: dict[str, Any], save_to: Path | None

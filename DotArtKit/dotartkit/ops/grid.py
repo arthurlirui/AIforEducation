@@ -13,6 +13,8 @@
 
 from __future__ import annotations
 
+import numpy as np
+
 
 class GridHash:
     """固定 cell 大小的网格哈希, 用于 O(1) 近邻最小距离约束."""
@@ -25,11 +27,17 @@ class GridHash:
         return int(x // self.cell), int(y // self.cell)
 
     def far_enough(self, x: float, y: float, r: float) -> bool:
-        """查询 (x,y) 是否与已加入点的距离都 ≥ r."""
+        """查询 (x,y) 是否与已加入点的距离都 ≥ r.
+
+        搜索环按 ``n = ceil(r / cell)`` 扩展 — 查询半径可大于 cell
+        (如密度自适应的 local_min 最大约 3.6×cell), 只查 3×3 邻桶
+        会系统性漏检.
+        """
         cx, cy = self._key(x, y)
         r2 = r * r
-        for dx in (-1, 0, 1):
-            for dy in (-1, 0, 1):
+        n = int(np.ceil(r / self.cell))
+        for dx in range(-n, n + 1):
+            for dy in range(-n, n + 1):
                 for px, py in self.buckets.get((cx + dx, cy + dy), ()):
                     if (px - x) ** 2 + (py - y) ** 2 < r2:
                         return False

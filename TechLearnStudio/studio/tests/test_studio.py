@@ -50,7 +50,14 @@ def test_compose_produces_frames():
     assert any(b["type"] == "code" and b.get("runnable") for b in blocks)
 
 
-def test_compose_with_formula_and_anim():
+def test_compose_with_formula_and_anim(monkeypatch):
+    # 离线环境：backend 不可达 → fallbackSvg 走静态占位 SVG（S5），不发真实网络请求
+    import anim_client
+
+    def _offline(*a, **k):
+        raise ConnectionError("offline")
+
+    monkeypatch.setattr(anim_client, "_post", _offline)
     frames = compose(SIGNAL_CONVOLUTION)
     layouts = [f["layout"] for f in frames]
     assert "formula" in layouts

@@ -38,11 +38,16 @@ def generate_benday(
 
     th = np.deg2rad(angle_deg)
     R = np.array([[np.cos(th), -np.sin(th)], [np.sin(th), np.cos(th)]], np.float32)
+    Rinv = np.array([[np.cos(th), np.sin(th)], [-np.sin(th), np.cos(th)]], np.float32)
 
-    diag = int(np.hypot(w, h)) + spacing * 2
-    ys = np.arange(-diag, diag, spacing)
-    xs = np.arange(-diag, diag, spacing)
-    P = np.stack(np.meshgrid(xs, ys), axis=-1).reshape(-1, 2).astype(np.float32)
+    # 旋转后的包围盒: 只生成覆盖图像所需的网格范围 (~4× 节省 vs 全对角线)
+    corners = np.array([[0, 0], [w, 0], [0, h], [w, h]], np.float32)
+    rot_corners = (Rinv @ corners.T).T   # 图像角点在网格坐标系中的范围
+    gx_lo, gy_lo = np.floor(rot_corners.min(0) / spacing) * spacing - spacing
+    gx_hi, gy_hi = np.ceil(rot_corners.max(0) / spacing) * spacing + spacing
+    gx = np.arange(gx_lo, gx_hi, spacing, dtype=np.float32)
+    gy = np.arange(gy_lo, gy_hi, spacing, dtype=np.float32)
+    P = np.stack(np.meshgrid(gx, gy), axis=-1).reshape(-1, 2)
     P = (R @ P.T).T
     P += np.array([w / 2, h / 2])
 

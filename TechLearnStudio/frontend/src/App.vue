@@ -103,6 +103,12 @@ export default {
         await this.loadScript('https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.es5.js')
         await this.loadScript('https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/notes/notes.es5.js')
       }
+      // KaTeX + auto-render（公式块渲染；加载失败不阻塞播放，保留 explain 文本）
+      if (!window.renderMathInElement) {
+        await this.loadScript('https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js')
+          .then(() => this.loadScript('https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js'))
+          .catch(() => { /* KaTeX 不可用：公式块降级为纯文本提示 */ })
+      }
       const Reveal = window.Reveal
       if (this.revealInstance) {
         this.revealInstance.destroy()

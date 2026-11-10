@@ -5,9 +5,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-Faction = Literal["shu", "wu", "wei", "han", "xiongnu", "ming", "portugal", "spain",
-                  "ottoman", "allies", "axis", "neutral", "explorer", "rebel", "default"]
-
 MapScale = Literal["world", "region", "country"]
 
 
@@ -139,8 +136,8 @@ class NarrationRequest(BaseModel):
 class AskRequest(BaseModel):
     event_id: str
     step_id: int | None = None
-    question: str
-    top_k: int = 3
+    question: str = Field(max_length=500)
+    top_k: int = Field(default=3, ge=1, le=10)
 
 
 class AskAnswer(BaseModel):
@@ -170,5 +167,5 @@ class WorldCommand(BaseModel):
     actor_id: str = ""               # target chess piece (move/attack/retreat)
     target_nation: str = ""          # alliance partner nation id
     target_position: tuple[float, float] | None = None   # destination lon/lat
-    question: str = ""               # free-text counterfactual (hypothetical)
+    question: str = Field(default="", max_length=500)     # free-text counterfactual (hypothetical)
     seed: int = 42                   # deterministic simulation randomness

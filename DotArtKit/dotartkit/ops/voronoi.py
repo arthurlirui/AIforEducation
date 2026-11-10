@@ -20,6 +20,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 
 try:
@@ -54,12 +56,29 @@ def compute_density(gray: np.ndarray, gamma: float = 1.0, invert: bool = True) -
 # 拒绝采样初始化
 # ---------------------------------------------------------------------------
 
-def rejection_sample(density: np.ndarray, n: int, rng: np.random.Generator) -> np.ndarray:
-    """按密度场概率采样 n 个点. 返回 (n, 2) (x, y)."""
+def rejection_sample(density: np.ndarray, n: int, rng: np.random.Generator,
+                     max_batches: int | None = None) -> np.ndarray:
+    """按密度场概率采样 n 个点. 返回 (n, 2) (x, y).
+
+    密度全零时立即返回空点集 (0, 2) 并告警 — 调用方 (Lloyd / 剪枝 /
+    渲染) 对空点集均能自然处理. ``max_batches`` 为拒绝采样批次上限,
+    防止低密度图上凑不齐 n 个点时无限循环; 触达上限时返回已采到的
+    部分点集.
+    """
     H, W = density.shape
+    if density.max() <= 0.0:
+        warnings.warn(
+            "rejection_sample: 密度场全零 (如全白输入), 返回空点集",
+            stacklevel=2)
+        return np.empty((0, 2), dtype=np.float64)
+    if max_batches is None:
+        batch0 = max(n * 3, 4096)
+        max_batches = max(50, (n * 20) // batch0 + 10)
     pts = np.empty((n, 2), dtype=np.float64)
     filled = 0
-    while filled < n:
+    batches = 0
+    while filled < n and batches < max_batches:
+        batches += 1
         batch = max((n - filled) * 3, 4096)
         xs = rng.uniform(0, W, batch)
         ys = rng.uniform(0, H, batch)
@@ -72,7 +91,12 @@ def rejection_sample(density: np.ndarray, n: int, rng: np.random.Generator) -> n
         pts[filled:filled + take, 0] = ax[:take]
         pts[filled:filled + take, 1] = ay[:take]
         filled += take
-    return pts
+    if filled < n:
+        warnings.warn(
+            f"rejection_sample: 触达 max_batches={max_batches}, "
+            f"仅采到 {filled}/{n} 个点 (密度过低)",
+            stacklevel=2)
+    return pts[:filled]
 
 
 # ---------------------------------------------------------------------------
@@ -98,6 +122,7 @@ def voronoi_filtered(points: np.ndarray, W: int, H: int):
 
     vor = Voronoi(all_pts)
     regions = []
+    point_indices = []       # 每个 filtered region 对应的原始点索引
     n_orig = len(points)
     for i in range(n_orig):
         region = vor.regions[vor.point_region[i]]
@@ -111,7 +136,9 @@ def voronoi_filtered(points: np.ndarray, W: int, H: int):
                 break
         if ok:
             regions.append(region)
+            point_indices.append(i)
     vor.filtered_regions = regions
+    vor.filtered_point_indices = point_indices
     return vor
 
 
@@ -149,11 +176,13 @@ def weighted_centroid_cumsum(vertices: np.ndarray, density: np.ndarray,
             if xb < xa:
                 continue
             d = P[y, xb] - (P[y, xa - 1] if xa > 0 else 0.0)
-            xd_a = (Q[y, xa - 1] if xa > 0 else 0.0)
-            xd = (xa * P[y, xa - 1] - xd_a) if xa > 0 else 0.0
-            sx = (xb * P[y, xb] - Q[y, xb]) - xd
+            # 恒等式: x·P[x] − Q[x] = Σ_{k≤x}(k−1)·d[k]
+            # 故 span [xa, xb] 上 Σ(k−1)·d[k] = A(xb) − A(xa−1),
+            # 其中 A(x) = x·P[x] − Q[x], A(−1) = 0.
+            xd_a = (xa - 1) * P[y, xa - 1] - Q[y, xa - 1] if xa > 0 else 0.0
+            sx = (xb * P[y, xb] - Q[y, xb]) - xd_a   # Σ (k−1)·d[k]
             sum_d += d
-            sum_xd += sx
+            sum_xd += sx + d                          # Σ k·d[k]
             sum_yd += y * d
 
     if sum_d > 1e-12:
@@ -170,6 +199,8 @@ def lloyd_relax(points: np.ndarray, density: np.ndarray, n_iter: int = 10,
     """Lloyd 松弛: 每点移动到其 Voronoi 单元的密度加权质心.
 
     每轮加少量抖动以避免纯 CVT 的正六边形伪影.
+    被过滤 (无界/越界) 单元对应的点保留原位, 不从点集中丢弃;
+    全部单元被过滤时提前返回当前点集.
     """
     H, W = density.shape
     P = density.cumsum(axis=1)
@@ -177,11 +208,14 @@ def lloyd_relax(points: np.ndarray, density: np.ndarray, n_iter: int = 10,
     pts = points.copy()
     for _ in range(n_iter):
         vor = voronoi_filtered(pts, W, H)
-        new_pts = []
-        for region in vor.filtered_regions:
+        indices = vor.filtered_point_indices
+        if not indices:
+            break   # 空结果: 保留当前点集, 避免空数组进下一轮 Voronoi
+        new_pts = pts.copy()
+        for pi, region in zip(indices, vor.filtered_regions):
             verts = vor.vertices[region + [region[0]]]
-            new_pts.append(weighted_centroid_cumsum(verts, density, P, Q))
-        pts = np.array(new_pts)
+            new_pts[pi] = weighted_centroid_cumsum(verts, density, P, Q)
+        pts = new_pts
         if rng is not None:
             pts += rng.normal(0, 0.3, pts.shape)
         pts[:, 0] = np.clip(pts[:, 0], 0, W - 1)
@@ -194,38 +228,47 @@ def lloyd_relax(points: np.ndarray, density: np.ndarray, n_iter: int = 10,
 # ---------------------------------------------------------------------------
 
 def prune_overlapping(points: np.ndarray, radii: np.ndarray,
-                      gap: float = 0.5) -> tuple[np.ndarray, np.ndarray]:
+                      gap: float = 0.5,
+                      return_mask: bool = False):
     """贪心剪枝: 移除与已保留点圆盘重叠的点.
 
     两点 i,j 重叠当 ``dist(i,j) < radii[i] + radii[j] + gap``.
     大点优先 (先占据空间), 小点随后填补间隙 — 密度自适应.
+
+    return_mask=True 时返回保留掩码 (n,) bool 而非子集, 供调用方
+    对齐逐点元数据 (roles 等), 免去最近邻回查.
     """
     if len(points) == 0:
-        return points, radii
+        return np.ones(0, dtype=bool) if return_mask else (points, radii)
     if not _HAS_SCIPY:
-        return _prune_overlapping_pure(points, radii, gap)
+        return _prune_overlapping_pure(points, radii, gap,
+                                       return_mask=return_mask)
     tree = scipy.spatial.cKDTree(points)
     kept = np.ones(len(points), dtype=bool)
     order = np.argsort(-radii)
     rng = np.random.default_rng(0)
     order = rng.permutation(order)
     order = order[np.argsort(-radii[order], kind='stable')]
+    r_all = radii.max()     # 循环外一次: 原点序内层是 O(n²)
     for i in order:
         if not kept[i]:
             continue
-        search_r = radii[i] + radii.max() + gap
-        neighbors = tree.query_ball_point(points[i], search_r)
-        for j in neighbors:
-            if j == i or not kept[j]:
-                continue
-            d = np.linalg.norm(points[i] - points[j])
-            if d < radii[i] + radii[j] + gap:
-                kept[j] = False
+        search_r = radii[i] + r_all + gap
+        neighbors = np.asarray(tree.query_ball_point(points[i], search_r),
+                               dtype=int)
+        neighbors = neighbors[(neighbors != i) & kept[neighbors]]
+        if len(neighbors) == 0:
+            continue
+        dists = np.linalg.norm(points[neighbors] - points[i], axis=1)
+        kept[neighbors[dists < radii[i] + radii[neighbors] + gap]] = False
+    if return_mask:
+        return kept
     return points[kept], radii[kept]
 
 
 def _prune_overlapping_pure(points: np.ndarray, radii: np.ndarray,
-                            gap: float) -> tuple[np.ndarray, np.ndarray]:
+                            gap: float,
+                            return_mask: bool = False):
     """scipy 不可用时的纯 numpy O(n²) 剪枝 (仅适合小规模点集)."""
     n = len(points)
     kept = np.ones(n, dtype=bool)
@@ -233,33 +276,59 @@ def _prune_overlapping_pure(points: np.ndarray, radii: np.ndarray,
     for ii, i in enumerate(order):
         if not kept[i]:
             continue
-        for jj in range(ii + 1, n):
-            j = order[jj]
-            if not kept[j]:
-                continue
-            d = np.linalg.norm(points[i] - points[j])
-            if d < radii[i] + radii[j] + gap:
-                kept[j] = False
+        js = order[ii + 1:]
+        js = js[kept[js]]
+        if len(js) == 0:
+            continue
+        dists = np.linalg.norm(points[js] - points[i], axis=1)
+        kept[js[dists < radii[i] + radii[js] + gap]] = False
+    if return_mask:
+        return kept
     return points[kept], radii[kept]
 
 
 def prune_min_distance(points: np.ndarray, radii: np.ndarray,
-                       min_dist: float) -> tuple[np.ndarray, np.ndarray]:
-    """贪心剪枝: 移除距已保留点小于 min_dist 的点."""
+                       min_dist: float,
+                       return_mask: bool = False):
+    """贪心剪枝: 移除距已保留点小于 min_dist 的点 (纯圆心距判据)."""
     if len(points) == 0:
-        return points, radii
+        return np.ones(0, dtype=bool) if return_mask else (points, radii)
     if not _HAS_SCIPY:
-        return _prune_overlapping_pure(points, radii, min_dist)
+        return _prune_min_distance_pure(points, radii, min_dist,
+                                        return_mask=return_mask)
     tree = scipy.spatial.cKDTree(points)
     kept = np.ones(len(points), dtype=bool)
     order = np.random.default_rng(0).permutation(len(points))
     for i in order:
         if not kept[i]:
             continue
-        neighbors = tree.query_ball_point(points[i], min_dist)
-        for j in neighbors:
-            if j != i:
-                kept[j] = False
+        neighbors = np.asarray(tree.query_ball_point(points[i], min_dist),
+                               dtype=int)
+        kept[neighbors[neighbors != i]] = False
+    if return_mask:
+        return kept
+    return points[kept], radii[kept]
+
+
+def _prune_min_distance_pure(points: np.ndarray, radii: np.ndarray,
+                             min_dist: float,
+                             return_mask: bool = False):
+    """prune_min_distance 的纯 numpy 回退 — 判据为圆心距 < min_dist
+    (与重叠剪枝不同: 不含半径项)."""
+    n = len(points)
+    kept = np.ones(n, dtype=bool)
+    order = np.random.default_rng(0).permutation(n)
+    for ii, i in enumerate(order):
+        if not kept[i]:
+            continue
+        js = order[ii + 1:]
+        js = js[kept[js]]
+        if len(js) == 0:
+            continue
+        dists = np.linalg.norm(points[js] - points[i], axis=1)
+        kept[js[dists < min_dist]] = False
+    if return_mask:
+        return kept
     return points[kept], radii[kept]
 
 
@@ -269,11 +338,17 @@ def prune_min_distance(points: np.ndarray, radii: np.ndarray,
 
 def stipple(density: np.ndarray, n_points: int = 8000, n_iter: int = 8,
             r_min: float = 1.5, r_max: float = 5.0,
-            gamma: float = 1.0, size_jitter: float = 0.15,
+            size_jitter: float = 0.15,
             pos_jitter: float = 0.4, min_dist: float = 0.0,
             overlap_gap: float = 0.5,
+            prune_mode: str = "overlap",
             seed: int | None = None):
     """从密度场生成草间风格点绘.
+
+    Parameters
+    ----------
+    prune_mode : 剪枝模式 — "overlap" 圆盘重叠剪枝 (用 ``overlap_gap``),
+        "min_dist" 最小圆心距剪枝 (用 ``min_dist``), "none" 不剪枝.
 
     返回 (points, radii):
         points : (n, 2) float (x, y) 图像坐标
@@ -281,8 +356,11 @@ def stipple(density: np.ndarray, n_points: int = 8000, n_iter: int = 8,
     """
     rng = np.random.default_rng(seed)
     pts = rejection_sample(density, n_points, rng)
-    if _HAS_SCIPY:
+    if _HAS_SCIPY and len(pts) > 0:
         pts = lloyd_relax(pts, density, n_iter=n_iter, rng=rng)
+
+    if len(pts) == 0:
+        return pts, np.empty((0,), dtype=np.float64)
 
     xi = np.clip(pts[:, 0].astype(int), 0, density.shape[1] - 1)
     yi = np.clip(pts[:, 1].astype(int), 0, density.shape[0] - 1)
@@ -297,9 +375,9 @@ def stipple(density: np.ndarray, n_points: int = 8000, n_iter: int = 8,
     if pos_jitter > 0:
         pts = pts + rng.normal(0, pos_jitter, pts.shape)
 
-    if overlap_gap >= 0:
+    if prune_mode == "overlap":
         pts, radii = prune_overlapping(pts, radii, gap=overlap_gap)
-    elif min_dist > 0:
+    elif prune_mode == "min_dist" and min_dist > 0:
         pts, radii = prune_min_distance(pts, radii, min_dist)
 
     return pts, radii

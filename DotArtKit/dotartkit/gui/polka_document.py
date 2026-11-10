@@ -244,13 +244,19 @@ def _dots_array(dots: list[Dot]):
 
 FEATURES = {
     "depth":         "归一化深度 d̂ (近=0, 远=1)",
-    "luminance":     "亮度 (亮=0, 暗=1 — 暗处大点)",
-    "curvature":     "平均曲率 κ (凹/鞍=0, 凸=1)",
+    "luminance":     "亮度 (暗=0, 亮=1)",
+    "curvature":     "平均曲率 κ (凹/鞍=1, 凸=0)",
     "gradient":      "深度梯度模 |∇d̂| (平坦=0, 转折=1)",
-    "gaussian_curv": "高斯曲率 K (鞍=0, 球顶=1)",
-    "hybrid":        "混合 0.6·(1-d̂) + 0.4·κ₊ (深度+凸面)",
+    "gaussian_curv": "高斯曲率 K (球顶=0, 鞍=1)",
+    "hybrid":        "混合 0.6·d̂ + 0.4·(1-κ₊) (深度+凸面)",
 }
-"""特征通道: 映射函数的输入场. 共 6 种, 全部归一到 [0,1]."""
+"""特征通道: 映射函数的输入场. 共 6 种, 全部归一到 [0,1].
+
+方向约定 (与 ACTIVATIONS 的 ``(1-f)^α`` 型激活一致): **低值 = 大点**.
+即各通道已按"应得到大点的区域 → 低值"方向定义 — depth 近景为 0、
+luminance 暗处为 0、curvature 凸面为 0、gaussian_curv 球顶为 0、
+hybrid 近+凸为 0、gradient 平坦为 0.
+"""
 
 
 class PolkaDocument:
@@ -272,6 +278,8 @@ class PolkaDocument:
         self._undo_stack: list[list[Dot]] = []
         self._redo_stack: list[list[Dot]] = []
         self._edit_snapshot: list[Dot] | None = None
+        self._edit_changed = False
+        self._coord_cache: tuple[int, np.ndarray, np.ndarray] | None = None
         self._estimator = None
         self._segmentor = None
 
@@ -313,6 +321,7 @@ class PolkaDocument:
         self.kappa = None
         self._geo_cache = {}
         self.dots = []
+        self._coord_cache = None
         self._undo_stack.clear()
         self._redo_stack.clear()
         self._estimator = None
@@ -332,6 +341,7 @@ class PolkaDocument:
             self.depth_raw is None
             or backend != self._depth_backend
             or self.fg_mask is None
+            or semantic_aware != self._semantic_aware
         )
         if not need_recompute:
             return
@@ -380,21 +390,24 @@ class PolkaDocument:
             return self.d_norm
         if name == "luminance":
             g = self.gray.astype(np.float32) / 255.0
-            return 1.0 - g          # 暗 = 1 → 大点 (映射函数 near=0 约定翻转)
+            return g               # 暗 = 0 → 大点 (低值=大点约定)
         if self._geo_cache.get("src") is not self.d_norm:
             from ..ops.geometry import geometry_fields
             self._geo_cache = {"src": self.d_norm}
             self._geo_cache.update(geometry_fields(self.d_norm))
         geo = self._geo_cache
         if name == "curvature":
-            return (geo["kappa"] + 1.0) * 0.5       # [-1,1] → [0,1]
+            # 低值=大点约定: 凸面 (κ>0) 应得大点 → 翻转为 (1-κ)/2
+            return (1.0 - geo["kappa"]) * 0.5   # [-1,1] → [1,0]
         if name == "gradient":
             return geo["grad_mag"]
         if name == "gaussian_curv":
-            return (geo["gauss_sign"] + 1.0) * 0.5
+            # 低值=大点约定: 球顶 (K>0, 椭圆点) 应得大点 → 翻转
+            return (1.0 - geo["gauss_sign"]) * 0.5
         if name == "hybrid":
+            # 低值=大点约定: 近景 (d̂ 小) + 凸面 (κ₊ 大) → 低值 → 大点
             k_pos = geo["kappa_pos"]
-            h = 0.6 * (1.0 - self.d_norm) + 0.4 * k_pos
+            h = 0.6 * self.d_norm + 0.4 * (1.0 - k_pos)
             return np.clip(h, 0.0, 1.0)
         raise AssertionError(name)
 
@@ -432,10 +445,21 @@ class PolkaDocument:
                  edge_dots: bool = True,
                  bg_fill: bool = True,
                  bg_spacing: float = 20.0,
+                 edge_dot_radius: float = 1.3,
+                 bg_dot_radius: float = 1.0,
+                 bg_radius_jitter: tuple[float, float] = (0.7, 1.3),
                  seed: int = 42) -> dict:
         """按当前参数 (重新) 生成全部波点. 返回统计 dict.
 
         feature: :data:`FEATURES` 键 — 映射函数的输入特征场.
+
+        Parameters
+        ----------
+        edge_dot_radius : 边缘点 (Canny) 半径 (px), 固定值.
+        bg_dot_radius : horror-vacui 背景填充点半径基准 (px),
+            实际半径 = ``bg_dot_radius * U(*bg_radius_jitter)``.
+        bg_radius_jitter : 背景点半径抖动区间 (乘法系数均匀采样的
+            下限/上限); 设为 ``(1.0, 1.0)`` 得到恒定半径.
         """
         if self.density is None:
             raise RuntimeError("call ensure_depth() first")
@@ -496,9 +520,11 @@ class PolkaDocument:
             eys, exs = np.where(edges > 0)
             if len(exs) > 0:
                 step = 4
-                exs = exs[::step].astype(np.float64) + rng.normal(0, 1.2, (len(exs[::step]),))
-                eys = eys[::step].astype(np.float64) + rng.normal(0, 1.2, (len(eys[::step]),))
-                dots.extend(Dot(float(x), float(y), 1.3, "edge")
+                exs = exs[::step]
+                eys = eys[::step]
+                exs = exs.astype(np.float64) + rng.normal(0, 1.2, (len(exs),))
+                eys = eys.astype(np.float64) + rng.normal(0, 1.2, (len(eys),))
+                dots.extend(Dot(float(x), float(y), edge_dot_radius, "edge")
                             for x, y in zip(exs, eys))
 
         # horror-vacui 背景填充
@@ -508,7 +534,8 @@ class PolkaDocument:
             bgx, bgy = np.meshgrid(bxs, bys)
             bgp = np.column_stack([bgx.ravel(), bgy.ravel()]).astype(np.float64)
             bgp += rng.normal(0, 3.0, bgp.shape)
-            bgr = rng.uniform(0.7, 1.3, len(bgp))
+            bgr = bg_dot_radius * rng.uniform(bg_radius_jitter[0],
+                                              bg_radius_jitter[1], len(bgp))
             bxi = np.clip(bgp[:, 0].astype(int), 0, W - 1)
             byi = np.clip(bgp[:, 1].astype(int), 0, H - 1)
             keep = self.density[byi, bxi] < 0.25
@@ -518,6 +545,7 @@ class PolkaDocument:
         self._push_history()
         self.dots = dots
         self._redo_stack.clear()
+        self._invalidate_coords()
 
         n_fg = sum(1 for d in dots if d.role == "fg")
         n_bg = sum(1 for d in dots if d.role == "bg")
@@ -532,18 +560,16 @@ class PolkaDocument:
     def _apply_filter(self, pts, radii, roles, prune, gap, rng):
         """按滤除算法处理点集. 返回 (pts, radii, roles).
 
-        prune_* 只操作 (pts, radii); 滤除后用最近邻把 roles
-        对齐回保留的点 (保留点必来自原集合, 最近邻距离为 0).
+        prune_* 支持返回保留掩码 (输出必为输入的行子集), 直接用掩码
+        索引 roles 对齐, 免去最近邻回查.
         """
         if prune == "none" or len(pts) == 0:
             return pts, radii, roles
-        pts_before = pts
-        roles_before = roles
         if prune == "overlap":
-            pts, radii = prune_overlapping(pts, radii, gap=gap)
+            keep = prune_overlapping(pts, radii, gap=gap, return_mask=True)
         elif prune == "min_dist":
-            pts, radii = prune_min_distance(
-                pts, radii, min_dist=max(gap, 0.5))
+            keep = prune_min_distance(
+                pts, radii, min_dist=max(gap, 0.5), return_mask=True)
         elif prune == "density":
             # 密度感知: 局部过密处随机丢弃, 稀疏处全保留
             if has_scipy() and len(pts) > 1:
@@ -555,9 +581,11 @@ class PolkaDocument:
                 thr = float(np.median(counts))
                 keep = (counts <= thr) | \
                        (rng.random(len(pts)) < thr / np.maximum(counts, 1))
-                pts, radii = pts[keep], radii[keep]
-        roles = self._snapshot_roles(pts_before, roles_before, pts)
-        return pts, radii, roles
+            else:
+                keep = np.ones(len(pts), dtype=bool)
+        else:
+            keep = np.ones(len(pts), dtype=bool)
+        return pts[keep], radii[keep], roles[keep]
 
     # ------------------------------------------------------------------
     # 编辑操作 (全部支持 undo/redo)
@@ -569,20 +597,25 @@ class PolkaDocument:
             self._undo_stack.pop(0)
         self._redo_stack.clear()
 
-    def _snapshot_roles(self, pts_before, roles_before, pts_after):
-        """滤除后按最近邻把 roles 对齐回保留点 (供内部使用)."""
-        if len(pts_after) == 0 or len(pts_before) == 0:
-            return np.empty((0,), dtype=object)
-        if has_scipy():
-            from scipy.spatial import cKDTree
-            tree = cKDTree(pts_before)
-            _, idx = tree.query(pts_after, k=1)
-        else:
-            idx = np.empty(len(pts_after), dtype=int)
-            for i, p in enumerate(pts_after):
-                idx[i] = int(np.argmin(
-                    np.sum((pts_before - p) ** 2, axis=1)))
-        return roles_before[idx]
+    def _coords(self) -> tuple[np.ndarray, np.ndarray]:
+        """缓存坐标数组 (pts (n,2), rads (n,)); dots 坐标/半径/数量变更时失效.
+
+        find_dot / delete_dots_in_circle 等交互热点路径向量化用.
+        """
+        if self._coord_cache is None:
+            if self.dots:
+                pts = np.array([[d.x, d.y] for d in self.dots],
+                               dtype=np.float64)
+                rads = np.array([d.r for d in self.dots], dtype=np.float64)
+            else:
+                pts = np.empty((0, 2), dtype=np.float64)
+                rads = np.empty((0,), dtype=np.float64)
+            self._coord_cache = (pts, rads)
+        return self._coord_cache
+
+    def _invalidate_coords(self) -> None:
+        """dots 变更后失效坐标缓存 (坐标 / 半径 / 数量任一变化)."""
+        self._coord_cache = None
 
     def find_dot(self, x: float, y: float, tol_extra: float = 3.0) -> Optional[int]:
         """返回包含 (x,y) 的最近点索引 (含 tol 容差), 无则 None.
@@ -590,39 +623,47 @@ class PolkaDocument:
         命中判定: 距离 ≤ r + tol_extra, 取距离最近者.
         小点优先与大点同级竞争 (直接按归一化距离 d - r 排序).
         """
-        best_i, best_key = None, None
-        for i, d in enumerate(self.dots):
-            dist = np.hypot(d.x - x, d.y - y)
-            if dist <= d.r + tol_extra:
-                key = dist - d.r
-                if best_key is None or key < best_key:
-                    best_i, best_key = i, key
-        return best_i
+        pts, rads = self._coords()
+        if len(pts) == 0:
+            return None
+        dist = np.hypot(pts[:, 0] - x, pts[:, 1] - y)
+        hit = dist <= rads + tol_extra
+        if not hit.any():
+            return None
+        idx = np.nonzero(hit)[0]
+        return int(idx[np.argmin((dist - rads)[idx])])
 
     def delete_dot(self, index: int) -> None:
         """删除指定索引的点."""
         self._push_history()
         del self.dots[index]
+        self._invalidate_coords()
 
     def delete_dots_in_circle(self, x: float, y: float, radius: float) -> int:
         """删除圆域内的全部点, 返回删除数."""
-        victims = [i for i, d in enumerate(self.dots)
-                   if np.hypot(d.x - x, d.y - y) <= radius + d.r]
-        if not victims:
+        pts, rads = self._coords()
+        if len(pts) == 0:
+            return 0
+        dist = np.hypot(pts[:, 0] - x, pts[:, 1] - y)
+        victims = np.nonzero(dist <= radius + rads)[0]
+        if len(victims) == 0:
             return 0
         self._push_history()
-        for i in reversed(victims):
+        for i in reversed(victims.tolist()):
             del self.dots[i]
+        self._invalidate_coords()
         return len(victims)
 
     def move_dot(self, index: int, x: float, y: float) -> None:
         """移动点到 (x, y). 不入历史 — 由调用方 (拖拽结束) 统一提交."""
         self.dots[index].x = float(x)
         self.dots[index].y = float(y)
+        self._invalidate_coords()
 
     def resize_dot(self, index: int, r: float) -> None:
         """修改点半径. 不入历史 — 由调用方统一提交."""
         self.dots[index].r = max(0.3, float(r))
+        self._invalidate_coords()
 
     def set_dot_role(self, index: int, role: str) -> None:
         """修改点角色 (前景/背景/边缘). 不入历史."""
@@ -687,12 +728,14 @@ class PolkaDocument:
             xi = int(np.clip(round(d.x), 0, W - 1))
             yi = int(np.clip(round(d.y), 0, H - 1))
             d.r = float(radius_field[yi, xi])
+        self._invalidate_coords()
         return len(targets)
 
     def add_dot(self, x: float, y: float, r: float, role: str = "fg") -> None:
         """在 (x, y) 添加一个点 (入历史)."""
         self._push_history()
         self.dots.append(Dot(float(x), float(y), max(0.3, float(r)), role))
+        self._invalidate_coords()
 
     def begin_edit(self) -> None:
         """开始一次交互编辑 (拖拽/改半径前调用): 快照当前状态.
@@ -721,6 +764,7 @@ class PolkaDocument:
             return False
         self._redo_stack.append(copy.deepcopy(self.dots))
         self.dots = self._undo_stack.pop()
+        self._invalidate_coords()
         return True
 
     def redo(self) -> bool:
@@ -728,6 +772,7 @@ class PolkaDocument:
             return False
         self._undo_stack.append(copy.deepcopy(self.dots))
         self.dots = self._redo_stack.pop()
+        self._invalidate_coords()
         return True
 
     # ------------------------------------------------------------------
@@ -735,7 +780,6 @@ class PolkaDocument:
     # ------------------------------------------------------------------
 
     def render(self, palette: str = "black_red",
-               semantic_aware: bool = True,
                dot_roles_visible: Optional[set] = None) -> np.ndarray:
         """渲染点列表 → RGB uint8 图像.
 
