@@ -1,0 +1,82 @@
+[
+  {
+    "file": "002_宝相花纹.png",
+    "id": "002",
+    "name_cn": "宝相花纹",
+    "name_en": "Baoxiang Floral Pattern",
+    "category": "植物花卉纹",
+    "meaning": "庄严、富贵、圆满",
+    "source": "Wenyang 中国传统纹样图鉴 https://github.com/dososo/chinese-traditional-patterns",
+    "license": "CC BY-NC 4.0 (非商用; 研究用途)"
+  },
+  {
+    "file": "003_牡丹纹.png",
+    "id": "003",
+    "name_cn": "牡丹纹",
+    "name_en": "Peony Pattern",
+    "category": "植物花卉纹",
+    "meaning": "富贵、繁荣、华美",
+    "source": "Wenyang 中国传统纹样图鉴 https://github.com/dososo/chinese-traditional-patterns",
+    "license": "CC BY-NC 4.0 (非商用; 研究用途)"
+  },
+  {
+    "file": "005_莲瓣纹.png",
+    "id": "005",
+    "name_cn": "莲瓣纹",
+    "name_en": "Lotus Petal Pattern",
+    "category": "植物花卉纹",
+    "meaning": "清净、庄重、安宁",
+    "source": "Wenyang 中国传统纹样图鉴 https://github.com/dososo/chinese-traditional-patterns",
+    "license": "CC BY-NC 4.0 (非商用; 研究用途)"
+  },
+  {
+    "file": "006_卷草纹.png",
+    "id": "006",
+    "name_cn": "卷草纹",
+    "name_en": "Scroll Grass Pattern",
+    "category": "植物花卉纹",
+    "meaning": "生命力、延展、装饰韵律",
+    "source": "Wenyang 中国传统纹样图鉴 https://github.com/dososo/chinese-traditional-patterns",
+    "license": "CC BY-NC 4.0 (非商用; 研究用途)"
+  },
+  {
+    "file": "041_回纹.png",
+    "id": "041",
+    "name_cn": "回纹",
+    "name_en": "Key Fret Pattern",
+    "category": "几何锦纹",
+    "meaning": "循环往复、生生不息",
+    "source": "Wenyang 中国传统纹样图鉴 https://github.com/dososo/chinese-traditional-patterns",
+    "license": "CC BY-NC 4.0 (非商用; 研究用途)"
+  },
+  {
+    "file": "043_云雷纹.png",
+    "id": "043",
+    "name_cn": "云雷纹",
+    "name_en": "Cloud-Thunder Pattern",
+    "category": "几何锦纹",
+    "meaning": "神秘、礼制、祥瑞",
+    "source": "Wenyang 中国传统纹样图鉴 https://github.com/dososo/chinese-traditional-patterns",
+    "license": "CC BY-NC 4.0 (非商用; 研究用途)"
+  },
+  {
+    "file": "051_冰裂纹.png",
+    "id": "051",
+    "name_cn": "冰裂纹",
+    "name_en": "Crackle Ice Pattern",
+    "category": "几何锦纹",
+    "meaning": "雅致、清冷、自然变化",
+    "source": "Wenyang 中国传统纹样图鉴 https://github.com/dososo/chinese-traditional-patterns",
+    "license": "CC BY-NC 4.0 (非商用; 研究用途)"
+  },
+  {
+    "file": "092_团寿纹.png",
+    "id": "092",
+    "name_cn": "团寿纹",
+    "name_en": "Round Longevity Pattern",
+    "category": "文字福寿与组合纹",
+    "meaning": "圆满长寿、安康",
+    "source": "Wenyang 中国传统纹样图鉴 https://github.com/dososo/chinese-traditional-patterns",
+    "license": "CC BY-NC 4.0 (非商用; 研究用途)"
+  }
+]
