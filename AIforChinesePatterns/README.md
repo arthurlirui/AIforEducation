@@ -9,6 +9,8 @@
   49 测全绿，4 张 Demo 通过视觉验收 → [docs/design-fourier-pattern.md](docs/design-fourier-pattern.md)
 - **2026-11-11** 桌面 GUI 论文 Demo（`src/fcp/gui/`）：图片加载 / OpenCV 预处理 /
   傅里叶分解 / 封闭线条填色，69 测全绿 → [docs/design-gui.md](docs/design-gui.md)
+- **2026-11-12** 真实纹样测试（`images/` 8 张, 三轮验收 8/8） → [docs/real-image-test-report.md](docs/real-image-test-report.md)；
+  GUI 新增边框剥离 + 对称归并（`fcp.symmetry` 同形聚类），82 测全绿
 
 ## 核心思想
 
@@ -25,7 +27,7 @@ L3  LoRA + ControlNet 对称感知扩散渲染   ← 规划中
 ## 快速开始
 
 ```bash
-py -m pytest tests           # 69 tests
+py -m pytest tests           # 82 tests
 py -m fcp.gui                # 启动 GUI 编辑器（可带图片路径参数）
 py demos/demo.py             # 谐波收敛 / 团花 / 栅格往返 → demos/output/
 py demos/demo_decompose.py   # 掩膜 → 部件分解 → EFD 重建三联对比
@@ -64,7 +66,7 @@ spec = dec.to_pattern().to_spec().to_json()  # → PatternSpec
 AIforChinesePatterns/
   docs/        # survey.md 调研 · design-fourier-pattern.md 算法设计 · design-gui.md GUI 设计
   src/fcp/     # 核心五模块 + gui/ (imio/pipeline/fill/app)
-  tests/       # 69 项单元测试（含 tests/gui/）
+  tests/       # 82 项单元测试（含 tests/gui/）
   demos/       # demo.py / demo_decompose.py / demo_gui_screenshot.py + 输出
   data/        # 规划：纹样图像 + 结构标注 + 文化知识库
 ```

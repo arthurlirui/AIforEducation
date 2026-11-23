@@ -1,4 +1,4 @@
-# 傅里叶纹样算法设计（fcp 包 v0.2）
+# 傅里叶纹样算法设计（fcp 包 v0.3）
 
 > 模块: `src/fcp/` · 日期: 2026-11-11 · 状态: 已实现, 49 测全绿, Demo 视觉验收通过
 
@@ -31,6 +31,7 @@ src/fcp/
   pattern.py         Placement/Pattern/PatternSpec + CurveLibrary 母题库
   render.py          PIL 渲染（超采样抗锯齿）
   decompose.py       掩膜部件分解 + 自动阶数选择（真实素材入口）
+  symmetry.py        同形部件聚类归并（位姿提取 + 共享母题, v0.3）
 ```
 
 ### 2.1 FourierCurve（fourier_curve.py）
