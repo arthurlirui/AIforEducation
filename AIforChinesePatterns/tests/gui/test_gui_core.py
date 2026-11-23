@@ -332,3 +332,134 @@ class TestAppSmoke:
 
 
 import tkinter as tk  # noqa: E402  (TestAppSmoke 顶部需要, 但放底部避免影响收集)
+
+
+# ----------------------------------------------------------------------
+# 2026-11 审阅回归: 归并模式的改色同步 / 阶数覆盖 / 模式锁 / 状态还原
+# ----------------------------------------------------------------------
+def _make_app():
+    pytest.importorskip("tkinter")
+    from fcp.gui.app import PatternApp
+    last = None
+    # 连续创建/销毁 Tk 根窗口在 Windows 上偶发 TclError（资源回收竞态）,
+    # 短重试避免把可恢复的瞬态当成"无显示环境"跳过
+    for _ in range(3):
+        try:
+            app = PatternApp()
+            app.withdraw()
+            return app
+        except tk.TclError as e:
+            last = e
+    pytest.skip(f"无显示环境: {last}")
+
+
+def _make_merged_app(tmp_path):
+    """构造已完成分解+开归并的 app（21 部件宝相花）。"""
+    app = _make_app()
+    img, _ = _baoxiang_parts(size=128)
+    p = tmp_path / "纹样.png"
+    cv2.imencode(".png", img[:, :, ::-1])[1].tofile(str(p))
+    app.load_image(str(p))
+    app.invert_var.set(True)
+    app.on_decompose()
+    app.merge_var.set(True)
+    app._on_merge_toggle()
+    assert app.merged_pattern is not None
+    return app
+
+
+class TestMergeGuiFeatures:
+    def test_recolor_syncs_merged_pattern(self, tmp_path):
+        """点击改色须同步归并 Pattern 的对应摆放（修复前: 归并模式下
+        改色只进 fill_state, 渲染/导出仍用旧色, 改色静默失效）。"""
+        app = _make_merged_app(tmp_path)
+        try:
+            app._recolor_part(0, "#123456")
+            assert app.fill_state.color_of(0) == "#123456"
+            assert app.merged_pattern.placements[0].color == "#123456"
+            # 其余部件不受影响
+            assert app.merged_pattern.placements[1].color != "#123456"
+        finally:
+            app.destroy()
+
+    def test_order_override_applies_to_motifs(self, tmp_path):
+        """全局阶数覆盖在归并模式下应作用于共享母题（修复前: 滑块在
+        归并模式是无效操作）。"""
+        app = _make_merged_app(tmp_path)
+        try:
+            originals = {n: c.order for n, c in
+                         app.merged_pattern.motifs.items()}
+            app.order_override_var.set(4)
+            app._on_order_override()
+            assert all(c.order == 4
+                       for c in app.merged_pattern.motifs.values())
+            # 归零还原自动阶数
+            app.order_override_var.set(0)
+            app._on_order_override()
+            assert {n: c.order for n, c in
+                    app.merged_pattern.motifs.items()} == originals
+        finally:
+            app.destroy()
+
+    def test_mode_combo_locked_in_merge(self, tmp_path):
+        """归并模式下渲染模式不适用（render_pattern 无 both 态）, 下拉
+        应禁用; 取消归并恢复。"""
+        app = _make_merged_app(tmp_path)
+        try:
+            assert "disabled" in app.mode_combo.state()
+            app.merge_var.set(False)
+            app._on_merge_toggle()
+            assert "disabled" not in app.mode_combo.state()
+        finally:
+            app.destroy()
+
+    def test_lines_view_restores_filled_on_render_error(
+            self, tmp_path, monkeypatch):
+        """线条视图临时置 filled=False 须有 finally 保护（修复前: 渲染
+        抛异常则摆放永久停留线条态, 填色视图与 PNG 导出一起退化）。"""
+        app = _make_merged_app(tmp_path)
+        try:
+            import fcp.render
+
+            def boom(pattern, size=512, **kw):
+                raise RuntimeError("渲染失败")
+
+            monkeypatch.setattr(fcp.render, "render_pattern", boom)
+            app.view = "lines"
+            with pytest.raises(RuntimeError):
+                app._current_image()
+            assert all(pl.filled for pl in app.merged_pattern.placements)
+        finally:
+            app.destroy()
+
+    def test_load_image_resets_merge_state(self, tmp_path):
+        """换图后上一张的归并 Pattern/信息标签不能泄漏（修复前:
+        load_image 只重置 fill_state, 不重置 merged_pattern）。"""
+        app = _make_merged_app(tmp_path)
+        try:
+            img, _ = _baoxiang_parts(size=128)
+            p2 = tmp_path / "第二张.png"
+            cv2.imencode(".png", img[:, :, ::-1])[1].tofile(str(p2))
+            app.load_image(str(p2))
+            assert app.merged_pattern is None
+            assert app._merge_motif_canonicals is None
+            assert app.merge_info.cget("text") == ""
+        finally:
+            app.destroy()
+
+    def test_collect_params_strip_title_knob(self, tmp_path):
+        """标题栏剥离比例是独立旋钮（修复前: 0.12 硬编码绑定边框勾选,
+        主体进入顶部 12% 的素材会被静默裁掉且无法关闭）。"""
+        app = _make_app()
+        try:
+            app.strip_border_var.set(False)
+            app.strip_title_var.set(15)
+            assert app._collect_params().strip_title == 0.0
+            app.strip_border_var.set(True)
+            assert app._collect_params().strip_title == 0.15
+            app.strip_title_var.set(0)
+            assert app._collect_params().strip_title == 0.0
+            assert app._collect_params().strip_border == int(
+                app.strip_band_var.get())
+        finally:
+            app.destroy()

@@ -62,6 +62,7 @@ class PatternApp(tk.Tk):
         self.params = PreprocessParams()
         self.fill_state: FillState | None = None
         self.merged_pattern = None            # 对称归并后的 Pattern（勾选时）
+        self._merge_motif_canonicals = None   # 归并母题原始曲线（阶数覆盖还原用）
         self.view = self.VIEW_FILL
         self._photo: ImageTk.PhotoImage | None = None
         self._decompose_ms = 0.0
@@ -155,7 +156,12 @@ class PatternApp(tk.Tk):
         ttk.Label(row, text="带宽").pack(side=tk.LEFT, padx=(6, 0))
         ttk.Spinbox(row, from_=4, to=80, textvariable=self.strip_band_var,
                     width=4).pack(side=tk.LEFT, padx=2)
-        ttk.Label(pp, text="（卡片类素材必开: 切断主体与装饰边框的连通）",
+        self.strip_title_var = tk.IntVar(value=12)
+        ttk.Label(row, text="标题栏%").pack(side=tk.LEFT, padx=(6, 0))
+        ttk.Spinbox(row, from_=0, to=40, textvariable=self.strip_title_var,
+                    width=3).pack(side=tk.LEFT, padx=2)
+        ttk.Label(pp, text="（卡片类素材必开: 切断主体与装饰边框的连通; "
+                          "标题栏 0=只剥四边）",
                   foreground="#888").pack(anchor=tk.W, padx=6)
 
         # ---------- 分解参数 ----------
@@ -206,8 +212,11 @@ class PatternApp(tk.Tk):
         row = ttk.Frame(fp); row.pack(fill=tk.X, padx=6)
         ttk.Label(row, text="渲染模式").pack(side=tk.LEFT)
         self.mode_var = tk.StringVar(value="both")
-        ttk.Combobox(row, textvariable=self.mode_var, state="readonly",
-                     values=("lines", "fill", "both"), width=8).pack(side=tk.RIGHT)
+        self.mode_combo = ttk.Combobox(row, textvariable=self.mode_var,
+                                       state="readonly",
+                                       values=("lines", "fill", "both"),
+                                       width=8)
+        self.mode_combo.pack(side=tk.RIGHT)
         self.mode_var.trace_add("write", self._on_mode_change)
 
         ttk.Label(fp, text="点击部件改色: 在填色视图下点击部件弹选色器",
@@ -243,6 +252,10 @@ class PatternApp(tk.Tk):
         self.image_rgb = Image.fromarray(img[:, :, ::-1].copy())
         self.mask = None
         self.fill_state = None
+        self.merged_pattern = None       # 上一张图的归并状态不能泄漏
+        self._merge_motif_canonicals = None
+        if hasattr(self, "merge_info"):
+            self.merge_info.config(text="")
         self.view = self.VIEW_ORIGINAL
         self.view_var.set(self.view)
         self._set_status(f"已加载 {Path(path).name} "
@@ -269,7 +282,8 @@ class PatternApp(tk.Tk):
             fill_holes=self.fill_holes_var.get(),
             strip_border=(int(self.strip_band_var.get())
                           if self.strip_border_var.get() else 0),
-            strip_title=(0.12 if self.strip_border_var.get() else 0.0),
+            strip_title=(int(self.strip_title_var.get()) / 100.0
+                         if self.strip_border_var.get() else 0.0),
             max_side=self.params.max_side,
         )
 
@@ -328,7 +342,9 @@ class PatternApp(tk.Tk):
             return
         if not self.merge_var.get():
             self.merged_pattern = None
+            self._merge_motif_canonicals = None
             self.merge_info.config(text="")
+            self._set_mode_locked(False)
             return
         from ..symmetry import cluster_parts, pattern_from_clustering
         dec = self.fill_state.decomposition
@@ -339,12 +355,38 @@ class PatternApp(tk.Tk):
                 colors=[self.fill_state.color_of(i)
                         for i in range(len(dec.parts))],
                 name="merged")
+            # 缓存原始阶数母题, 供全局阶数覆盖随时重作用/还原
+            self._merge_motif_canonicals = dict(self.merged_pattern.motifs)
+            self._apply_order_override_to_motifs()
             self.merge_info.config(
                 text=f"{len(dec.parts)} 部件 → {clu.n_motifs} 个共享母题 · "
                      f"归并 RMS {np.mean(clu.part_errors):.1f}px")
         except Exception as e:  # noqa: BLE001
             self.merged_pattern = None
+            self._merge_motif_canonicals = None
             self.merge_info.config(text=f"归并失败: {e}")
+        self._set_mode_locked(self.merged_pattern is not None)
+
+    def _apply_order_override_to_motifs(self) -> None:
+        """全局阶数覆盖作用于共享母题（谐波收敛演示在归并模式同样可用）。
+
+        覆盖阶数 K>0 时把每个母题按 K 重拟合; K=0 还原分解时的自动阶数。
+        幂等: 每次从缓存的原始母题出发, 无需记录上一次覆盖状态。
+        """
+        if self.merged_pattern is None or self._merge_motif_canonicals is None:
+            return
+        k = int(self.order_override_var.get())
+        if k:
+            from ..fourier_curve import FourierCurve
+            for name, curve in self._merge_motif_canonicals.items():
+                self.merged_pattern.motifs[name] = FourierCurve.from_contour(
+                    curve.to_contour(256), order=max(1, k))
+        else:
+            self.merged_pattern.motifs = dict(self._merge_motif_canonicals)
+
+    def _set_mode_locked(self, locked: bool) -> None:
+        """归并模式下渲染模式不适用（render_pattern 只有填充/线条两态）。"""
+        self.mode_combo.state(["disabled"] if locked else ["!disabled"])
 
     def _on_merge_toggle(self) -> None:
         if self.fill_state is None:
@@ -358,6 +400,8 @@ class PatternApp(tk.Tk):
             return
         # 滑块拖动时实时更新（tkinter 变量在同一线程读取, 安全）
         self.fill_state.order_override = int(self.order_override_var.get())
+        if self.merged_pattern is not None:
+            self._apply_order_override_to_motifs()
         if self.view in (self.VIEW_LINES, self.VIEW_FILL):
             self._refresh_view()
 
@@ -365,7 +409,11 @@ class PatternApp(tk.Tk):
         if self.fill_state is not None:
             self.fill_state.palette_name = self.palette_var.get()
             self.fill_state.part_colors = []
-            self._apply_merge_if_checked()  # 归并 Pattern 同步新配色
+            # 归并 Pattern 就地同步新配色（摆放与部件序一一对应,
+            # 无需重新聚类——那是 O(N²) 距离计算）
+            if self.merged_pattern is not None:
+                for j, pl in enumerate(self.merged_pattern.placements):
+                    pl.color = self.fill_state.color_of(j)
             if self.view in (self.VIEW_LINES, self.VIEW_FILL):
                 self._refresh_view()
 
@@ -407,8 +455,15 @@ class PatternApp(tk.Tk):
         color = colorchooser.askcolor(
             initialcolor=state.color_of(hit), title=f"部件 {hit} 颜色")[1]
         if color:
-            state.set_part_color(hit, color)
+            self._recolor_part(hit, color)
             self._refresh_view()
+
+    def _recolor_part(self, index: int, color: str) -> None:
+        """改部件颜色, 同步归并 Pattern 的对应摆放（按部件序一一对应）。"""
+        self.fill_state.set_part_color(index, color)
+        if (self.merged_pattern is not None
+                and index < len(self.merged_pattern.placements)):
+            self.merged_pattern.placements[index].color = color
 
     # ==================================================================
     # 导出
@@ -466,15 +521,17 @@ class PatternApp(tk.Tk):
         if self.view == self.VIEW_LINES and self.fill_state is not None:
             # 归并模式下渲染归并 Pattern 的线条（母题副本形态）
             if self.merged_pattern is not None:
-                saved = self.merged_pattern.placements
-                saved_filled = [(pl.filled, pl.color) for pl in saved]
-                for pl in saved:
-                    pl.filled = False
-                from ..render import render_pattern
-                img = render_pattern(self.merged_pattern, size=768)
-                for pl, (f, c) in zip(saved, saved_filled):
-                    pl.filled, pl.color = f, c
-                return img
+                placements = self.merged_pattern.placements
+                saved = [pl.filled for pl in placements]
+                try:
+                    for pl in placements:
+                        pl.filled = False
+                    from ..render import render_pattern
+                    return render_pattern(self.merged_pattern, size=768)
+                finally:
+                    # 渲染抛异常也必须还原, 否则填色视图/导出永久退化为轮廓
+                    for pl, filled in zip(placements, saved):
+                        pl.filled = filled
             saved = self.fill_state.mode
             self.fill_state.mode = "lines"
             img = render_fill(self.fill_state, size=768)

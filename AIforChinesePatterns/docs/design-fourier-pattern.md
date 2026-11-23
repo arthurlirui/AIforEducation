@@ -31,7 +31,9 @@ src/fcp/
   pattern.py         Placement/Pattern/PatternSpec + CurveLibrary 母题库
   render.py          PIL 渲染（超采样抗锯齿）
   decompose.py       掩膜部件分解 + 自动阶数选择（真实素材入口）
-  symmetry.py        同形部件聚类归并（位姿提取 + 共享母题, v0.3）
+  symmetry.py        同形部件聚类归并（位姿提取 + 共享母题, v0.4:
+                     三阶矩规范化反射约定 + 四象限/倒序距离搜索 +
+                     频域相关预筛, 镜像/旋转副本均精确重建）
 ```
 
 ### 2.1 FourierCurve（fourier_curve.py）

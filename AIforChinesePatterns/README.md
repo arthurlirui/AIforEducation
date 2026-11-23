@@ -11,6 +11,9 @@
   傅里叶分解 / 封闭线条填色，69 测全绿 → [docs/design-gui.md](docs/design-gui.md)
 - **2026-11-12** 真实纹样测试（`images/` 8 张, 三轮验收 8/8） → [docs/real-image-test-report.md](docs/real-image-test-report.md)；
   GUI 新增边框剥离 + 对称归并（`fcp.symmetry` 同形聚类），82 测全绿
+- **2026-11-23** 审阅修复轮：对称归并配色索引/镜像位姿检测（三阶矩规范化）/
+  重建误差相位对齐三项 bug 修复，聚类频域预筛提速 ~20×（宝相花 0.8s），
+  GUI 归并模式支持改色同步与母题阶数覆盖，92 测全绿
 
 ## 核心思想
 
