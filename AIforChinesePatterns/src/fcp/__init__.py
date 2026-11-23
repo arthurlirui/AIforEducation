@@ -10,6 +10,12 @@ from .decompose import (
     decompose_mask,
     pattern_from_decomposition,
 )
+from .symmetry import (
+    PartPose,
+    SymmetryClustering,
+    cluster_parts,
+    pattern_from_clustering,
+)
 
 __all__ = [
     "FourierCurve",
@@ -24,4 +30,8 @@ __all__ = [
     "Decomposition",
     "decompose_mask",
     "pattern_from_decomposition",
+    "PartPose",
+    "SymmetryClustering",
+    "cluster_parts",
+    "pattern_from_clustering",
 ]
