@@ -139,6 +139,31 @@ class TestPipeline:
                                              blur_kind="none", fill_holes=True))
         assert np.array_equal(a, b)
 
+    def test_strip_border_cuts_edge_contact(self):
+        """边框剥离: 贴边像素带清零, 中央区域不受影响。"""
+        img, mask_ref = _baoxiang_parts(size=200)
+        raw = preprocess(img, PreprocessParams(invert=True, thresh_mode="otsu",
+                                               blur_kind="none"))
+        stripped = preprocess(img, PreprocessParams(
+            invert=True, thresh_mode="otsu", blur_kind="none",
+            strip_border=10, strip_title=0.12))
+        assert not stripped[:10, :].any()          # 四带清零
+        assert not stripped[-10:, :].any()
+        assert not stripped[:, :10].any()
+        assert not stripped[:, -10:].any()
+        assert not stripped[:24, :].any()          # 标题栏(200*0.12=24)
+        # 中央区域保留
+        h, w = stripped.shape
+        assert np.array_equal(stripped[h//4:3*h//4, w//4:3*w//4],
+                              raw[h//4:3*h//4, w//4:3*w//4])
+
+    def test_strip_validation(self):
+        img = np.full((32, 32, 3), 255, np.uint8)
+        with pytest.raises(ValueError):
+            preprocess(img, PreprocessParams(strip_border=-1))
+        with pytest.raises(ValueError):
+            preprocess(img, PreprocessParams(strip_title=0.6))
+
     def test_thresh_modes_all_work(self):
         img, _ = _baoxiang_parts(size=128)
         for mode in THRESH_MODES:
@@ -288,6 +313,17 @@ class TestAppSmoke:
         app.on_decompose()
         assert app.fill_state is not None
         assert len(app.fill_state.decomposition.parts) == 21
+        # 对称归并: 8 花瓣 + 圆点 + 角叶 + 中心 → 母题数远小于部件数
+        app.merge_var.set(True)
+        app._on_merge_toggle()
+        assert app.merged_pattern is not None
+        n_motifs = len(app.merged_pattern.motifs)
+        assert n_motifs < 21
+        n_inst = len(app.merged_pattern.instances())
+        assert n_inst == 21                    # 摆放数 = 部件数
+        # 归并渲染可用
+        app.view = "fill"
+        assert app._current_image() is not None
         # 视图切换
         for view in ("mask", "lines", "fill", "original"):
             app.view = view

@@ -39,6 +39,8 @@ class PreprocessParams:
     morph_open: int = 0             # 开运算核（0=关闭; 去小白噪）
     morph_close: int = 0            # 闭运算核（0=关闭; 补小缝）
     fill_holes: bool = False        # 孔洞填充: 线稿描边围合区域补实
+    strip_border: int = 0           # 边框剥离带像素宽（0=关闭; 卡片边框）
+    strip_title: float = 0.0        # 顶部标题栏剥离比例（0=关闭; 如 0.12）
     max_side: int = 1024            # 加载时最长边缩放（0=不缩）
 
     def validate(self) -> None:
@@ -52,6 +54,10 @@ class PreprocessParams:
             raise ValueError("blur_ksize 至少为 1")
         if self.morph_open < 0 or self.morph_close < 0:
             raise ValueError("形态学核不能为负")
+        if self.strip_border < 0:
+            raise ValueError("strip_border 不能为负")
+        if not 0.0 <= self.strip_title < 0.5:
+            raise ValueError("strip_title 需在 [0, 0.5)")
         if self.max_side < 0:
             raise ValueError("max_side 不能为负")
 
@@ -140,5 +146,17 @@ def preprocess(
             if ff[seed[1], seed[0]] == 0:
                 cv2.floodFill(ff, mask2, seed, 100)  # 哨兵: 外部背景
         binary = ff != 100
+
+    # 边框剥离（真实纹样测试的经验教训: 主体常经卡片装饰边框与图边
+    # 连通成单一连通域, 必须在掩膜阶段切断, 而非事后丢部件）
+    if p.strip_border or p.strip_title:
+        b = int(p.strip_border)
+        if b:
+            binary[:b, :] = False
+            binary[-b:, :] = False
+            binary[:, :b] = False
+            binary[:, -b:] = False
+        if p.strip_title > 0:
+            binary[: int(binary.shape[0] * p.strip_title), :] = False
 
     return binary != 0

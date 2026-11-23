@@ -61,6 +61,7 @@ class PatternApp(tk.Tk):
         self.mask: np.ndarray | None = None           # 预处理结果
         self.params = PreprocessParams()
         self.fill_state: FillState | None = None
+        self.merged_pattern = None            # 对称归并后的 Pattern（勾选时）
         self.view = self.VIEW_FILL
         self._photo: ImageTk.PhotoImage | None = None
         self._decompose_ms = 0.0
@@ -146,6 +147,17 @@ class PatternApp(tk.Tk):
         ttk.Checkbutton(pp, text="孔洞填充（线稿描边区域补实）",
                         variable=self.fill_holes_var).pack(anchor=tk.W, padx=6, pady=2)
 
+        row = ttk.Frame(pp); row.pack(fill=tk.X, padx=6, pady=2)
+        self.strip_border_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(row, text="边框剥离",
+                        variable=self.strip_border_var).pack(side=tk.LEFT)
+        self.strip_band_var = tk.IntVar(value=28)
+        ttk.Label(row, text="带宽").pack(side=tk.LEFT, padx=(6, 0))
+        ttk.Spinbox(row, from_=4, to=80, textvariable=self.strip_band_var,
+                    width=4).pack(side=tk.LEFT, padx=2)
+        ttk.Label(pp, text="（卡片类素材必开: 切断主体与装饰边框的连通）",
+                  foreground="#888").pack(anchor=tk.W, padx=6)
+
         # ---------- 分解参数 ----------
         dp = ttk.LabelFrame(panel, text="傅里叶分解")
         dp.pack(fill=tk.X, padx=4, pady=4)
@@ -169,6 +181,16 @@ class PatternApp(tk.Tk):
             dp, from_=0, to=64, variable=self.order_override_var,
             orient=tk.HORIZONTAL, command=self._on_order_override)
         self.order_scale.pack(fill=tk.X, padx=6)
+
+        # 对称归并: 同形部件聚类为共享母题 + 位姿摆放
+        self.merge_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(dp, text="对称归并（同形部件共享母题）",
+                        variable=self.merge_var,
+                        command=self._on_merge_toggle).pack(
+                            anchor=tk.W, padx=6, pady=(6, 0))
+        self.merge_info = ttk.Label(dp, text="", foreground="#2b5f8a",
+                                    wraplength=260)
+        self.merge_info.pack(anchor=tk.W, padx=6)
 
         # ---------- 填色 ----------
         fp = ttk.LabelFrame(panel, text="填色")
@@ -245,6 +267,9 @@ class PatternApp(tk.Tk):
             morph_open=int(self.morph_open_var.get()),
             morph_close=int(self.morph_close_var.get()),
             fill_holes=self.fill_holes_var.get(),
+            strip_border=(int(self.strip_band_var.get())
+                          if self.strip_border_var.get() else 0),
+            strip_title=(0.12 if self.strip_border_var.get() else 0.0),
             max_side=self.params.max_side,
         )
 
@@ -287,6 +312,8 @@ class PatternApp(tk.Tk):
             palette_name=self.palette_var.get(),
             mode=self.mode_var.get(),
         )
+        self.merged_pattern = None
+        self._apply_merge_if_checked()
         self.order_scale.configure(to=max(8, int(self.max_order_var.get())))
         orders = sorted({p.order for p in dec.parts})
         self._set_status(
@@ -294,6 +321,37 @@ class PatternApp(tk.Tk):
         self.view = self.VIEW_FILL
         self.view_var.set(self.view)
         self._refresh_view()
+
+    def _apply_merge_if_checked(self) -> None:
+        """按勾选状态构建归并 Pattern 并更新信息标签。"""
+        if self.fill_state is None:
+            return
+        if not self.merge_var.get():
+            self.merged_pattern = None
+            self.merge_info.config(text="")
+            return
+        from ..symmetry import cluster_parts, pattern_from_clustering
+        dec = self.fill_state.decomposition
+        try:
+            clu = cluster_parts(dec)
+            self.merged_pattern = pattern_from_clustering(
+                dec, clu,
+                colors=[self.fill_state.color_of(i)
+                        for i in range(len(dec.parts))],
+                name="merged")
+            self.merge_info.config(
+                text=f"{len(dec.parts)} 部件 → {clu.n_motifs} 个共享母题 · "
+                     f"归并 RMS {np.mean(clu.part_errors):.1f}px")
+        except Exception as e:  # noqa: BLE001
+            self.merged_pattern = None
+            self.merge_info.config(text=f"归并失败: {e}")
+
+    def _on_merge_toggle(self) -> None:
+        if self.fill_state is None:
+            return
+        self._apply_merge_if_checked()
+        if self.view in (self.VIEW_LINES, self.VIEW_FILL):
+            self._refresh_view()
 
     def _on_order_override(self, _value: str = "") -> None:
         if self.fill_state is None:
@@ -307,6 +365,7 @@ class PatternApp(tk.Tk):
         if self.fill_state is not None:
             self.fill_state.palette_name = self.palette_var.get()
             self.fill_state.part_colors = []
+            self._apply_merge_if_checked()  # 归并 Pattern 同步新配色
             if self.view in (self.VIEW_LINES, self.VIEW_FILL):
                 self._refresh_view()
 
@@ -363,7 +422,11 @@ class PatternApp(tk.Tk):
             filetypes=[("PNG", "*.png")])
         if not path:
             return
-        render_fill(self.fill_state, size=1024).save(path)
+        if self.merged_pattern is not None:
+            from ..render import render_pattern
+            render_pattern(self.merged_pattern, size=1024).save(path)
+        else:
+            render_fill(self.fill_state, size=1024).save(path)
         self._set_status(f"已导出 {path}")
 
     def on_export_spec(self) -> None:
@@ -375,11 +438,16 @@ class PatternApp(tk.Tk):
             filetypes=[("JSON", "*.json")])
         if not path:
             return
-        dec = self.fill_state.decomposition
-        spec = dec.to_pattern(
-            colors=[self.fill_state.color_of(i) for i in range(len(dec.parts))],
-            name=Path(path).stem,
-        ).to_spec()
+        if self.merged_pattern is not None:
+            # 归并模式: 直接导出共享母题版 Spec（体积大幅缩小）
+            spec = self.merged_pattern.to_spec()
+        else:
+            dec = self.fill_state.decomposition
+            spec = dec.to_pattern(
+                colors=[self.fill_state.color_of(i)
+                        for i in range(len(dec.parts))],
+                name=Path(path).stem,
+            ).to_spec()
         Path(path).write_text(spec.to_json(), encoding="utf-8")
         self._set_status(f"已导出 {path}")
 
@@ -396,12 +464,26 @@ class PatternApp(tk.Tk):
             m = np.where(self.mask, 100, 235).astype(np.uint8)
             return Image.fromarray(m).convert("RGB")
         if self.view == self.VIEW_LINES and self.fill_state is not None:
+            # 归并模式下渲染归并 Pattern 的线条（母题副本形态）
+            if self.merged_pattern is not None:
+                saved = self.merged_pattern.placements
+                saved_filled = [(pl.filled, pl.color) for pl in saved]
+                for pl in saved:
+                    pl.filled = False
+                from ..render import render_pattern
+                img = render_pattern(self.merged_pattern, size=768)
+                for pl, (f, c) in zip(saved, saved_filled):
+                    pl.filled, pl.color = f, c
+                return img
             saved = self.fill_state.mode
             self.fill_state.mode = "lines"
             img = render_fill(self.fill_state, size=768)
             self.fill_state.mode = saved
             return img
         if self.view == self.VIEW_FILL and self.fill_state is not None:
+            if self.merged_pattern is not None:
+                from ..render import render_pattern
+                return render_pattern(self.merged_pattern, size=768)
             return render_fill(self.fill_state, size=768)
         return self.image_rgb
 
