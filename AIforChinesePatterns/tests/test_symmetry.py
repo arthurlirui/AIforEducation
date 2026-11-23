@@ -161,3 +161,102 @@ class TestPatternFromClustering:
             dec, colors=["#a63b2a", "#2b5f8a"], name="rosette")
         img = render_pattern(pattern, size=256)
         assert np.asarray(img).std() > 10
+
+
+# ----------------------------------------------------------------------
+# 2026-11 审阅回归: 配色索引 / 误差对齐 / 镜像与旋转位姿
+# ----------------------------------------------------------------------
+def _triskelion_mask(placements, size=256):
+    """非对称三圆部件（头+右上小圆+右下尾, 半径各异）。
+
+    placements = [(cx, cy, 旋转°, 镜像), ...], 同一母题经刚体/反射摆放。
+    """
+    m = np.zeros((size, size), dtype=bool)
+    yy, xx = np.mgrid[0:size, 0:size]
+    subs = [((0.0, 0.0), 22.0), ((17.0, -13.0), 9.0), ((22.0, 13.0), 6.0)]
+    for cx, cy, rot_deg, mirror in placements:
+        a = math.radians(rot_deg)
+        for (ox, oy), r in subs:
+            x = -ox if mirror else ox
+            lx = x * math.cos(a) - oy * math.sin(a)
+            ly = x * math.sin(a) + oy * math.cos(a)
+            m[np.hypot(xx - (cx + lx), yy - (cy + ly)) < r] = True
+    return m
+
+
+def _aligned_rms_noflip(rebuilt, ref, n=256):
+    """循环移位+倒序对齐的 RMS; 刻意不吸收镜像——反射重建错误必须可见。
+
+    轮廓起点与遍历方向是 Moore 追踪的任意选择（镜像成员的点序列互为
+    倒序）, 须吸收; 翻转是几何差异, 不吸收。
+    """
+    from fcp.contour import resample_contour
+    rb = resample_contour(rebuilt, n)
+    rr = resample_contour(ref, n)
+    rb = rb - rb.mean(axis=0)
+    rr = rr - rr.mean(axis=0)
+    return min(
+        float(np.sqrt(np.mean(np.sum(
+            (rb - np.roll(rrv, k, axis=0)) ** 2, axis=1))))
+        for rrv in (rr, rr[::-1]) for k in range(n))
+
+
+class TestMergeRegressions:
+    def test_per_part_colors_preserved(self):
+        """归并 Pattern 应逐部件保留颜色（修复: 曾误按簇号 cid 索引,
+        单部件改色与调色板轮转在归并模式下全部失效, 7/9 部件错配）。"""
+        mask = _rosette_mask()
+        dec = decompose_mask(mask, max_order=16, tol=1.0)
+        colors = [f"#{i * 111111:06x}" for i in range(len(dec.parts))]
+        colors[3] = "#ffffff"                      # 模拟单部件改色
+        pat = pattern_from_clustering(dec, colors=colors, name="t")
+        assert [pl.color for pl in pat.placements] == colors
+
+    def test_part_errors_phase_aligned(self):
+        """重建误差须吸收起点相位与遍历方向（修复: 真实 0.2px 的同形
+        花瓣曾被虚报为 24.8px, report()/GUI 归并 RMS 标签全部失真）。"""
+        mask = _rosette_mask()
+        dec = decompose_mask(mask, max_order=16, tol=1.0)
+        clu = cluster_parts(dec)
+        assert max(clu.part_errors) < 2.0
+
+    def test_mirror_pair_merged_and_rebuilt(self):
+        """非对称部件与其精确镜像应聚为一簇且重建不差反射（修复前:
+        镜像对不聚簇——距离搜索无倒序/四象限变体; mirror 标志也双双
+        漏检——det(eigh 特征向量) 判据不可靠）。"""
+        mask = _triskelion_mask([(60, 128, 0, False), (196, 128, 0, True)])
+        dec = decompose_mask(mask, max_order=16, tol=0.8)
+        assert len(dec.parts) == 2
+        clu = cluster_parts(dec)
+        assert clu.n_motifs == 1
+        # 镜像对的 mirror 标志必相反
+        assert clu.poses[0].mirror != clu.poses[1].mirror
+        m = clu.medoids[0]
+        canon_m, _ = part_pose(dec.parts[m])
+        for j in range(2):
+            rebuilt = canon_m.transformed(
+                scale=clu.poses[j].scale,
+                rotation_deg=clu.poses[j].rotation_deg,
+                mirror_x=clu.poses[j].mirror,
+                offset=clu.poses[j].offset).to_contour(256)
+            assert _aligned_rms_noflip(rebuilt, dec.parts[j].contour) < 3.0
+
+    def test_rotated_copies_cluster_and_rebuild(self):
+        """非对称母题的旋转/反射摆放副本应聚为一簇（修复前: PCA 特征
+        向量列符号歧义产生的 180°/镜像变体无搜索覆盖, 同形不聚,
+        真实纹样 191 部件只归并出 153 母题的部分原因）。"""
+        mask = _triskelion_mask([(64, 64, 0, False), (196, 70, 73, False),
+                                 (128, 200, 211, True)])
+        dec = decompose_mask(mask, max_order=16, tol=0.8)
+        assert len(dec.parts) == 3
+        clu = cluster_parts(dec)
+        assert clu.n_motifs == 1
+        m = clu.medoids[0]
+        canon_m, _ = part_pose(dec.parts[m])
+        for j in range(3):
+            rebuilt = canon_m.transformed(
+                scale=clu.poses[j].scale,
+                rotation_deg=clu.poses[j].rotation_deg,
+                mirror_x=clu.poses[j].mirror,
+                offset=clu.poses[j].offset).to_contour(256)
+            assert _aligned_rms_noflip(rebuilt, dec.parts[j].contour) < 3.0
